@@ -540,6 +540,116 @@ function addDaysISO(baseDate: Date, offsetDays: number): string {
   return `${year}-${month}-${day}`;
 }
 
+export interface CustomRoutineConfig {
+  presetType: 'caco' | 'intervals_z4' | 'threshold_z3' | 'easy_z1' | 'long_run';
+  rounds: number;
+  workMin: number;
+  restMin: number;
+  warmupMin: number;
+  cooldownMin: number;
+}
+
+function buildCaCoBlocks(
+  runMin: number,
+  walkMin: number,
+  rounds: number,
+  warmupMin: number,
+  cooldownMin: number,
+  z1: TrainingZone
+): WorkoutBlock[] {
+  const safeRounds = Math.max(1, Math.min(4, rounds));
+  const blocks: WorkoutBlock[] = [
+    {
+      label: 'Calentamiento activo',
+      durationMinutes: Math.max(3, warmupMin),
+      intensity: 'Caminata ligera · 5,5–6,0 km/h (0,095 km/min)',
+      description: 'Movilidad articular de tobillos y caminata progresiva.',
+      zone: 'Z1',
+    },
+  ];
+
+  for (let i = 1; i <= safeRounds; i++) {
+    blocks.push({
+      label: `Serie ${i}/${safeRounds} · Correr`,
+      durationMinutes: Math.max(1, runMin),
+      intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
+      description: `Trote suave conversacional (${z1.hrMin}–${z1.hrMax} ppm).`,
+      zone: 'Z2',
+    });
+    blocks.push({
+      label: `Serie ${i}/${safeRounds} · Caminar`,
+      durationMinutes: Math.max(1, walkMin),
+      intensity: 'Paso ligero · 5,5–6,2 km/h (0,095 km/min)',
+      description: 'Camina con soltura para estabilizar la respiración antes del siguiente trote.',
+      zone: 'Z1',
+    });
+  }
+
+  blocks.push({
+    label: 'Enfriamiento',
+    durationMinutes: Math.max(3, cooldownMin),
+    intensity: 'Paseo tranquilo · < 5,5 km/h',
+    description: 'Camina suave los últimos minutos para bajar pulsaciones.',
+    zone: 'Z1',
+  });
+
+  return blocks.slice(0, 10);
+}
+
+function buildIntervalBlocks(
+  kind: 'intervals_z4' | 'threshold_z3',
+  workMin: number,
+  restMin: number,
+  rounds: number,
+  warmupMin: number,
+  cooldownMin: number,
+  z1: TrainingZone,
+  workZone: TrainingZone
+): WorkoutBlock[] {
+  const safeRounds = Math.max(1, Math.min(4, rounds));
+  const blocks: WorkoutBlock[] = [
+    {
+      label: 'Calentamiento progresivo Z1',
+      durationMinutes: Math.max(5, warmupMin),
+      intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted}`,
+      description: 'Rodaje suave + 2 progresivos cortos para preparar piernas y pulso.',
+      zone: 'Z1',
+    },
+  ];
+
+  for (let i = 1; i <= safeRounds; i++) {
+    blocks.push({
+      label: kind === 'intervals_z4' ? `Serie ${i}/${safeRounds} · VO2max Z4` : `Umbral ${i}/${safeRounds} · Z3`,
+      durationMinutes: Math.max(1, workMin),
+      intensity: `${workZone.paceFormatted} · ${workZone.speedKmhFormatted} (${workZone.speedKmMinFormatted})`,
+      description:
+        kind === 'intervals_z4'
+          ? `Esfuerzo fuerte controlado (${workZone.hrMin}–${workZone.hrMax} ppm).`
+          : `Ritmo vivo sostenido sin llegar al sprint (${workZone.hrMin}–${workZone.hrMax} ppm).`,
+      zone: workZone.id,
+    });
+    if (i < safeRounds && blocks.length < 9) {
+      blocks.push({
+        label: `Recuperación ${i}/${safeRounds - 1} · Z1`,
+        durationMinutes: Math.max(1, restMin),
+        intensity: `${z1.paceFormatted} · Trote suave / caminata`,
+        description: 'Recupera respiración y suelta piernas sin pararte en seco.',
+        zone: 'Z1',
+      });
+    }
+  }
+
+  blocks.push({
+    label: 'Vuelta a la calma',
+    durationMinutes: Math.max(5, cooldownMin),
+    intensity: `${z1.paceFormatted} · Trote muy suave`,
+    description: 'Enfriamiento progresivo hasta estabilizar pulsaciones.',
+    zone: 'Z1',
+  });
+
+  return blocks.slice(0, 10);
+}
+
 function createSessionFromTemplate(
   profile: UserProfile,
   zones: TrainingZone[],
@@ -644,38 +754,15 @@ function createSessionFromTemplate(
     const runMin = Math.min(5, 1 + weekNumber + (profile.level - 1));
     const walkMin = Math.max(2, 7 - weekNumber - (profile.level - 1));
     const rounds = 4;
-    const mainMinutes = rounds * (runMin + walkMin);
-    const totalMinutes = 10 + mainMinutes;
+    const blocks = buildCaCoBlocks(runMin, walkMin, rounds, 5, 5, z1);
+    const totalMinutes = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
     const eq = calculateCardioEquivalence('running', totalMinutes, 5, profile.weightKg, profile.sex, profile.vdot);
-    const blocks: WorkoutBlock[] = [
-      {
-        label: 'Calentamiento caminando',
-        durationMinutes: 5,
-        intensity: 'Muy suave',
-        description: 'Movilidad de tobillos y 5 minutos de caminata ligera.',
-        zone: 'Z1',
-      },
-      {
-        label: `Bloque CaCo: ${rounds} x (${runMin}' trote / ${walkMin}' caminata)`,
-        durationMinutes: mainMinutes,
-        intensity: `Trote Z1 (${z1.paceFormatted}) + Caminata activa`,
-        description: `Alterna ${runMin} min corriendo suave (pudiendo hablar) con ${walkMin} min andando a buen paso.`,
-        zone: 'Z1',
-      },
-      {
-        label: 'Enfriamiento',
-        durationMinutes: 5,
-        intensity: 'Paseo tranquilo',
-        description: 'Baja pulsaciones caminando los últimos 5 minutos.',
-        zone: 'Z1',
-      },
-    ];
     return {
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
       title: `Sesión CaCo: ${runMin}' Correr / ${walkMin}' Andar`,
-      subtitle: 'Adaptación progresiva de tendones y capacidad aeróbica',
+      subtitle: `${rounds} series alternas guiadas por tramos con calentamiento y enfriamiento`,
       modality: 'running',
       sessionType: 'caco',
       strategyTag: `CaCo ${runMin}'/${walkMin}'`,
@@ -694,14 +781,19 @@ function createSessionFromTemplate(
   }
 
   if (templateType === 'threshold_z3') {
-    const duration = Math.min(52, 34 + profile.level * 2);
+    const rounds = 3;
+    const workMin = 6;
+    const restMin = 2;
+    const cooldownMin = Math.max(6, Math.min(12, 6 + profile.level));
+    const blocks = buildIntervalBlocks('threshold_z3', workMin, restMin, rounds, 10, cooldownMin, z1, z3);
+    const duration = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
     const eq = calculateCardioEquivalence('running', duration, 7, profile.weightKg, profile.sex, profile.vdot);
     return {
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
       title: 'Bloques de Umbral (3 x 6 min en Z3)',
-      subtitle: 'Trabajo de calidad (20% semanal) para elevar tu ritmo sostenible',
+      subtitle: 'Alternancia cronometrada Z3/Z1 para elevar tu ritmo sostenible',
       modality: 'running',
       sessionType: 'threshold_z3',
       strategyTag: '80/20 · Umbral Z3',
@@ -713,46 +805,28 @@ function createSessionFromTemplate(
       metMinutes: eq.metMinutes,
       trimp: eq.trimp,
       estimatedCalories: eq.calories,
-      blocks: [
-        {
-          label: 'Calentamiento',
-          durationMinutes: 10,
-          intensity: z1.paceFormatted,
-          description: '10 min de rodaje suave en Zona 1 y 2 rectas cortas.',
-          zone: 'Z1',
-        },
-        {
-          label: '3 x 6 min en Umbral (1 min trote suave entre bloques)',
-          durationMinutes: 20,
-          intensity: `${z3.paceFormatted} · ${z3.hrMin}-${z3.hrMax} ppm`,
-          description: 'Ritmo vivo pero controlado: exige concentración sin llegar al sprint.',
-          zone: 'Z3',
-        },
-        {
-          label: 'Vuelta a la calma',
-          durationMinutes: duration - 30,
-          intensity: z1.paceFormatted,
-          description: 'Trote muy suave para bajar pulsaciones progresivamente.',
-          zone: 'Z1',
-        },
-      ],
+      blocks,
       coachTip: 'Controla los primeros 2 minutos de cada serie para no salir por encima del ritmo objetivo.',
       completed: false,
     };
   }
 
   if (templateType === 'intervals_z4') {
-    const duration = 38;
+    const rounds = 4;
+    const workMin = 3;
+    const restMin = 2;
+    const blocks = buildIntervalBlocks('intervals_z4', workMin, restMin, rounds, 10, 8, z1, z4);
+    const duration = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
     const eq = calculateCardioEquivalence('running', duration, 8, profile.weightKg, profile.sex, profile.vdot);
     return {
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Intervalos 30-30 en Zona 4 (VO2max)',
-      subtitle: 'Sesión de potencia aeróbica (20% intenso semanal)',
+      title: 'Series VO2max en Zona 4 (4 x 3 min)',
+      subtitle: '4 bloques intensos en Z4 alternados con recuperación activa en Z1',
       modality: 'running',
       sessionType: 'intervals_z4',
-      strategyTag: 'Billat 30-30 · Z4',
+      strategyTag: 'VO2max · Series Z4',
       durationMinutes: duration,
       targetDistanceKm: Number(((duration * 60) / z2.paceMinSecPerKm * 0.92).toFixed(1)),
       targetZone: 'Z4',
@@ -761,29 +835,7 @@ function createSessionFromTemplate(
       metMinutes: eq.metMinutes,
       trimp: eq.trimp,
       estimatedCalories: eq.calories,
-      blocks: [
-        {
-          label: 'Calentamiento completo',
-          durationMinutes: 12,
-          intensity: z1.paceFormatted,
-          description: 'Rodaje suave y técnica básica de carrera antes de las series.',
-          zone: 'Z1',
-        },
-        {
-          label: '2 bloques x 8 repeticiones (30 s Z4 / 30 s Z1)',
-          durationMinutes: 18,
-          intensity: `${z4.paceFormatted} · 30 s trote suave`,
-          description: 'Camina 2 min entre bloques. Mantén un trote muy suave en las pausas de 30 s.',
-          zone: 'Z4',
-        },
-        {
-          label: 'Enfriamiento',
-          durationMinutes: 8,
-          intensity: 'Z1 suave',
-          description: 'Trote ligero o caminata hasta estabilizar respiración.',
-          zone: 'Z1',
-        },
-      ],
+      blocks,
       coachTip: 'Busca regularidad entre la primera y la última repetición en lugar de quemarte en las dos primeras.',
       completed: false,
     };
@@ -881,13 +933,16 @@ function createSessionFromTemplate(
   if (templateType === 'long_run') {
     const duration = Math.min(75, 38 + profile.level * 4);
     const eq = calculateCardioEquivalence('running', duration, 5, profile.weightKg, profile.sex, profile.vdot);
-    const paceStr = profile.level <= 3 ? z1.paceFormatted : `${formatPace(z2.paceMinSecPerKm)} – ${formatPace(z1.paceMaxSecPerKm)} /km`;
+    const paceStr = profile.level <= 3 ? z1.paceFormatted : `${formatPace(z2.paceMinSecPerKm)}–${formatPace(z1.paceMaxSecPerKm)} /km`;
+    const mainMinutes = Math.max(18, duration - 13);
+    const basePart = Math.round(mainMinutes * 0.65);
+    const progPart = mainMinutes - basePart;
     return {
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Tirada Larga Aeróbica',
-      subtitle: 'Construcción de resistencia cardiovascular de fondo',
+      title: 'Tirada Larga Progresiva',
+      subtitle: 'Construcción de resistencia de fondo con cierre en Z2',
       modality: 'running',
       sessionType: 'long_run',
       strategyTag: '80/20 · Base Z1-Z2',
@@ -901,23 +956,30 @@ function createSessionFromTemplate(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Inicio suave',
-          durationMinutes: 10,
-          intensity: 'Z1 cómodo',
-          description: 'Empieza unos 15 s/km más lento de tu objetivo para estabilizar el pulso.',
+          label: 'Calentamiento suave Z1',
+          durationMinutes: 8,
+          intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted}`,
+          description: 'Empieza tranquilo para lubricar articulaciones y estabilizar el pulso.',
           zone: 'Z1',
         },
         {
-          label: 'Bloque principal de fondo',
-          durationMinutes: duration - 15,
-          intensity: `${paceStr} · ${z1.hrMin}–${z2.hrMax} ppm`,
-          description: 'Mantén una zancada ligera y constante durante todo el recorrido.',
+          label: 'Fondo aeróbico Z1',
+          durationMinutes: basePart,
+          intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
+          description: 'Mantén ritmo cómodo y respiratorio durante el tramo principal.',
           zone: 'Z1',
+        },
+        {
+          label: 'Cierre progresivo Z2',
+          durationMinutes: progPart,
+          intensity: `${z2.paceFormatted} · ${z2.speedKmhFormatted} (${z2.speedKmMinFormatted})`,
+          description: 'Acelera progresivamente a ritmo estable maratón si te notas entero.',
+          zone: 'Z2',
         },
         {
           label: 'Vuelta a la calma',
           durationMinutes: 5,
-          intensity: 'Caminata suave',
+          intensity: 'Caminata suave · < 5,5 km/h',
           description: 'Camina 5 minutos al terminar e hidrátate bien.',
           zone: 'Z1',
         },
@@ -929,12 +991,13 @@ function createSessionFromTemplate(
 
   const duration = Math.min(48, 28 + profile.level * 2);
   const eq = calculateCardioEquivalence('running', duration, 4, profile.weightKg, profile.sex, profile.vdot);
+  const steadyDur = Math.max(14, duration - 11);
   return {
     id: `wk_${dateStr}`,
     date: dateStr,
     dayIndex,
     title: 'Rodaje Suave en Zona 1 (80/20)',
-    subtitle: 'Volumen aeróbico sin fatiga acumulada',
+    subtitle: 'Volumen aeróbico estructurado sin fatiga acumulada',
     modality: 'running',
     sessionType: 'easy_z1',
     strategyTag: '80/20 · Zona 1',
@@ -948,10 +1011,24 @@ function createSessionFromTemplate(
     estimatedCalories: eq.calories,
     blocks: [
       {
-        label: 'Rodaje continuo Z1',
-        durationMinutes: duration,
-        intensity: `${z1.paceFormatted} · ${z1.hrMin}–${z1.hrMax} ppm`,
+        label: 'Activación suave Z1',
+        durationMinutes: 6,
+        intensity: `${z1.paceFormatted} · Toma de ritmo`,
+        description: 'Primeros minutos suaves dejando subir las pulsaciones poco a poco.',
+        zone: 'Z1',
+      },
+      {
+        label: 'Rodaje estable Zona 1',
+        durationMinutes: steadyDur,
+        intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
         description: 'Ritmo conversacional real. Si notas que respiras forzado, baja el ritmo.',
+        zone: 'Z1',
+      },
+      {
+        label: 'Soltura final',
+        durationMinutes: 5,
+        intensity: 'Caminata o trote muy suave',
+        description: 'Baja pulso los últimos 5 minutos.',
         zone: 'Z1',
       },
     ],
@@ -1379,14 +1456,14 @@ export function changeCaCoRatio(
   const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
   const z1 = zones[0];
   const rounds = 4;
-  const mainMinutes = rounds * (runMin + walkMin);
-  const totalMinutes = 10 + mainMinutes;
+  const blocks = buildCaCoBlocks(runMin, walkMin, rounds, 5, 5, z1);
+  const totalMinutes = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
   const eq = calculateCardioEquivalence('running', totalMinutes, 5, profile.weightKg, profile.sex, profile.vdot);
 
   return {
     ...workout,
     title: `Sesión CaCo: ${runMin}' Correr / ${walkMin}' Andar`,
-    subtitle: 'Proporción CaCo personalizada para tu comodidad articular',
+    subtitle: `${rounds} series alternas guiadas para tu comodidad articular`,
     modality: 'running',
     sessionType: 'caco',
     strategyTag: `CaCo ${runMin}'/${walkMin}'`,
@@ -1398,29 +1475,152 @@ export function changeCaCoRatio(
     metMinutes: eq.metMinutes,
     trimp: eq.trimp,
     estimatedCalories: eq.calories,
-    blocks: [
-      {
-        label: 'Calentamiento caminando',
-        durationMinutes: 5,
-        intensity: 'Muy suave',
-        description: 'Movilidad de tobillos y 5 minutos de caminata ligera.',
-        zone: 'Z1',
-      },
-      {
-        label: `Bloque CaCo: ${rounds} x (${runMin}' trote / ${walkMin}' caminata)`,
-        durationMinutes: mainMinutes,
-        intensity: `Trote Z1 (${z1.paceFormatted}) + Caminata activa`,
-        description: `Alterna ${runMin} min corriendo suave con ${walkMin} min andando a buen paso.`,
-        zone: 'Z1',
-      },
-      {
-        label: 'Enfriamiento',
-        durationMinutes: 5,
-        intensity: 'Paseo tranquilo',
-        description: 'Camina 5 minutos suaves para bajar pulsaciones.',
-        zone: 'Z1',
-      },
-    ],
+    blocks,
+  };
+}
+
+export function customizeWorkoutRoutine(
+  workout: WorkoutSession,
+  profile: UserProfile,
+  config: CustomRoutineConfig
+): WorkoutSession {
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const z1 = zones[0];
+  const z2 = zones[1];
+  const z3 = zones[2];
+  const z4 = zones[3];
+
+  const rounds = Math.max(1, Math.min(4, Math.round(config.rounds)));
+  const workMin = Math.max(1, Math.min(25, Math.round(config.workMin)));
+  const restMin = Math.max(1, Math.min(10, Math.round(config.restMin)));
+  const warmupMin = Math.max(3, Math.min(15, Math.round(config.warmupMin)));
+  const cooldownMin = Math.max(3, Math.min(15, Math.round(config.cooldownMin)));
+
+  if (config.presetType === 'caco') {
+    const blocks = buildCaCoBlocks(workMin, restMin, rounds, warmupMin, cooldownMin, z1);
+    const totalMin = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
+    const eq = calculateCardioEquivalence('running', totalMin, 5, profile.weightKg, profile.sex, profile.vdot);
+    return {
+      ...workout,
+      modality: 'running',
+      sessionType: 'caco',
+      strategyTag: `CaCo ${rounds}x(${workMin}'/${restMin}')`,
+      title: `CaCo a medida: ${rounds} x (${workMin}' correr / ${restMin}' andar)`,
+      subtitle: 'Rutina alterna personalizada lista para el cronómetro guiado',
+      durationMinutes: totalMin,
+      targetDistanceKm: Number((totalMin * 0.118).toFixed(1)),
+      targetZone: 'Z1',
+      targetPace: z1.paceFormatted,
+      cardioPoints: eq.cardioPoints,
+      metMinutes: eq.metMinutes,
+      trimp: eq.trimp,
+      estimatedCalories: eq.calories,
+      blocks,
+    };
+  }
+
+  if (config.presetType === 'intervals_z4' || config.presetType === 'threshold_z3') {
+    const isZ4 = config.presetType === 'intervals_z4';
+    const workZone = isZ4 ? z4 : z3;
+    const blocks = buildIntervalBlocks(config.presetType, workMin, restMin, rounds, warmupMin, cooldownMin, z1, workZone);
+    const totalMin = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
+    const eq = calculateCardioEquivalence('running', totalMin, isZ4 ? 8 : 7, profile.weightKg, profile.sex, profile.vdot);
+    return {
+      ...workout,
+      modality: 'running',
+      sessionType: config.presetType,
+      strategyTag: isZ4 ? `Series Z4 ${rounds}x${workMin}'` : `Umbral Z3 ${rounds}x${workMin}'`,
+      title: isZ4
+        ? `Series VO2max: ${rounds} x ${workMin} min Z4`
+        : `Bloques de Umbral: ${rounds} x ${workMin} min Z3`,
+      subtitle: `Alterna ${workMin} min en ${workZone.id} con ${restMin} min recuperación en Z1`,
+      durationMinutes: totalMin,
+      targetDistanceKm: Number(((totalMin * 60) / workZone.paceMinSecPerKm * 0.85).toFixed(1)),
+      targetZone: workZone.id,
+      targetPace: workZone.paceFormatted,
+      cardioPoints: eq.cardioPoints,
+      metMinutes: eq.metMinutes,
+      trimp: eq.trimp,
+      estimatedCalories: eq.calories,
+      blocks,
+    };
+  }
+
+  const isLong = config.presetType === 'long_run';
+  const mainMinutes = Math.max(12, workMin * rounds);
+  const blocks: WorkoutBlock[] = isLong
+    ? [
+        {
+          label: 'Calentamiento suave Z1',
+          durationMinutes: warmupMin,
+          intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted}`,
+          description: 'Inicio tranquilo para estabilizar pulsaciones.',
+          zone: 'Z1',
+        },
+        {
+          label: 'Fondo aeróbico Z1',
+          durationMinutes: Math.max(8, Math.round(mainMinutes * 0.65)),
+          intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
+          description: 'Tramo principal aeróbico cómodo.',
+          zone: 'Z1',
+        },
+        {
+          label: 'Cierre progresivo Z2',
+          durationMinutes: Math.max(5, mainMinutes - Math.round(mainMinutes * 0.65)),
+          intensity: `${z2.paceFormatted} · ${z2.speedKmhFormatted} (${z2.speedKmMinFormatted})`,
+          description: 'Final sostenido en Zona 2.',
+          zone: 'Z2',
+        },
+        {
+          label: 'Enfriamiento',
+          durationMinutes: cooldownMin,
+          intensity: 'Caminata suave · < 5,5 km/h',
+          description: 'Camina al finalizar.',
+          zone: 'Z1',
+        },
+      ]
+    : [
+        {
+          label: 'Activación suave Z1',
+          durationMinutes: warmupMin,
+          intensity: `${z1.paceFormatted} · Toma de ritmo`,
+          description: 'Trote muy suave para arrancar.',
+          zone: 'Z1',
+        },
+        {
+          label: 'Rodaje continuo Z1',
+          durationMinutes: mainMinutes,
+          intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
+          description: 'Ritmo aeróbico conversacional constante.',
+          zone: 'Z1',
+        },
+        {
+          label: 'Vuelta a la calma',
+          durationMinutes: cooldownMin,
+          intensity: 'Paseo tranquilo',
+          description: 'Baja pulsaciones antes de terminar.',
+          zone: 'Z1',
+        },
+      ];
+
+  const totalMin = blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
+  const eq = calculateCardioEquivalence('running', totalMin, isLong ? 5 : 4, profile.weightKg, profile.sex, profile.vdot);
+  return {
+    ...workout,
+    modality: 'running',
+    sessionType: config.presetType,
+    strategyTag: isLong ? '80/20 · Tirada Z1-Z2' : '80/20 · Rodaje Z1',
+    title: isLong ? `Tirada Larga (${totalMin} min)` : `Rodaje Suave Z1 (${totalMin} min)`,
+    subtitle: 'Sesión continua personalizada por bloques',
+    durationMinutes: totalMin,
+    targetDistanceKm: Number(((totalMin * 60) / z1.paceMinSecPerKm).toFixed(1)),
+    targetZone: 'Z1',
+    targetPace: z1.paceFormatted,
+    cardioPoints: eq.cardioPoints,
+    metMinutes: eq.metMinutes,
+    trimp: eq.trimp,
+    estimatedCalories: eq.calories,
+    blocks,
   };
 }
 

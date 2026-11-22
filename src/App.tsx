@@ -42,10 +42,12 @@ import {
   applyPhysicalExamResult,
   calculateCardioEquivalence,
   changeCaCoRatio,
+  customizeWorkoutRoutine,
   evaluateProgressiveLevelUpdate,
   generateWeeklyPlan,
   getLynxLevel,
   swapWorkoutModality,
+  type CustomRoutineConfig,
   type DailyReadiness,
 } from './services/scienceEngine';
 import { calculateDailyMacros } from './services/nutritionEngine';
@@ -111,6 +113,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [loggingWorkout, setLoggingWorkout] = useState<WorkoutSession | null>(null);
   const [timerWorkout, setTimerWorkout] = useState<WorkoutSession | null>(null);
+  const [timerStartBlock, setTimerStartBlock] = useState<number>(0);
   const [personasOpen, setPersonasOpen] = useState(false);
   const [readiness, setReadiness] = useState<DailyReadiness>('normal');
   const [todayBaselineWorkout, setTodayBaselineWorkout] = useState<WorkoutSession | null>(null);
@@ -523,6 +526,23 @@ export function App() {
     showToast(`Bloque CaCo actualizado a ${runMin} min correr / ${walkMin} min andar.`);
   };
 
+  const handleCustomizeRoutine = (workoutId: string, config: CustomRoutineConfig) => {
+    if (!profile) return;
+    const nextWorkouts = workouts.map((w) =>
+      w.id === workoutId ? customizeWorkoutRoutine(w, profile, config) : w
+    );
+    const updatedTarget = nextWorkouts.find((w) => w.id === workoutId) ?? null;
+    if (timerWorkout?.id === workoutId && updatedTarget) {
+      setTimerWorkout(updatedTarget);
+    }
+    if (workouts[0]?.id === workoutId && updatedTarget) {
+      setTodayBaselineWorkout(updatedTarget);
+      setReadiness('normal');
+    }
+    saveAll(profile, nextWorkouts, exams, fitDays);
+    showToast('Estructura de la rutina y bloques del cronómetro actualizados.');
+  };
+
   const handleSwapWorkoutDays = (sourceId: string, targetId: string) => {
     if (!profile) return;
     const srcIdx = workouts.findIndex((w) => w.id === sourceId);
@@ -900,11 +920,15 @@ export function App() {
                 hasGoogleFitOAuth={Boolean(session.googleFitAccessToken || getSavedGoogleFitToken())}
                 readiness={readiness}
                 onReadinessChange={handleReadinessChange}
-                onStartTimer={(w) => setTimerWorkout(w)}
+                onStartTimer={(w, blockIdx = 0) => {
+                  setTimerStartBlock(blockIdx);
+                  setTimerWorkout(w);
+                }}
                 onCompleteWorkout={(w) => setLoggingWorkout(w)}
                 onLogExtraActivity={handleLogExtraActivity}
                 onSwapTodayModality={handleSwapModality}
                 onChangeCaCoRatio={handleChangeCaCoRatio}
+                onCustomizeRoutine={handleCustomizeRoutine}
                 onSyncGoogleFit={() => void handleSyncGoogleFit()}
                 onManualStepsUpdate={handleManualStepsUpdate}
                 onNavigate={handleSelectTab}
@@ -915,7 +939,10 @@ export function App() {
           {activeTab === 'calendar' && (
             <CalendarView
               workouts={workouts}
-              onStartTimer={(w) => setTimerWorkout(w)}
+              onStartTimer={(w, blockIdx = 0) => {
+                setTimerStartBlock(blockIdx);
+                setTimerWorkout(w);
+              }}
               onSelectComplete={(w) => setLoggingWorkout(w)}
               onSwapModality={handleSwapModality}
               onSwapWorkoutDays={handleSwapWorkoutDays}
@@ -980,9 +1007,16 @@ export function App() {
 
       <LiveWorkoutTimerDialog
         workout={timerWorkout}
+        profile={profile}
+        initialBlockIndex={timerStartBlock}
         onClose={() => setTimerWorkout(null)}
-        onFinishToLog={(w, elapsedMin) => {
-          setLoggingWorkout({ ...w, durationMinutes: elapsedMin });
+        onCustomizeRoutine={handleCustomizeRoutine}
+        onFinishToLog={(w, elapsedMin, elapsedDistKm) => {
+          setLoggingWorkout({
+            ...w,
+            durationMinutes: elapsedMin,
+            targetDistanceKm: elapsedDistKm ?? w.targetDistanceKm,
+          });
         }}
       />
 

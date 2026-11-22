@@ -24,6 +24,7 @@ import {
   calculateTrainingZones,
   calculateWeekly8020Balance,
   getModalityLabel,
+  type CustomRoutineConfig,
   type DailyReadiness,
 } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
@@ -92,11 +93,12 @@ interface DashboardViewProps {
   hasGoogleFitOAuth: boolean;
   readiness: DailyReadiness;
   onReadinessChange: (r: DailyReadiness) => void;
-  onStartTimer: (workout: WorkoutSession) => void;
+  onStartTimer: (workout: WorkoutSession, startBlockIndex?: number) => void;
   onCompleteWorkout: (workout: WorkoutSession) => void;
   onLogExtraActivity: () => void;
   onSwapTodayModality: (workoutId: string, modality: CardioModality) => void;
   onChangeCaCoRatio: (workoutId: string, runMin: number, walkMin: number) => void;
+  onCustomizeRoutine: (workoutId: string, config: CustomRoutineConfig) => void;
   onSyncGoogleFit: () => void;
   onManualStepsUpdate: (steps: number) => void;
   onNavigate: (tab: 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition') => void;
@@ -119,6 +121,7 @@ export function DashboardView({
   onLogExtraActivity,
   onSwapTodayModality,
   onChangeCaCoRatio,
+  onCustomizeRoutine,
   onSyncGoogleFit,
   onManualStepsUpdate,
   onNavigate,
@@ -126,6 +129,12 @@ export function DashboardView({
   const fitToday = fitDays[fitDays.length - 1];
   const [stepsInput, setStepsInput] = useState(fitToday?.steps ?? profile.dailyStepsTarget);
   const [livePedometerOn, setLivePedometerOn] = useState(false);
+  const [inspectedBlockIdx, setInspectedBlockIdx] = useState<number | undefined>(undefined);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customType, setCustomType] = useState<CustomRoutineConfig['presetType']>('caco');
+  const [customRounds, setCustomRounds] = useState(4);
+  const [customWorkMin, setCustomWorkMin] = useState(3);
+  const [customRestMin, setCustomRestMin] = useState(3);
 
   useEffect(() => {
     setStepsInput(fitToday?.steps ?? profile.dailyStepsTarget);
@@ -218,7 +227,40 @@ export function DashboardView({
                 </p>
               </div>
 
-              <WorkoutVisualBar blocks={todayWorkout.blocks} />
+              <WorkoutVisualBar
+                blocks={todayWorkout.blocks}
+                activeBlockIndex={inspectedBlockIdx}
+                onSelectBlock={(idx) => setInspectedBlockIdx((prev) => (prev === idx ? undefined : idx))}
+              />
+
+              {inspectedBlockIdx !== undefined && todayWorkout.blocks[inspectedBlockIdx] && (
+                <div
+                  className="inset-panel row-between"
+                  style={{
+                    borderColor: 'var(--cobalt-border)',
+                    background: 'var(--cobalt-soft)',
+                    padding: '0.58rem 0.78rem',
+                  }}
+                >
+                  <div>
+                    <strong style={{ fontSize: '0.84rem' }}>
+                      Bloque {inspectedBlockIdx + 1}: {todayWorkout.blocks[inspectedBlockIdx].label}
+                    </strong>
+                    <div className="muted mono" style={{ fontSize: '0.73rem' }}>
+                      {todayWorkout.blocks[inspectedBlockIdx].durationMinutes} min · {todayWorkout.blocks[inspectedBlockIdx].intensity}
+                    </div>
+                  </div>
+                  {!todayWorkout.completed && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => onStartTimer(todayWorkout, inspectedBlockIdx)}
+                    >
+                      Iniciar desde aquí
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="grid-3" style={{ gap: '0.6rem' }}>
                 <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
@@ -251,18 +293,18 @@ export function DashboardView({
                 {!todayWorkout.completed && todayWorkout.blocks.length > 0 ? (
                   <button
                     type="button"
-                    className="btn btn-secondary"
-                    style={{ flex: '1 1 170px' }}
-                    onClick={() => onStartTimer(todayWorkout)}
+                    className="btn btn-primary"
+                    style={{ flex: '1 1 180px' }}
+                    onClick={() => onStartTimer(todayWorkout, inspectedBlockIdx ?? 0)}
                   >
                     <Timer size={16} weight="duotone" aria-hidden="true" />
-                    Cronómetro guiado
+                    Abrir cronómetro guiado
                   </button>
                 ) : null}
                 <button
                   type="button"
                   className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
-                  style={{ flex: '1 1 180px' }}
+                  style={{ flex: '1 1 170px' }}
                   onClick={() => onCompleteWorkout(todayWorkout)}
                 >
                   <CheckCircle size={17} weight="duotone" aria-hidden="true" />
@@ -271,9 +313,9 @@ export function DashboardView({
               </div>
 
               {todayWorkout.blocks.length > 0 && (
-                <details className="faq-details" style={{ padding: '0.65rem 0.85rem' }}>
+                <details className="faq-details" open={todayWorkout.blocks.length > 1 && todayWorkout.blocks.length <= 10} style={{ padding: '0.65rem 0.85rem' }}>
                   <summary style={{ fontSize: '0.84rem' }}>
-                    Ver estructura de {todayWorkout.blocks.length} bloques ({todayWorkout.durationMinutes} min)
+                    Guion paso a paso: {todayWorkout.blocks.length} bloques ({todayWorkout.durationMinutes} min)
                   </summary>
                   <div className="stack-sm" style={{ marginTop: '0.65rem' }}>
                     {todayWorkout.blocks.map((block, idx) => (
@@ -283,10 +325,22 @@ export function DashboardView({
                         style={{ padding: '0.55rem 0.75rem' }}
                       >
                         <div className="row-between">
-                          <strong style={{ fontSize: '0.84rem' }}>{block.label}</strong>
-                          <span className="pill mono" style={{ fontSize: '0.7rem' }}>
-                            {block.durationMinutes} min · {block.zone}
-                          </span>
+                          <strong style={{ fontSize: '0.84rem' }}>{idx + 1}. {block.label}</strong>
+                          <div className="row-wrap" style={{ gap: '0.35rem' }}>
+                            <span className="pill mono" style={{ fontSize: '0.7rem' }}>
+                              {block.durationMinutes} min · {block.zone}
+                            </span>
+                            {!todayWorkout.completed && (
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                style={{ minBlockSize: '26px', padding: '0.15rem 0.45rem', fontSize: '0.72rem' }}
+                                onClick={() => onStartTimer(todayWorkout, idx)}
+                              >
+                                Crono ▶
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div style={{ color: 'var(--accent)', fontSize: '0.76rem', fontWeight: 600 }}>{block.intensity}</div>
                         <p className="muted" style={{ margin: '0.18rem 0 0', fontSize: '0.78rem' }}>
@@ -296,6 +350,100 @@ export function DashboardView({
                     ))}
                   </div>
                 </details>
+              )}
+
+              {!todayWorkout.completed && todayWorkout.sessionType !== 'rest' && (
+                <div className="stack-sm">
+                  <div className="row-between">
+                    <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
+                      ¿Quieres cambiar la estructura o los intervalos de hoy?
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setCustomOpen((v) => !v)}
+                    >
+                      {customOpen ? 'Cerrar editor' : 'Personalizar intervalos / rutina'}
+                    </button>
+                  </div>
+                  {customOpen && (
+                    <div className="inset-panel stack-sm" style={{ borderColor: 'var(--cobalt-border)', background: 'var(--cobalt-soft)' }}>
+                      <div className="grid-4" style={{ gap: '0.5rem' }}>
+                        <div className="field">
+                          <label htmlFor="dash-custom-type">Tipo</label>
+                          <select
+                            id="dash-custom-type"
+                            className="select"
+                            value={customType}
+                            onChange={(e) => setCustomType(e.target.value as CustomRoutineConfig['presetType'])}
+                          >
+                            <option value="caco">CaCo (Correr/Andar)</option>
+                            <option value="intervals_z4">Series VO2max (Z4)</option>
+                            <option value="threshold_z3">Umbral (Z3)</option>
+                            <option value="easy_z1">Rodaje Suave (Z1)</option>
+                            <option value="long_run">Tirada Larga</option>
+                          </select>
+                        </div>
+                        <div className="field">
+                          <label htmlFor="dash-custom-rounds">Series (1-4)</label>
+                          <input
+                            id="dash-custom-rounds"
+                            type="number"
+                            min={1}
+                            max={4}
+                            className="input mono"
+                            value={customRounds}
+                            onChange={(e) => setCustomRounds(Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="field">
+                          <label htmlFor="dash-custom-work">Trabajo (min)</label>
+                          <input
+                            id="dash-custom-work"
+                            type="number"
+                            min={1}
+                            max={20}
+                            className="input mono"
+                            value={customWorkMin}
+                            onChange={(e) => setCustomWorkMin(Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="field">
+                          <label htmlFor="dash-custom-rest">Recup. (min)</label>
+                          <input
+                            id="dash-custom-rest"
+                            type="number"
+                            min={1}
+                            max={10}
+                            className="input mono"
+                            value={customRestMin}
+                            onChange={(e) => setCustomRestMin(Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                      <div className="row-wrap">
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            onCustomizeRoutine(todayWorkout.id, {
+                              presetType: customType,
+                              rounds: customRounds,
+                              workMin: customWorkMin,
+                              restMin: customRestMin,
+                              warmupMin: 5,
+                              cooldownMin: 5,
+                            });
+                            setInspectedBlockIdx(undefined);
+                            setCustomOpen(false);
+                          }}
+                        >
+                          Aplicar estructura y recalcular bloques
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Check-in de fatiga y adaptación */}

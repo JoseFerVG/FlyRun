@@ -17,7 +17,7 @@ import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 
 interface CalendarViewProps {
   workouts: WorkoutSession[];
-  onStartTimer: (workout: WorkoutSession) => void;
+  onStartTimer: (workout: WorkoutSession, startBlockIndex?: number) => void;
   onSelectComplete: (workout: WorkoutSession) => void;
   onSwapModality: (workoutId: string, modality: CardioModality) => void;
   onSwapWorkoutDays: (sourceId: string, targetId: string) => void;
@@ -34,6 +34,7 @@ export function CalendarView({
 }: CalendarViewProps) {
   const [selectedId, setSelectedId] = useState<string>(workouts[0]?.id ?? '');
   const [activeWeek, setActiveWeek] = useState<number>(1);
+  const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | undefined>(undefined);
 
   const weekWorkouts = workouts.slice((activeWeek - 1) * 7, activeWeek * 7);
   const selected = weekWorkouts.find((w) => w.id === selectedId) ?? weekWorkouts[0] ?? workouts[0];
@@ -211,7 +212,11 @@ export function CalendarView({
             </div>
           </div>
 
-          <WorkoutVisualBar blocks={selected.blocks} />
+          <WorkoutVisualBar
+            blocks={selected.blocks}
+            activeBlockIndex={selectedBlockIdx}
+            onSelectBlock={(idx) => setSelectedBlockIdx((p) => (p === idx ? undefined : idx))}
+          />
 
           <div className="grid-4">
             <div className="inset-panel">
@@ -240,12 +245,31 @@ export function CalendarView({
 
           <div className="grid-2">
             <div className="stack-sm">
-              <strong style={{ fontSize: '0.88rem' }}>Estructura de la sesión</strong>
+              <strong style={{ fontSize: '0.88rem' }}>Estructura de la sesión ({selected.blocks.length} bloques)</strong>
               {selected.blocks.map((b, i) => (
-                <div key={`${b.label}-${i}`} className="inset-panel" style={{ padding: '0.68rem 0.85rem' }}>
+                <div
+                  key={`${b.label}-${i}`}
+                  className="inset-panel"
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderColor: selectedBlockIdx === i ? 'var(--accent)' : 'var(--border-hairline)',
+                  }}
+                >
                   <div className="row-between">
-                    <span style={{ fontWeight: 600, fontSize: '0.87rem' }}>{b.label}</span>
-                    <span className="pill mono" style={{ fontSize: '0.72rem' }}>{b.durationMinutes} min</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.87rem' }}>{i + 1}. {b.label}</span>
+                    <div className="row-wrap" style={{ gap: '0.35rem' }}>
+                      <span className="pill mono" style={{ fontSize: '0.72rem' }}>{b.durationMinutes} min · {b.zone}</span>
+                      {!selected.completed && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ minBlockSize: '26px', padding: '0.15rem 0.45rem', fontSize: '0.72rem' }}
+                          onClick={() => onStartTimer(selected, i)}
+                        >
+                          Crono ▶
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div style={{ color: 'var(--accent)', fontSize: '0.78rem', fontWeight: 600 }}>{b.intensity}</div>
                   <div className="muted" style={{ fontSize: '0.8rem' }}>{b.description}</div>
