@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Award, Flame, Lightbulb, Sparkles } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import type { LynxLevelInfo, UserProfile, WorkoutSession } from '../types/fitness';
 import { SCIENTIFIC_LOADING_TIPS } from '../data/runningKnowledge';
 
@@ -20,138 +20,91 @@ export function CoachLynxBanner({
 }: CoachLynxBannerProps) {
   const [tipIndex, setTipIndex] = useState(0);
   const currentTip = SCIENTIFIC_LOADING_TIPS[tipIndex];
-
-  const mascotImg = todayWorkout?.isExamDay
-    ? '/assets/lynx/lynx-exam-clipboard.png'
-    : todayWorkout?.completed
-    ? '/assets/lynx/lynx-action-run.png'
-    : '/assets/lynx/lynx-coach-hero.png';
+  const firstName = profile.displayName.split(' ')[0];
 
   return (
-    <section className="card card-highlight" aria-label="Resumen de Coach Lince">
-      <div className="lynx-hero-grid">
-        <img
-          src={mascotImg}
-          alt="Coach Lince Ibérico de FlyRun"
-          width={190}
-          height={190}
-          className="lynx-portrait"
-          fetchPriority="high"
-        />
+    <section className="card stack-md" aria-label="Resumen diario del entrenador">
+      <div className="row-between">
+        <div className="row-wrap">
+          <span className="pill pill-amber">
+            Nivel {levelInfo.level} · {levelInfo.spanishTitle}
+          </span>
+          <span className="pill pill-emerald">
+            Racha: {profile.streakDays} {profile.streakDays === 1 ? 'día' : 'días'}
+          </span>
+          <span className="pill pill-cyan mono">VDOT {profile.vdot}</span>
+        </div>
 
-        <div className="stack-md">
-          <div className="row-between">
-            <div className="row-wrap">
-              <span className="pill pill-amber">
-                <Award size={14} aria-hidden="true" />
-                Nivel {levelInfo.level} · {levelInfo.spanishTitle}
-              </span>
-              <span className="pill pill-emerald">
-                <Flame size={14} aria-hidden="true" />
-                Racha {profile.streakDays} días
-              </span>
-              <span className="pill pill-cyan mono">VDOT {profile.vdot}</span>
-            </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenExam}>
+          Registrar examen físico
+        </button>
+      </div>
 
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenExam}>
-              Hacer Examen Físico
-            </button>
+      <div>
+        <h1 style={{ margin: 0, fontSize: 'clamp(1.3rem, 2.6vw, 1.7rem)', fontWeight: 700, letterSpacing: '-0.025em' }}>
+          Plan de hoy para {firstName}
+        </h1>
+        <p className="secondary" style={{ margin: '0.28rem 0 0', fontSize: '0.94rem' }}>
+          {levelInfo.lynxQuote}
+        </p>
+      </div>
+
+      <div className="grid-2" style={{ gap: '0.8rem' }}>
+        <div className="inset-panel stack-sm">
+          <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase' }}>
+            Hoy toca
           </div>
-
-          <div>
-            <h1 style={{ margin: 0, fontSize: 'clamp(1.25rem, 2.8vw, 1.75rem)', fontWeight: 800 }}>
-              ¡Vamos a por ello, {profile.displayName.split(' ')[0]}!
-            </h1>
-            <p className="secondary" style={{ margin: '0.3rem 0 0', fontSize: '0.94rem' }}>
-              “{levelInfo.lynxQuote}”
-            </p>
+          <div style={{ fontWeight: 700, fontSize: '0.96rem' }}>
+            {todayWorkout ? todayWorkout.title : 'Descanso activo'}
           </div>
-
-          <div className="grid-2" style={{ gap: '0.75rem' }}>
-            <div
-              style={{
-                background: 'rgba(9, 14, 26, 0.72)',
-                border: '1px solid rgba(249, 115, 22, 0.25)',
-                borderRadius: '14px',
-                padding: '0.75rem 0.9rem',
-              }}
-            >
-              <div className="muted" style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                Rutina de Hoy
-              </div>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBlockStart: '0.15rem' }}>
-                {todayWorkout ? todayWorkout.title : 'Día de descanso activo'}
-              </div>
-              <div className="muted" style={{ fontSize: '0.8rem' }}>
-                {todayWorkout
-                  ? `${todayWorkout.durationMinutes} min · ${todayWorkout.cardioPoints} Puntos Cardio`
-                  : 'Cumple tu meta de pasos diarios'}
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: 'rgba(9, 14, 26, 0.72)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                borderRadius: '14px',
-                padding: '0.75rem 0.9rem',
-              }}
-            >
-              <div className="muted" style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                Tu Entrenamiento de Mañana
-              </div>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBlockStart: '0.15rem' }}>
-                {tomorrowWorkout ? tomorrowWorkout.title : 'Sesión aeróbica adaptada'}
-              </div>
-              <div className="muted" style={{ fontSize: '0.8rem' }}>
-                {tomorrowWorkout
-                  ? `${tomorrowWorkout.strategyTag} · ${tomorrowWorkout.durationMinutes} min`
-                  : 'Pendiente de recalibración'}
-              </div>
-            </div>
-          </div>
-
-          <div className="row-between" style={{ gap: '0.75rem' }}>
-            <div style={{ flex: '1 1 220px' }}>
-              <div className="row-between" style={{ fontSize: '0.78rem', marginBlockEnd: '0.25rem' }}>
-                <span className="muted">Progreso al Nivel {Math.min(10, levelInfo.level + 1)}</span>
-                <span className="mono" style={{ color: '#fdba74' }}>
-                  {profile.xp} / {levelInfo.nextLevelXp} XP ({levelInfo.progressPct}%)
-                </span>
-              </div>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ inlineSize: `${levelInfo.progressPct}%` }} />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setTipIndex((i) => (i + 1) % SCIENTIFIC_LOADING_TIPS.length)}
-            >
-              <Lightbulb size={14} color="#fbbf24" aria-hidden="true" />
-              Consejo científico
-            </button>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '0.55rem',
-              background: 'rgba(245, 158, 11, 0.08)',
-              border: '1px solid rgba(245, 158, 11, 0.22)',
-              borderRadius: '12px',
-              padding: '0.6rem 0.85rem',
-              fontSize: '0.82rem',
-            }}
-          >
-            <Sparkles size={15} color="#fbbf24" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
-            <div>
-              <strong>{currentTip.title}:</strong> {currentTip.fact}
-            </div>
+          <div className="muted mono" style={{ fontSize: '0.8rem' }}>
+            {todayWorkout
+              ? `${todayWorkout.durationMinutes} min · ${todayWorkout.cardioPoints} Puntos Cardio`
+              : 'Objetivos de pasos diarios'}
           </div>
         </div>
+
+        <div className="inset-panel stack-sm">
+          <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase' }}>
+            Mañana te espera
+          </div>
+          <div style={{ fontWeight: 700, fontSize: '0.96rem' }}>
+            {tomorrowWorkout ? tomorrowWorkout.title : 'Sesión aeróbica adaptada'}
+          </div>
+          <div className="muted mono" style={{ fontSize: '0.8rem' }}>
+            {tomorrowWorkout
+              ? `${tomorrowWorkout.strategyTag} · ${tomorrowWorkout.durationMinutes} min`
+              : 'Por confirmar'}
+          </div>
+        </div>
+      </div>
+
+      <div className="row-between" style={{ gap: '0.9rem' }}>
+        <div style={{ flex: '1 1 240px' }}>
+          <div className="row-between" style={{ fontSize: '0.78rem', marginBlockEnd: '0.3rem' }}>
+            <span className="muted">Progreso hacia el Nivel {Math.min(10, levelInfo.level + 1)}</span>
+            <span className="mono secondary" style={{ fontWeight: 600 }}>
+              {profile.xp} / {levelInfo.nextLevelXp} XP ({levelInfo.progressPct}%)
+            </span>
+          </div>
+          <div className="progress-track">
+            <div className="progress-fill" style={{ inlineSize: `${levelInfo.progressPct}%` }} />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => setTipIndex((i) => (i + 1) % SCIENTIFIC_LOADING_TIPS.length)}
+        >
+          <Lightbulb size={14} aria-hidden="true" />
+          Siguiente apunte técnico
+        </button>
+      </div>
+
+      <div className="inset-panel" style={{ fontSize: '0.84rem', padding: '0.65rem 0.9rem' }}>
+        <strong style={{ color: 'var(--text-primary)' }}>{currentTip.title}:</strong>{' '}
+        <span className="secondary">{currentTip.fact}</span>
       </div>
     </section>
   );

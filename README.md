@@ -1,34 +1,31 @@
-# FlyRun SaaS — Entrenador de Running y Cardio con Coach Lince Ibérico
+# FlyRun — Planificación de Running y Cardio
 
-FlyRun es una aplicación web SaaS (optimizada para móvil y escritorio) diseñada como entrenador personal científico de running y condición cardiovascular, protagonizada por **Coach Lince** (Lince Ibérico generado con Google Gemini).
+FlyRun es una aplicación web diseñada para planificar entrenamientos de carrera y condición cardiovascular en ordenador y móvil, basada en principios fisiológicos reales y adaptada al nivel de cada persona.
 
-## Características Principales
+## Funcionalidades principales
 
-- **Autenticación con Google y Persistencia Firebase**: Inicio de sesión con Google (`Firebase Auth` + scope de actividad de Google Fit), sincronización en Cloud Firestore con reglas de seguridad estrictas (`firestore.rules`) y modo de acceso demo instantáneo.
-- **Evaluación Inicial y Exámenes Físicos Periódicos**: Cuestionario biométrico inicial y **Día de Examen Físico** (Test de Cooper 12 min, Contrarreloj 5K, Test Rockport 1.6 km y Test Continuo Base) que recalculan tu **VDOT** (Jack Daniels) y tus **5 Zonas Fisiológicas** de ritmo y pulso (Karvonen + Tanaka).
-- **Estrategias Científicas de Entrenamiento**:
-  - **Método CaCo Progresivo** (ej. *2 min correr / 6 min andar*, *3'/5'*, *4'/4'*) para proteger tendones y construir base sin lesiones.
-  - **Modelo Polarizado 80/20** (Dr. Stephen Seiler) y **Intervalos Billat 30-30** ($v\text{VO}_2\text{max}$).
-- **Equivalencia Multi-Cardio (Puntos Cardio)**: Sustituye o combina running con **Ciclismo**, **Partido de Fútbol**, **Caminata Activa** o **Natación/Elíptica** igualando carga mediante **MET-minutos** y **TRIMP**.
-- **Conexión con Google Fit**: Sincroniza pasos diarios, distancia andada y calorías activas para ajustar tu gasto diario y recuperación.
-- **Gamificación (10 Niveles + Insignias)**: Sube desde *Nivel 1: Cachorro de Doñana* hasta *Nivel 10: Espíritu Indomable* ganando XP por constancia, progresión de VDOT y exámenes superados.
-- **Recomendación Nutricional Macro**: Guía práctica diaria en gramos y `g/kg` de carbohidratos, proteínas, grasas e hidratación (Mifflin-St Jeor + carga del entrenamiento + pasos de Google Fit).
-- **Pantalla de Carga Científica**: Píldoras verificadas de fisiología del running y cardio mientras calibra tu plan.
+- **Acceso con Google y Firebase**: Autenticación mediante Google (`Firebase Auth`), lectura opcional de pasos diarios de **Google Fit** (`fitness.activity.read`), persistencia en **Cloud Firestore** con reglas de seguridad (`firestore.rules`) y modo de prueba con perfil de ejemplo.
+- **Evaluación inicial y exámenes físicos periódicos**: Cuestionario biométrico inicial y tests objetivos (**Cooper 12 min**, **5K**, **Rockport 1,6 km** o **test continuo**) que calculan tu índice **VDOT** y tus **5 zonas de ritmo y pulso** (Karvonen + Tanaka).
+- **Estrategias científicas de carrera**:
+  - **Método CaCo progresivo** (bloques de 2 min corriendo / 6 min caminando y progresiones semanales) para adaptar tendones sin lesiones.
+  - **Distribución polarizada 80/20** (80 % aeróbico suave, 20 % umbral/series) e **intervalos 30-30**.
+- **Equivalencia multi-cardio**: Conversión y sustitución entre **Running**, **Ciclismo**, **Partido de fútbol**, **Caminata rápida** y **Natación/Elíptica** mediante **MET-minutos**, **TRIMP** y **Puntos Cardio**.
+- **Seguimiento diario con Google Fit y Macros**: Registro de pasos diarios y recomendación orientativa en macronutrientes (gramos y `g/kg` de carbohidratos, proteínas, grasas e hidratación) según el desgaste de cada día.
 
-## Puesta en Marcha
+## Desarrollo y compilación
 
 ```bash
 npm install
 npm run dev
 ```
 
-Para compilar para producción:
+Compilación de producción:
 
 ```bash
 npm run build
 ```
 
-Para desplegar las reglas de Cloud Firestore:
+Despliegue de reglas de Firestore:
 
 ```bash
 npx -y firebase-tools@latest deploy --only firestore:rules

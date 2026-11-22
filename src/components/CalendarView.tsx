@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Bike, Calendar, CheckCircle2, ClipboardCheck, Flame } from 'lucide-react';
+import { Bike, Calendar, CheckCircle2, ClipboardCheck } from 'lucide-react';
 import type { CardioModality, WorkoutSession } from '../types/fitness';
 import { getModalityLabel } from '../services/scienceEngine';
+import { WorkoutVisualBar } from './WorkoutVisualBar';
 
 interface CalendarViewProps {
   workouts: WorkoutSession[];
@@ -32,11 +33,13 @@ export function CalendarView({
       <section className="card stack-md">
         <div className="row-between">
           <div className="row-wrap">
-            <Calendar size={20} color="#fb923c" aria-hidden="true" />
+            <Calendar size={19} color="#d94814" aria-hidden="true" />
             <div>
-              <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Calendario Científico de 4 Semanas</h1>
+              <h1 style={{ margin: 0, fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
+                Calendario de 4 semanas
+              </h1>
               <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-                Distribución periodizada según tus días elegidos, método 80/20 o CaCo, y Días de Examen Físico programados.
+                Periodización semanal adaptada a tus días elegidos, con días de examen físico cada dos semanas.
               </p>
             </div>
           </div>
@@ -82,22 +85,22 @@ export function CalendarView({
                 onClick={() => setSelectedId(w.id)}
               >
                 <div className="row-between" style={{ inlineSize: '100%' }}>
-                  <span className="muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize' }}>
+                  <span className="muted" style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize' }}>
                     {formatShortDate(w.date)}
                   </span>
                   {isToday && <span className="pill pill-amber">Hoy</span>}
                   {isTomorrow && <span className="pill pill-cyan">Mañana</span>}
-                  {w.completed && <CheckCircle2 size={15} color="#34d399" aria-hidden="true" />}
+                  {w.completed && <CheckCircle2 size={15} color="#186a4b" aria-hidden="true" />}
                 </div>
 
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', lineHeight: 1.3 }}>{w.title}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.88rem', lineHeight: 1.35 }}>{w.title}</div>
 
                 <div className="row-between" style={{ inlineSize: '100%', marginBlockStart: 'auto' }}>
                   <span className="muted mono" style={{ fontSize: '0.74rem' }}>
                     {w.durationMinutes} min · {w.targetZone}
                   </span>
-                  <span className="mono" style={{ fontSize: '0.74rem', color: '#fdba74', fontWeight: 700 }}>
-                    {w.cardioPoints} CP
+                  <span className="mono" style={{ fontSize: '0.74rem', color: 'var(--accent)', fontWeight: 600 }}>
+                    {w.cardioPoints} PC
                   </span>
                 </div>
               </button>
@@ -107,7 +110,7 @@ export function CalendarView({
       </section>
 
       {selected && (
-        <section className="card card-highlight stack-md" aria-label="Detalle del día seleccionado">
+        <section className="card stack-md" aria-label="Detalle del día seleccionado">
           <div className="row-between">
             <div>
               <div className="row-wrap">
@@ -115,8 +118,8 @@ export function CalendarView({
                 <span className="pill">{selected.strategyTag}</span>
                 <span className="pill pill-cyan">{getModalityLabel(selected.modality)}</span>
               </div>
-              <h2 style={{ margin: '0.45rem 0 0', fontSize: '1.3rem' }}>{selected.title}</h2>
-              <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.88rem' }}>
+              <h2 style={{ margin: '0.45rem 0 0', fontSize: '1.25rem', letterSpacing: '-0.015em' }}>{selected.title}</h2>
+              <p className="muted" style={{ margin: '0.18rem 0 0', fontSize: '0.86rem' }}>
                 {selected.subtitle}
               </p>
             </div>
@@ -124,8 +127,8 @@ export function CalendarView({
             <div className="row-wrap">
               {selected.isExamDay && (
                 <button type="button" className="btn btn-primary" onClick={onOpenExam}>
-                  <ClipboardCheck size={17} aria-hidden="true" />
-                  Ir al Examen Físico
+                  <ClipboardCheck size={16} aria-hidden="true" />
+                  Ir a examen físico
                 </button>
               )}
               <button
@@ -133,30 +136,32 @@ export function CalendarView({
                 className={`btn ${selected.completed ? 'btn-secondary' : 'btn-emerald'}`}
                 onClick={() => onSelectComplete(selected)}
               >
-                <CheckCircle2 size={17} aria-hidden="true" />
-                {selected.completed ? 'Editar Registro' : 'Marcar como Completado'}
+                <CheckCircle2 size={16} aria-hidden="true" />
+                {selected.completed ? 'Editar registro' : 'Marcar como completado'}
               </button>
             </div>
           </div>
 
+          <WorkoutVisualBar blocks={selected.blocks} />
+
           <div className="grid-4">
-            <div style={{ background: 'rgba(9,14,26,0.72)', padding: '0.75rem', borderRadius: '12px' }}>
+            <div className="inset-panel">
               <div className="muted" style={{ fontSize: '0.74rem' }}>Duración / Distancia</div>
               <div className="mono" style={{ fontWeight: 700 }}>
                 {selected.durationMinutes} min · {selected.targetDistanceKm} km
               </div>
             </div>
-            <div style={{ background: 'rgba(9,14,26,0.72)', padding: '0.75rem', borderRadius: '12px' }}>
-              <div className="muted" style={{ fontSize: '0.74rem' }}>Ritmo Objetivo</div>
+            <div className="inset-panel">
+              <div className="muted" style={{ fontSize: '0.74rem' }}>Ritmo objetivo</div>
               <div className="mono" style={{ fontWeight: 700 }}>{selected.targetPace}</div>
             </div>
-            <div style={{ background: 'rgba(9,14,26,0.72)', padding: '0.75rem', borderRadius: '12px' }}>
+            <div className="inset-panel">
               <div className="muted" style={{ fontSize: '0.74rem' }}>Puntos Cardio / MET-m</div>
               <div className="mono" style={{ fontWeight: 700 }}>
-                {selected.cardioPoints} CP · {selected.metMinutes} MET
+                {selected.cardioPoints} PC · {selected.metMinutes} MET
               </div>
             </div>
-            <div style={{ background: 'rgba(9,14,26,0.72)', padding: '0.75rem', borderRadius: '12px' }}>
+            <div className="inset-panel">
               <div className="muted" style={{ fontSize: '0.74rem' }}>TRIMP / Calorías</div>
               <div className="mono" style={{ fontWeight: 700 }}>
                 {selected.trimp} TRIMP · {selected.estimatedCalories} kcal
@@ -166,46 +171,28 @@ export function CalendarView({
 
           <div className="grid-2">
             <div className="stack-sm">
-              <strong style={{ fontSize: '0.9rem' }}>Estructura paso a paso:</strong>
+              <strong style={{ fontSize: '0.88rem' }}>Estructura de la sesión</strong>
               {selected.blocks.map((b, i) => (
-                <div
-                  key={`${b.label}-${i}`}
-                  style={{
-                    background: 'rgba(9,14,26,0.68)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '12px',
-                    padding: '0.7rem 0.85rem',
-                  }}
-                >
+                <div key={`${b.label}-${i}`} className="inset-panel" style={{ padding: '0.68rem 0.85rem' }}>
                   <div className="row-between">
-                    <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>{b.label}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.87rem' }}>{b.label}</span>
                     <span className="pill mono" style={{ fontSize: '0.72rem' }}>{b.durationMinutes} min</span>
                   </div>
-                  <div style={{ color: '#fdba74', fontSize: '0.78rem' }}>{b.intensity}</div>
+                  <div style={{ color: 'var(--accent)', fontSize: '0.78rem', fontWeight: 600 }}>{b.intensity}</div>
                   <div className="muted" style={{ fontSize: '0.8rem' }}>{b.description}</div>
                 </div>
               ))}
             </div>
 
             <div className="stack-md">
-              <div
-                style={{
-                  background: 'rgba(249, 115, 22, 0.08)',
-                  border: '1px solid rgba(249, 115, 22, 0.28)',
-                  borderRadius: '14px',
-                  padding: '0.85rem',
-                }}
-              >
-                <div className="row-wrap" style={{ marginBlockEnd: '0.3rem' }}>
-                  <Flame size={15} color="#fb923c" aria-hidden="true" />
-                  <strong style={{ fontSize: '0.88rem' }}>Nota de Coach Lince</strong>
-                </div>
-                <p className="secondary" style={{ margin: 0, fontSize: '0.84rem' }}>{selected.coachTip}</p>
+              <div className="inset-panel">
+                <strong style={{ fontSize: '0.86rem' }}>Nota técnica de la sesión</strong>
+                <p className="secondary" style={{ margin: '0.3rem 0 0', fontSize: '0.84rem' }}>{selected.coachTip}</p>
               </div>
 
               {!selected.isExamDay && selected.sessionType !== 'rest' && (
                 <div className="stack-sm">
-                  <strong style={{ fontSize: '0.86rem' }}>Adaptar este día a otro modo cardio:</strong>
+                  <strong style={{ fontSize: '0.86rem' }}>Adaptar este día a otro deporte:</strong>
                   <div className="row-wrap">
                     <button
                       type="button"
@@ -220,21 +207,21 @@ export function CalendarView({
                       onClick={() => onSwapModality(selected.id, 'cycling')}
                     >
                       <Bike size={14} aria-hidden="true" />
-                      Cambiar a Bici
+                      Bicicleta
                     </button>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
                       onClick={() => onSwapModality(selected.id, 'soccer')}
                     >
-                      ⚽ Cambiar a Fútbol
+                      Partido de fútbol
                     </button>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
                       onClick={() => onSwapModality(selected.id, 'walking')}
                     >
-                      Caminata Activa
+                      Caminata rápida
                     </button>
                   </div>
                 </div>

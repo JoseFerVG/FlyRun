@@ -1,10 +1,10 @@
 import type { GoogleFitDay, MacroRecommendation, UserProfile, WorkoutSession } from '../types/fitness';
 
 /**
- * Calcula los macronutrientes diarios recomendados en base a:
- * - Ecuación Mifflin-St Jeor (TMB)
- * - NEAT diario procedente de los pasos de Google Fit
- * - Demanda energética y glucogénica de la sesión del día (descanso vs suave vs intervalos/fútbol)
+ * Calcula las necesidades diarias en términos macro:
+ * - Tasa Metabólica Basal (Mifflin-St Jeor)
+ * - Gasto por actividad cotidiana (pasos de Google Fit)
+ * - Carga energética y glucogénica de la sesión del día
  */
 export function calculateDailyMacros(
   profile: UserProfile,
@@ -23,29 +23,28 @@ export function calculateDailyMacros(
   const workoutCalories = workout && workout.sessionType !== 'rest' ? workout.estimatedCalories : 0;
   let tdee = Math.round(bmr * neatFactor + workoutCalories);
 
-  // Ajuste sutil si busca pérdida de grasa cardio
   if (profile.goal === 'fat_loss_cardio') {
     tdee = Math.round(tdee * 0.88);
   }
 
   let dayType: MacroRecommendation['dayType'] = 'easy';
-  let dayTypeLabel = 'Día de Rodaje Aeróbico / CaCo';
+  let dayTypeLabel = 'Día de rodaje aeróbico / CaCo';
   let carbMultiplier = 4.2;
   let proteinMultiplier = 1.75;
   let fatMultiplier = 0.85;
-  let preWorkoutTip = '30–60 min antes: 1 plátano maduro o 1 tostada con miel/mermelada + vaso de agua.';
-  let postWorkoutTip = 'En los 45 min posteriores: yogur griego o pechuga/tofu + arroz/patata y fruta fresca.';
-  let dailyNote = 'Prioriza carbohidratos complejos limpios para sostener el ritmo aeróbico sin pesadez.';
+  let preWorkoutTip = '30–60 min antes: un plátano o una tostada con miel/mermelada y un vaso de agua.';
+  let postWorkoutTip = 'En los 45 min posteriores: una ración de proteína (yogur griego, huevo o pechuga) acompañada de arroz, patata o fruta.';
+  let dailyNote = 'Prioriza carbohidratos limpios alrededor del entrenamiento para sostener el ritmo sin pesadez digestiva.';
 
   if (!workout || workout.sessionType === 'rest') {
     dayType = 'rest';
-    dayTypeLabel = 'Día de Descanso Activo y Recuperación';
+    dayTypeLabel = 'Día de descanso activo';
     carbMultiplier = 3.0;
     proteinMultiplier = 1.85;
     fatMultiplier = 0.95;
-    preWorkoutTip = 'Sin demanda glucogénica alta: mantén energía estable con avena o pan integral en el desayuno.';
-    postWorkoutTip = 'Asegura proteína repartida en 3–4 tomas y grasas saludables (AOVE, nueces, aguacate) para bajar inflamación.';
-    dailyNote = 'En días de descanso reducimos ligeramente carbohidratos y mantenemos proteína alta para reparar tendones.';
+    preWorkoutTip = 'Al no haber sesión intensa, reparte carbohidratos integrales de absorción lenta en desayuno y comida.';
+    postWorkoutTip = 'Mantén la proteína repartida en 3–4 comidas y prioriza grasas de calidad (aceite de oliva, frutos secos o aguacate).';
+    dailyNote = 'Los días sin carrera bajamos ligeramente los carbohidratos y mantenemos la proteína alta para consolidar la recuperación.';
   } else if (
     workout.sessionType === 'intervals_z4' ||
     workout.sessionType === 'threshold_z3' ||
@@ -53,22 +52,22 @@ export function calculateDailyMacros(
     workout.sessionType === 'physical_exam'
   ) {
     dayType = 'high_intensity';
-    dayTypeLabel = 'Día Intenso (Series / Partido / Examen)';
+    dayTypeLabel = 'Día intenso (series, partido o examen)';
     carbMultiplier = 5.4;
     proteinMultiplier = 1.9;
     fatMultiplier = 0.75;
-    preWorkoutTip = '60–90 min antes: carga ligera de rápida digestión (arroz blanco/avena cocida, plátano o pan con mermelada; poca grasa y fibra).';
-    postWorkoutTip = 'Recuperación dorada (ratio 3:1 carbos:proteína): batido o comida completa con arroz/pasta + proteína magra + electrolitos.';
-    dailyNote = 'Los intervalos Z4 y el fútbol consumen glucógeno muscular rápido: hoy los carbohidratos son tu gasolina principal.';
+    preWorkoutTip = '60–90 min antes: toma fácil de digerir (arroz blanco, avena cocida o pan blanco con fruta, baja en grasa y fibra).';
+    postWorkoutTip = 'Después de entrenar: combina carbohidratos rápidos con proteína magra y algo de sal para reponer glucógeno.';
+    dailyNote = 'Las series en Zona 4 y los partidos de fútbol consumen mucho glucógeno muscular: hoy conviene priorizar hidratos.';
   } else if (workout.sessionType === 'long_run' || workout.durationMinutes >= 55) {
     dayType = 'moderate';
-    dayTypeLabel = 'Día de Tirada Larga / Volumen';
+    dayTypeLabel = 'Día de tirada larga';
     carbMultiplier = 5.0;
     proteinMultiplier = 1.8;
     fatMultiplier = 0.8;
-    preWorkoutTip = 'Desayuno o comida previa 90 min antes rica en carbohidratos complejos + 400 ml de agua.';
-    postWorkoutTip = 'Repón sales minerales y glucógeno con fruta, carbohidrato de calidad y 25–35 g de proteína completa.';
-    dailyNote = 'Acompaña el volumen largo con suficiente hidratación para mantener estable tu frecuencia cardíaca.';
+    preWorkoutTip = 'Comida previa 90 min antes rica en carbohidratos complejos y unos 400 ml de agua.';
+    postWorkoutTip = 'Al volver, prioriza hidratación con algo de fruta y una comida completa con proteína suficiente.';
+    dailyNote = 'Acompaña el aumento de volumen con buena hidratación para evitar que suban las pulsaciones por deshidratación.';
   }
 
   if (profile.goal === 'fat_loss_cardio') {
@@ -80,7 +79,6 @@ export function calculateDailyMacros(
   let proteinGrams = Math.round(profile.weightKg * proteinMultiplier);
   let fatsGrams = Math.round(profile.weightKg * fatMultiplier);
 
-  // Normalizamos proporcionalmente para que la suma calórica sea coherente con el objetivo diario
   const rawMacroKcal = carbsGrams * 4 + proteinGrams * 4 + fatsGrams * 9;
   const scale = tdee / Math.max(1200, rawMacroKcal);
   carbsGrams = Math.round(carbsGrams * scale);

@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Activity, Flame, Footprints, Settings2, ShieldCheck, Sparkles, Trophy } from 'lucide-react';
+import { Activity, ArrowRight, Footprints, Settings2, ShieldCheck } from 'lucide-react';
 import {
   clearFirebaseConfig,
   getSavedFirebaseConfig,
   saveFirebaseConfig,
   type FirebaseConfigValues,
 } from '../services/firebase';
-import { SCIENTIFIC_LOADING_TIPS } from '../data/runningKnowledge';
+import { WorkoutVisualBar } from './WorkoutVisualBar';
+import type { WorkoutBlock } from '../types/fitness';
 
 interface AuthLandingProps {
   onGoogleLogin: () => Promise<void>;
@@ -14,6 +15,16 @@ interface AuthLandingProps {
   authLoading: boolean;
   authError: string | null;
 }
+
+const SAMPLE_BLOCKS: WorkoutBlock[] = [
+  { label: 'Calentamiento', durationMinutes: 10, intensity: 'Z1', description: '', zone: 'Z1' },
+  { label: 'Umbral 1', durationMinutes: 6, intensity: 'Z3', description: '', zone: 'Z3' },
+  { label: 'Recuperación', durationMinutes: 2, intensity: 'Z1', description: '', zone: 'Z1' },
+  { label: 'Umbral 2', durationMinutes: 6, intensity: 'Z3', description: '', zone: 'Z3' },
+  { label: 'Recuperación', durationMinutes: 2, intensity: 'Z1', description: '', zone: 'Z1' },
+  { label: 'Umbral 3', durationMinutes: 6, intensity: 'Z3', description: '', zone: 'Z3' },
+  { label: 'Enfriamiento', durationMinutes: 8, intensity: 'Z1', description: '', zone: 'Z1' },
+];
 
 export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError }: AuthLandingProps) {
   const existingCfg = getSavedFirebaseConfig();
@@ -24,8 +35,6 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
   const [appId, setAppId] = useState(existingCfg?.appId ?? '');
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
-  const featuredTip = SCIENTIFIC_LOADING_TIPS[0];
-
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     const cfg: FirebaseConfigValues = {
@@ -35,7 +44,7 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
       appId: appId.trim(),
     };
     saveFirebaseConfig(cfg);
-    setSavedNotice('Configuración Firebase guardada. Ya puedes iniciar sesión con Google Firebase.');
+    setSavedNotice('Configuración de Firebase guardada. Ya puedes iniciar sesión con Google.');
   };
 
   return (
@@ -43,20 +52,13 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
       <div className="stack-lg">
         <header className="row-between">
           <div className="brand-mark">
-            <img
-              src="/assets/lynx/lynx-coach-hero.png"
-              alt="Mascota Lince Ibérico FlyRun"
-              width={44}
-              height={44}
-              className="brand-avatar"
-              fetchPriority="high"
-            />
+            <span className="brand-monogram" aria-hidden="true">FR</span>
             <div>
               <div className="brand-title">
-                FlyRun <span className="brand-badge">Pro SaaS</span>
+                FlyRun <span className="brand-badge">Entrenamiento</span>
               </div>
               <div className="muted" style={{ fontSize: '0.78rem' }}>
-                Entrenador Lince Ibérico · Running &amp; Cardio Científico
+                Planificación de carrera, cardio diario y nutrición macro
               </div>
             </div>
           </div>
@@ -67,52 +69,47 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
             onClick={() => setShowConfigPanel((prev) => !prev)}
           >
             <Settings2 size={15} aria-hidden="true" />
-            {existingCfg ? 'Firebase Conectado' : 'Configurar Firebase'}
+            {existingCfg ? 'Firebase configurado' : 'Conectar Firebase'}
           </button>
         </header>
 
         <section
-          className="card card-highlight"
+          className="card"
           style={{
             display: 'grid',
             gap: '2rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
             alignItems: 'center',
           }}
         >
           <div className="stack-md">
             <div className="row-wrap">
-              <span className="pill pill-amber">
-                <Sparkles size={13} aria-hidden="true" />
-                Basado en VDOT, 80/20 &amp; CaCo Progresivo
-              </span>
+              <span className="pill pill-amber">VDOT · Método 80/20 · CaCo</span>
               <span className="pill pill-emerald">
                 <Footprints size={13} aria-hidden="true" />
-                Google Fit + Multi-Cardio
+                Compatible con Google Fit
               </span>
             </div>
 
-            <h1 style={{ margin: 0, fontSize: 'clamp(1.85rem, 4vw, 2.85rem)', lineHeight: 1.12, fontWeight: 800 }}>
-              Tu entrenador personal <span style={{ color: '#fb923c' }}>Lince Ibérico</span> para correr mejor y vivir con energía.
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 'clamp(1.75rem, 3.6vw, 2.55rem)',
+                lineHeight: 1.15,
+                letterSpacing: '-0.03em',
+                fontWeight: 700,
+              }}
+            >
+              Entrena con la estructura de un preparador físico real, sin complicaciones.
             </h1>
 
-            <p className="secondary" style={{ margin: 0, fontSize: '1.02rem' }}>
-              Entra con Google en 1 clic. FlyRun evalúa tu nivel real desde el minuto uno, planifica qué toca hoy y mañana,
-              sincroniza tus pasos con Google Fit, convierte partidos de fútbol o bici en Puntos Cardio y ajusta tus macros diarios.
+            <p className="secondary" style={{ margin: 0, fontSize: '0.98rem' }}>
+              Al crear tu cuenta medimos tu punto de partida con una prueba sencilla, calculamos tus ritmos y pulsaciones por zonas
+              y organizamos cada semana combinando carrera, bicicleta, fútbol o caminata diaria con tus objetivos de macros.
             </p>
 
             {authError && (
-              <div
-                role="alert"
-                style={{
-                  background: 'rgba(239, 68, 68, 0.14)',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
-                  borderRadius: '12px',
-                  padding: '0.75rem 1rem',
-                  fontSize: '0.86rem',
-                  color: '#fecaca',
-                }}
-              >
+              <div role="alert" className="error-banner">
                 {authError}
               </div>
             )}
@@ -124,50 +121,57 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
                 onClick={() => void onGoogleLogin()}
                 disabled={authLoading}
               >
-                <ShieldCheck size={18} aria-hidden="true" />
-                {authLoading ? 'Conectando con Google...' : 'Continuar con Google (Firebase + Fit)'}
+                <ShieldCheck size={17} aria-hidden="true" />
+                {authLoading ? 'Conectando con Google...' : 'Entrar con Google'}
               </button>
 
               <button type="button" className="btn btn-secondary" onClick={onDemoLogin}>
-                <Activity size={18} aria-hidden="true" />
-                Acceso Rápido Google Demo (Sin esperar claves)
+                <ArrowRight size={17} aria-hidden="true" />
+                Probar ahora con perfil de ejemplo
               </button>
             </div>
 
             <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>
-              Al crear tu cuenta accederás al cuestionario biométrico inicial de Coach Lince para calcular tu nivel exacto y tus zonas científicas.
+              Al entrar por primera vez completarás un breve cuestionario con tu peso, edad, días disponibles y nivel actual.
             </p>
           </div>
 
-          <div className="stack-md" style={{ alignItems: 'center' }}>
-            <img
-              src="/assets/lynx/lynx-coach-hero.png"
-              alt="Lince Ibérico entrenador con cronómetro y silbato"
-              width={360}
-              height={360}
-              fetchPriority="high"
-              style={{
-                inlineSize: 'min(100%, 340px)',
-                blockSize: 'auto',
-                aspectRatio: '1 / 1',
-                objectFit: 'cover',
-                borderRadius: '26px',
-                border: '2px solid rgba(249, 115, 22, 0.5)',
-                boxShadow: '0 24px 55px rgba(0, 0, 0, 0.55)',
-              }}
-            />
-            <div
-              style={{
-                inlineSize: 'min(100%, 340px)',
-                background: 'rgba(9, 14, 26, 0.85)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '14px',
-                padding: '0.8rem 1rem',
-              }}
-            >
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fdba74' }}>{featuredTip.title}</div>
-              <div className="muted" style={{ fontSize: '0.78rem', marginBlockStart: '0.2rem' }}>
-                {featuredTip.fact}
+          <div className="inset-panel stack-md">
+            <div className="row-between">
+              <div>
+                <div className="muted" style={{ fontSize: '0.73rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Vista previa de sesión tipo
+                </div>
+                <strong style={{ fontSize: '1.02rem' }}>Bloques de Umbral · 40 min</strong>
+              </div>
+              <span className="pill pill-amber mono">VDOT 38.5</span>
+            </div>
+
+            <WorkoutVisualBar blocks={SAMPLE_BLOCKS} />
+
+            <div className="grid-3" style={{ gap: '0.55rem' }}>
+              <div style={{ background: '#fff', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '0.55rem 0.7rem' }}>
+                <div className="muted" style={{ fontSize: '0.72rem' }}>Zona 1 Suave</div>
+                <div className="mono" style={{ fontWeight: 600, fontSize: '0.88rem' }}>6:12 – 6:58 /km</div>
+              </div>
+              <div style={{ background: '#fff', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '0.55rem 0.7rem' }}>
+                <div className="muted" style={{ fontSize: '0.72rem' }}>Zona 3 Umbral</div>
+                <div className="mono" style={{ fontWeight: 600, fontSize: '0.88rem' }}>5:14 – 5:30 /km</div>
+              </div>
+              <div style={{ background: '#fff', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '0.55rem 0.7rem' }}>
+                <div className="muted" style={{ fontSize: '0.72rem' }}>Equivalencia bici</div>
+                <div className="mono" style={{ fontWeight: 600, fontSize: '0.88rem' }}>50 min Z2</div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '0.65rem', fontSize: '0.82rem' }} className="secondary">
+              <div className="row-between">
+                <span>Pasos objetivo Google Fit</span>
+                <strong className="mono">8.500 pasos/día</strong>
+              </div>
+              <div className="row-between" style={{ marginTop: '0.25rem' }}>
+                <span>Macros recomendados hoy</span>
+                <strong className="mono">310g C · 132g P · 70g G</strong>
               </div>
             </div>
           </div>
@@ -177,9 +181,9 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
           <section className="card stack-md" aria-label="Configuración de proyecto Firebase">
             <div className="row-between">
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Conectar tu Proyecto Firebase Web</h2>
-                <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.84rem' }}>
-                  Introduce las claves de tu app web Firebase (o variables <code>VITE_FIREBASE_*</code>) para activar Google Auth y Firestore en la nube.
+                <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Configuración de Firebase Web</h2>
+                <p className="muted" style={{ margin: '0.15rem 0 0', fontSize: '0.83rem' }}>
+                  Introduce las credenciales de tu proyecto Firebase (o define <code>VITE_FIREBASE_*</code>) para habilitar Google Auth y Firestore.
                 </p>
               </div>
               {existingCfg && (
@@ -192,7 +196,7 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
                     setAuthDomain('');
                     setProjectId('');
                     setAppId('');
-                    setSavedNotice('Configuración eliminada. Modo local activo.');
+                    setSavedNotice('Configuración eliminada. Se usará almacenamiento local.');
                   }}
                 >
                   Restablecer
@@ -205,6 +209,7 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
                 <label htmlFor="fb-api-key">API Key</label>
                 <input
                   id="fb-api-key"
+                  name="firebaseApiKey"
                   className="input"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
@@ -216,6 +221,7 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
                 <label htmlFor="fb-auth-domain">Auth Domain</label>
                 <input
                   id="fb-auth-domain"
+                  name="firebaseAuthDomain"
                   className="input"
                   value={authDomain}
                   onChange={(e) => setAuthDomain(e.target.value)}
@@ -227,6 +233,7 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
                 <label htmlFor="fb-project-id">Project ID</label>
                 <input
                   id="fb-project-id"
+                  name="firebaseProjectId"
                   className="input"
                   value={projectId}
                   onChange={(e) => setProjectId(e.target.value)}
@@ -238,6 +245,7 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
                 <label htmlFor="fb-app-id">App ID</label>
                 <input
                   id="fb-app-id"
+                  name="firebaseAppId"
                   className="input"
                   value={appId}
                   onChange={(e) => setAppId(e.target.value)}
@@ -247,43 +255,42 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
               </div>
               <div className="row-wrap" style={{ gridColumn: '1 / -1' }}>
                 <button type="submit" className="btn btn-emerald">
-                  Guardar Credenciales Firebase
+                  Guardar credenciales
                 </button>
                 {savedNotice && (
-                  <span style={{ color: '#6ee7b7', fontSize: '0.84rem', fontWeight: 600 }}>{savedNotice}</span>
+                  <span style={{ color: 'var(--pine)', fontSize: '0.84rem', fontWeight: 600 }}>{savedNotice}</span>
                 )}
               </div>
             </form>
           </section>
         )}
 
-        <section className="grid-4" aria-label="Ventajas científicas de FlyRun">
+        <section className="grid-4" aria-label="Pilares del sistema de entrenamiento">
           <article className="card stack-sm">
-            <Flame size={22} color="#fb923c" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Planificación 80/20 &amp; CaCo</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-              Desde bloques 2 min correr / 6 min andar hasta intervalos Billat y Umbral VDOT.
+            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Progresión CaCo y 80/20</h2>
+            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+              Desde bloques de 2 min corriendo y 6 andando hasta sesiones polarizadas con ritmos exactos por zona.
             </p>
           </article>
           <article className="card stack-sm">
-            <Activity size={22} color="#38bdf8" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Equivalencia Multi-Cardio</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-              Corre, pedalea en bici o juega un partido de fútbol sumando Puntos Cardio equivalentes.
+            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Equivalencia multi-cardio</h2>
+            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+              Sustituye días de carrera por bicicleta o partido de fútbol manteniendo la carga en Puntos Cardio y TRIMP.
             </p>
           </article>
           <article className="card stack-sm">
-            <Footprints size={22} color="#10b981" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Google Fit &amp; Examen Físico</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-              Tus pasos diarios y exámenes físicos recalibran tu VDOT y nivel automáticamente.
+            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Google Fit y exámenes físicos</h2>
+            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+              Registra pasos diarios y supera test de Cooper, 5K o Rockport para recalibrar tu nivel automáticamente.
             </p>
           </article>
           <article className="card stack-sm">
-            <Trophy size={22} color="#f59e0b" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: '1rem' }}>Niveles Gamificados + Macros</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-              Sube del Nivel 1 al 10 ganando XP, medallas y recibe recomendación macro diaria.
+            <div className="row-wrap">
+              <Activity size={16} color="#d94814" aria-hidden="true" />
+              <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Macros diarios prácticos</h2>
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+              Orientación diaria en gramos de carbohidratos, proteína y grasa adaptada al desgaste de cada jornada.
             </p>
           </article>
         </section>

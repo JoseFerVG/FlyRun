@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRightLeft, BookOpen, Check, Flame, ShieldAlert } from 'lucide-react';
+import { ArrowRightLeft, BookOpen, Check, Info } from 'lucide-react';
 import type { CardioModality, UserProfile } from '../types/fitness';
 import { RUNNING_STRATEGIES } from '../data/runningKnowledge';
 import { calculateCardioEquivalence } from '../services/scienceEngine';
@@ -24,7 +24,6 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
     profile.vdot
   );
 
-  // Calculamos cuánto tiempo de cada deporte equivale a esos mismos Puntos Cardio
   const targetCP = selectedMetrics.cardioPoints;
   const modalitiesToCompare: CardioModality[] = ['running', 'cycling', 'soccer', 'walking', 'swimming'];
 
@@ -39,16 +38,15 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
 
   return (
     <div className="stack-lg">
-      {/* CALCULADORA DE EQUIVALENCIA MULTI-CARDIO */}
-      <section className="card card-highlight stack-md" aria-label="Calculadora de Equivalencia Cardio">
+      <section className="card stack-md" aria-label="Calculadora de Equivalencia Cardio">
         <div className="row-wrap">
-          <ArrowRightLeft size={21} color="#fb923c" aria-hidden="true" />
+          <ArrowRightLeft size={19} color="#d94814" aria-hidden="true" />
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.35rem' }}>
-              Equivalencia Multi-Cardio (Running · Bici · Fútbol)
+            <h1 style={{ margin: 0, fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
+              Equivalencia multi-cardio (Running · Bici · Fútbol)
             </h1>
-            <p className="muted" style={{ margin: 0, fontSize: '0.86rem' }}>
-              Convierte cualquier entrenamiento en <strong>Puntos Cardio Lince (MET-min + carga TRIMP)</strong> para no perder ritmo si cambias correr por bicicleta o partido de fútbol.
+            <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+              Convierte cualquier sesión a Puntos Cardio combinando gasto metabólico (MET-minutos) y carga cardíaca (TRIMP).
             </p>
           </div>
         </div>
@@ -58,14 +56,15 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
             <label htmlFor="eq-mod">Actividad de referencia</label>
             <select
               id="eq-mod"
+              name="eqModality"
               className="select"
               value={modality}
               onChange={(e) => setModality(e.target.value as CardioModality)}
             >
               <option value="running">Running (Principal)</option>
-              <option value="cycling">Ciclismo / Bici</option>
-              <option value="soccer">Partido de Fútbol</option>
-              <option value="walking">Caminata Rápida</option>
+              <option value="cycling">Ciclismo / Bicicleta</option>
+              <option value="soccer">Partido de fútbol</option>
+              <option value="walking">Caminata rápida</option>
               <option value="swimming">Natación / Elíptica</option>
             </select>
           </div>
@@ -74,6 +73,7 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
             <label htmlFor="eq-dur">Duración ({duration} min)</label>
             <input
               id="eq-dur"
+              name="eqDuration"
               type="range"
               min={15}
               max={120}
@@ -84,9 +84,10 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
           </div>
 
           <div className="field">
-            <label htmlFor="eq-rpe">Esfuerzo RPE ({rpe}/10)</label>
+            <label htmlFor="eq-rpe">Esfuerzo percibido RPE ({rpe}/10)</label>
             <input
               id="eq-rpe"
+              name="eqRpe"
               type="range"
               min={2}
               max={10}
@@ -97,21 +98,21 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
         </div>
 
         <div className="grid-4">
-          <div style={{ background: 'rgba(249,115,22,0.12)', borderRadius: '14px', padding: '0.85rem' }}>
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Puntos Cardio Lince</div>
-            <div className="kpi-value" style={{ color: '#fdba74' }}>{selectedMetrics.cardioPoints} CP</div>
+          <div className="inset-panel">
+            <div className="muted" style={{ fontSize: '0.75rem' }}>Puntos Cardio</div>
+            <div className="kpi-value" style={{ color: 'var(--accent)' }}>{selectedMetrics.cardioPoints} PC</div>
           </div>
-          <div style={{ background: 'rgba(15,23,42,0.75)', borderRadius: '14px', padding: '0.85rem' }}>
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Volumen Metabólico</div>
-            <div className="kpi-value">{selectedMetrics.metMinutes} <span style={{ fontSize: '0.85rem' }}>MET-m</span></div>
+          <div className="inset-panel">
+            <div className="muted" style={{ fontSize: '0.75rem' }}>Volumen metabólico</div>
+            <div className="kpi-value">{selectedMetrics.metMinutes} <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>MET-m</span></div>
           </div>
-          <div style={{ background: 'rgba(15,23,42,0.75)', borderRadius: '14px', padding: '0.85rem' }}>
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Carga Fisiológica TRIMP</div>
-            <div className="kpi-value" style={{ color: '#38bdf8' }}>{selectedMetrics.trimp}</div>
+          <div className="inset-panel">
+            <div className="muted" style={{ fontSize: '0.75rem' }}>Carga TRIMP</div>
+            <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>{selectedMetrics.trimp}</div>
           </div>
-          <div style={{ background: 'rgba(15,23,42,0.75)', borderRadius: '14px', padding: '0.85rem' }}>
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Equivalente Running</div>
-            <div className="kpi-value" style={{ color: '#6ee7b7' }}>{selectedMetrics.equivalentRunningKm} km</div>
+          <div className="inset-panel">
+            <div className="muted" style={{ fontSize: '0.75rem' }}>Equivalente en carrera</div>
+            <div className="kpi-value" style={{ color: 'var(--pine)' }}>{selectedMetrics.equivalentRunningKm} km</div>
           </div>
         </div>
 
@@ -119,10 +120,10 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
           <table className="zone-table">
             <thead>
               <tr>
-                <th>Modalidad Alternativa</th>
-                <th>Tiempo Equivalente</th>
-                <th>Impacto Articular</th>
-                <th>Efecto Fisiológico Principal</th>
+                <th>Disciplina equivalente</th>
+                <th>Tiempo necesario</th>
+                <th>Impacto articular</th>
+                <th>Efecto fisiológico principal</th>
               </tr>
             </thead>
             <tbody>
@@ -130,8 +131,8 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
                 const eq = findEquivalentMinutes(m);
                 return (
                   <tr key={m}>
-                    <td style={{ fontWeight: 700 }}>{eq.res.label}</td>
-                    <td className="mono" style={{ fontWeight: 700, color: '#fdba74' }}>
+                    <td style={{ fontWeight: 600 }}>{eq.res.label}</td>
+                    <td className="mono" style={{ fontWeight: 600, color: 'var(--accent)' }}>
                       {eq.minutes} min ({eq.res.calories} kcal)
                     </td>
                     <td>{eq.res.jointImpactScore}</td>
@@ -144,17 +145,16 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
         </div>
       </section>
 
-      {/* GUÍA CIENTÍFICA DE ESTRATEGIAS DE RUNNING */}
-      <section className="stack-md" aria-label="Estrategias Científicas de Running">
+      <section className="stack-md" aria-label="Guía de estrategias de running">
         <div className="row-between">
           <div className="row-wrap">
-            <BookOpen size={20} color="#38bdf8" aria-hidden="true" />
+            <BookOpen size={19} color="#2563eb" aria-hidden="true" />
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>
-                Guía de Estrategias Científicas de Running
+              <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '-0.015em' }}>
+                Estrategias principales de entrenamiento en carrera
               </h2>
               <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-                Aprende por qué y cuándo usar CaCo (correr 2' / descansar 6'), Polarizado 80/20, Umbral VDOT o Intervalos Billat 30-30.
+                Cómo funciona cada método (desde CaCo 2' trote / 6' caminata hasta el reparto 80/20 y las series 30-30).
               </p>
             </div>
           </div>
@@ -165,61 +165,50 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
           {RUNNING_STRATEGIES.map((strategy) => {
             const isActive = profile.preferredStrategyId === strategy.id;
             return (
-              <article
-                key={strategy.id}
-                className={`card stack-md ${isActive ? 'card-highlight' : ''}`}
-              >
+              <article key={strategy.id} className="card stack-md">
                 <div className="row-between">
                   <span className="pill pill-cyan">{strategy.shortTag}</span>
                   <span className="pill">{strategy.intensitySplit}</span>
                 </div>
 
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{strategy.name}</h3>
-                  <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.83rem' }}>
-                    <strong>Ideal para:</strong> {strategy.bestFor}
+                  <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{strategy.name}</h3>
+                  <p className="muted" style={{ margin: '0.22rem 0 0', fontSize: '0.83rem' }}>
+                    <strong>Recomendado para:</strong> {strategy.bestFor}
                   </p>
                 </div>
 
-                <div
-                  style={{
-                    background: 'rgba(9,14,26,0.72)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '12px',
-                    padding: '0.7rem 0.85rem',
-                    fontSize: '0.82rem',
-                  }}
-                >
-                  <div style={{ color: '#fdba74', fontWeight: 700, marginBlockEnd: '0.2rem' }}>
-                    Ejemplo de sesión:
+                <div className="inset-panel" style={{ fontSize: '0.82rem' }}>
+                  <div style={{ color: 'var(--accent)', fontWeight: 600, marginBlockEnd: '0.2rem' }}>
+                    Ejemplo práctico:
                   </div>
                   <div className="secondary">{strategy.structureExample}</div>
                 </div>
 
                 <p className="secondary" style={{ margin: 0, fontSize: '0.84rem' }}>
-                  <strong>Evidencia:</strong> {strategy.scientificBasis}
+                  <strong>Base fisiológica:</strong> {strategy.scientificBasis}
                 </p>
 
-                <ul style={{ margin: 0, paddingInlineStart: '1.2rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                <ul style={{ margin: 0, paddingInlineStart: '1.15rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                   {strategy.protocolSteps.map((st, idx) => (
-                    <li key={idx} style={{ marginBlockEnd: '0.25rem' }}>{st}</li>
+                    <li key={idx} style={{ marginBlockEnd: '0.24rem' }}>{st}</li>
                   ))}
                 </ul>
 
                 <div className="row-between" style={{ marginBlockStart: 'auto' }}>
-                  <span className="muted" style={{ fontSize: '0.76rem' }}>
-                    Niveles recomendados: {strategy.recommendedLevelMin}–{strategy.recommendedLevelMax}
+                  <span className="muted mono" style={{ fontSize: '0.75rem' }}>
+                    Niveles {strategy.recommendedLevelMin}–{strategy.recommendedLevelMax}
                   </span>
                   <button
                     type="button"
                     className={`btn btn-sm ${isActive ? 'btn-emerald' : 'btn-primary'}`}
                     onClick={() => {
                       onSelectStrategy(strategy.id);
-                      setAppliedNotice(`Estrategia "${strategy.name}" aplicada a tu calendario.`);
+                      setAppliedNotice(`Estrategia "${strategy.name}" aplicada al calendario.`);
                     }}
                   >
-                    {isActive ? <Check size={14} aria-hidden="true" /> : <Flame size={14} aria-hidden="true" />}
-                    {isActive ? 'Estrategia Activa' : 'Aplicar a mi Plan'}
+                    {isActive && <Check size={14} aria-hidden="true" />}
+                    {isActive ? 'Estrategia activa' : 'Aplicar al plan'}
                   </button>
                 </div>
               </article>
@@ -227,13 +216,10 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
           })}
         </div>
 
-        <div
-          className="card row-wrap"
-          style={{ background: 'rgba(56, 189, 248, 0.06)', borderColor: 'rgba(56, 189, 248, 0.25)' }}
-        >
-          <ShieldAlert size={18} color="#38bdf8" aria-hidden="true" />
-          <span className="secondary" style={{ fontSize: '0.84rem' }}>
-            Nota científica: Los principiantes que empiezan con <strong>CaCo (ej. 2 min correr / 6 min caminar)</strong> reducen drásticamente las periostitis y fascitis mientras alcanzan el mismo beneficio cardiovascular inicial.
+        <div className="inset-panel row-wrap" style={{ fontSize: '0.84rem' }}>
+          <Info size={16} color="#2563eb" aria-hidden="true" />
+          <span className="secondary">
+            Para principiantes, empezar con bloques <strong>CaCo (2 min corriendo / 6 min caminando)</strong> reduce drásticamente la sobrecarga en periostio y tendones mientras construyes base aeróbica.
           </span>
         </div>
       </section>

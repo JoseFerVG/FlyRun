@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import {
-  Activity,
   Bike,
   CalendarClock,
   CheckCircle2,
-  Flame,
   Footprints,
   RefreshCw,
   Trophy,
@@ -18,6 +16,7 @@ import type {
   WorkoutSession,
 } from '../types/fitness';
 import { getModalityLabel } from '../services/scienceEngine';
+import { WorkoutVisualBar } from './WorkoutVisualBar';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -54,14 +53,10 @@ export function DashboardView({
 
   return (
     <div className="stack-lg">
-      {/* HOY Y MAÑANA */}
       <div className="grid-2">
         <article className="card stack-md" aria-label="Rutina de Hoy">
           <div className="row-between">
-            <span className="pill pill-amber">
-              <Flame size={13} aria-hidden="true" />
-              HOY · {todayWorkout?.strategyTag ?? 'Descanso'}
-            </span>
+            <span className="pill pill-amber">Hoy · {todayWorkout?.strategyTag ?? 'Descanso'}</span>
             {todayWorkout?.completed ? (
               <span className="pill pill-emerald">
                 <CheckCircle2 size={13} aria-hidden="true" />
@@ -75,28 +70,30 @@ export function DashboardView({
           {todayWorkout ? (
             <>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{todayWorkout.title}</h2>
-                <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.88rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.22rem', letterSpacing: '-0.02em' }}>{todayWorkout.title}</h2>
+                <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.86rem' }}>
                   {todayWorkout.subtitle}
                 </p>
               </div>
 
+              <WorkoutVisualBar blocks={todayWorkout.blocks} />
+
               <div className="grid-3" style={{ gap: '0.6rem' }}>
-                <div style={{ background: 'rgba(15,23,42,0.7)', padding: '0.65rem', borderRadius: '12px' }}>
+                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
                   <div className="muted" style={{ fontSize: '0.72rem' }}>Duración</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
                     {todayWorkout.durationMinutes} min
                   </div>
                 </div>
-                <div style={{ background: 'rgba(15,23,42,0.7)', padding: '0.65rem', borderRadius: '12px' }}>
-                  <div className="muted" style={{ fontSize: '0.72rem' }}>Ritmo / Zona</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>Zona / Ritmo</div>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '0.9rem' }}>
                     {todayWorkout.targetZone} · {todayWorkout.targetPace}
                   </div>
                 </div>
-                <div style={{ background: 'rgba(15,23,42,0.7)', padding: '0.65rem', borderRadius: '12px' }}>
-                  <div className="muted" style={{ fontSize: '0.72rem' }}>Carga Estimada</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>Carga metabólica</div>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
                     {todayWorkout.metMinutes} MET-m
                   </div>
                 </div>
@@ -106,12 +103,8 @@ export function DashboardView({
                 {todayWorkout.blocks.map((block, idx) => (
                   <div
                     key={`${block.label}-${idx}`}
-                    style={{
-                      background: 'rgba(9, 14, 26, 0.72)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: '12px',
-                      padding: '0.65rem 0.85rem',
-                    }}
+                    className="inset-panel"
+                    style={{ padding: '0.65rem 0.85rem' }}
                   >
                     <div className="row-between">
                       <strong style={{ fontSize: '0.88rem' }}>{block.label}</strong>
@@ -119,7 +112,7 @@ export function DashboardView({
                         {block.durationMinutes} min · {block.zone}
                       </span>
                     </div>
-                    <div style={{ color: '#fdba74', fontSize: '0.78rem', fontWeight: 600 }}>{block.intensity}</div>
+                    <div style={{ color: 'var(--accent)', fontSize: '0.78rem', fontWeight: 600 }}>{block.intensity}</div>
                     <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
                       {block.description}
                     </p>
@@ -130,7 +123,7 @@ export function DashboardView({
               {!todayWorkout.completed && todayWorkout.sessionType !== 'rest' && (
                 <div className="stack-sm">
                   <div className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-                    ¿Prefieres cambiar hoy manteniendo equivalencia en Puntos Cardio?
+                    Cambiar modalidad hoy manteniendo equivalencia de carga:
                   </div>
                   <div className="row-wrap">
                     <button
@@ -146,14 +139,14 @@ export function DashboardView({
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'cycling')}
                     >
                       <Bike size={14} aria-hidden="true" />
-                      Bici
+                      Bicicleta
                     </button>
                     <button
                       type="button"
                       className={`btn btn-sm ${todayWorkout.modality === 'soccer' ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'soccer')}
                     >
-                      ⚽ Partido de Fútbol
+                      Partido de fútbol
                     </button>
                   </div>
                 </div>
@@ -168,8 +161,8 @@ export function DashboardView({
                   className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
                   onClick={() => onCompleteWorkout(todayWorkout)}
                 >
-                  <CheckCircle2 size={17} aria-hidden="true" />
-                  {todayWorkout.completed ? 'Actualizar Registro' : 'Completar y Sumar Nivel'}
+                  <CheckCircle2 size={16} aria-hidden="true" />
+                  {todayWorkout.completed ? 'Editar registro' : 'Marcar como completado'}
                 </button>
               </div>
             </>
@@ -178,31 +171,32 @@ export function DashboardView({
           )}
         </article>
 
-        {/* MAÑANA + GOOGLE FIT */}
         <div className="stack-md">
           <article className="card stack-md" aria-label="Rutina de Mañana">
             <div className="row-between">
               <span className="pill pill-cyan">
                 <CalendarClock size={13} aria-hidden="true" />
-                MAÑANA · Adelanto de Coach Lince
+                Mañana
               </span>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => onNavigate('calendar')}
               >
-                Ver 4 semanas
+                Ver calendario completo
               </button>
             </div>
 
             {tomorrowWorkout ? (
               <>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{tomorrowWorkout.title}</h2>
-                  <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.86rem' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.12rem', letterSpacing: '-0.015em' }}>{tomorrowWorkout.title}</h2>
+                  <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.85rem' }}>
                     {tomorrowWorkout.subtitle}
                   </p>
                 </div>
+
+                <WorkoutVisualBar blocks={tomorrowWorkout.blocks} />
 
                 <div className="row-wrap">
                   <span className="pill mono">{tomorrowWorkout.durationMinutes} min</span>
@@ -210,32 +204,21 @@ export function DashboardView({
                   <span className="pill pill-emerald mono">{tomorrowWorkout.cardioPoints} Puntos Cardio</span>
                 </div>
 
-                <p
-                  className="secondary"
-                  style={{
-                    margin: 0,
-                    fontSize: '0.84rem',
-                    background: 'rgba(56, 189, 248, 0.08)',
-                    border: '1px solid rgba(56, 189, 248, 0.22)',
-                    borderRadius: '12px',
-                    padding: '0.65rem 0.85rem',
-                  }}
-                >
-                  <strong>Por qué toca esto mañana:</strong> {tomorrowWorkout.coachTip}
+                <p className="inset-panel secondary" style={{ margin: 0, fontSize: '0.84rem' }}>
+                  <strong>Criterio de mañana:</strong> {tomorrowWorkout.coachTip}
                 </p>
               </>
             ) : null}
           </article>
 
-          {/* GOOGLE FIT */}
           <article className="card stack-md" aria-label="Integración Google Fit">
             <div className="row-between">
               <div className="row-wrap">
-                <Footprints size={20} color="#34d399" aria-hidden="true" />
+                <Footprints size={18} color="#186a4b" aria-hidden="true" />
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Google Fit · Pasos Diarios</h2>
+                  <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Google Fit · Pasos diarios</h2>
                   <div className="muted" style={{ fontSize: '0.78rem' }}>
-                    Meta configurada: {profile.dailyStepsTarget.toLocaleString('es-ES')} pasos/día ({profile.weeklyWalkGoalSessions} veces/sem)
+                    Meta diaria: {profile.dailyStepsTarget.toLocaleString('es-ES')} pasos ({profile.weeklyWalkGoalSessions} días/sem)
                   </div>
                 </div>
               </div>
@@ -253,49 +236,56 @@ export function DashboardView({
 
             <div className="row-between">
               <div>
-                <div className="kpi-value" style={{ color: '#6ee7b7' }}>
-                  {(fitToday?.steps ?? 0).toLocaleString('es-ES')} <span style={{ fontSize: '0.9rem' }}>pasos</span>
+                <div className="kpi-value" style={{ color: 'var(--pine)' }}>
+                  {(fitToday?.steps ?? 0).toLocaleString('es-ES')} <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>pasos</span>
                 </div>
                 <div className="muted" style={{ fontSize: '0.8rem' }}>
-                  {((fitToday?.distanceMeters ?? 0) / 1000).toFixed(2)} km andados · {fitToday?.calories ?? 0} kcal activas
+                  {((fitToday?.distanceMeters ?? 0) / 1000).toFixed(2)} km caminados · {fitToday?.calories ?? 0} kcal activas
                 </div>
               </div>
-              <span className="pill pill-emerald mono">{stepsPct}% meta</span>
+              <span className="pill pill-emerald mono">{stepsPct}% objetivo</span>
             </div>
 
             <div className="progress-track">
               <div className="progress-fill progress-fill-emerald" style={{ inlineSize: `${stepsPct}%` }} />
             </div>
 
-            {/* Mini histórico 7 días */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 gap: '0.4rem',
                 alignItems: 'end',
-                blockSize: '66px',
-                paddingBlockStart: '0.4rem',
+                blockSize: '64px',
+                paddingBlockStart: '0.35rem',
               }}
               aria-label="Pasos de los últimos 7 días"
             >
               {fitDays.slice(-7).map((day) => {
                 const hPct = Math.max(14, Math.min(100, Math.round((day.steps / Math.max(4000, profile.dailyStepsTarget)) * 100)));
                 return (
-                  <div key={day.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', blockSize: '100%', justifyContent: 'flex-end' }}>
+                  <div
+                    key={day.date}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.2rem',
+                      blockSize: '100%',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
                     <div
                       title={`${day.date}: ${day.steps.toLocaleString('es-ES')} pasos`}
                       style={{
                         inlineSize: '100%',
                         blockSize: `${hPct}%`,
-                        borderRadius: '6px 6px 2px 2px',
+                        borderRadius: '4px 4px 2px 2px',
                         background:
-                          day.steps >= profile.dailyStepsTarget
-                            ? 'linear-gradient(180deg, #34d399, #059669)'
-                            : 'rgba(148, 163, 184, 0.35)',
+                          day.steps >= profile.dailyStepsTarget ? 'var(--pine)' : '#cbd5e1',
                       }}
                     />
-                    <span className="muted" style={{ fontSize: '0.66rem' }}>{day.date.slice(8)}</span>
+                    <span className="muted mono" style={{ fontSize: '0.66rem' }}>{day.date.slice(8)}</span>
                   </div>
                 );
               })}
@@ -303,10 +293,12 @@ export function DashboardView({
 
             <div className="row-wrap">
               <input
+                id="manual-fit-steps"
+                name="manualFitSteps"
                 type="number"
                 aria-label="Registrar pasos manuales o simular Google Fit"
                 className="input"
-                style={{ inlineSize: '150px', padding: '0.42rem 0.65rem' }}
+                style={{ inlineSize: '140px', padding: '0.4rem 0.65rem' }}
                 min={0}
                 max={50000}
                 step={1}
@@ -318,7 +310,7 @@ export function DashboardView({
                 className="btn btn-ghost btn-sm"
                 onClick={() => onManualStepsUpdate(stepsInput)}
               >
-                Actualizar Pasos de Hoy
+                Actualizar pasos de hoy
               </button>
               {fitNotice && <span className="muted" style={{ fontSize: '0.76rem' }}>{fitNotice}</span>}
             </div>
@@ -326,42 +318,41 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* RESUMEN RÁPIDO MACROS + ESTADO GAMIFICADO */}
       <div className="grid-2">
         <article className="card stack-sm">
           <div className="row-between">
             <div className="row-wrap">
-              <Utensils size={18} color="#fb923c" aria-hidden="true" />
-              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Recomendación Macro para Hoy</h2>
+              <Utensils size={17} color="#d94814" aria-hidden="true" />
+              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición recomendada hoy (macros)</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('nutrition')}>
-              Ver detalle macro
+              Ver desglose
             </button>
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-            {todayMacros.dayTypeLabel} · Objetivo energético estimado: <strong className="mono">{todayMacros.calories} kcal</strong>
+            {todayMacros.dayTypeLabel} · Estimación diaria: <strong className="mono">{todayMacros.calories} kcal</strong>
           </p>
-          <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.3rem' }}>
-            <div style={{ background: 'rgba(249,115,22,0.12)', borderRadius: '12px', padding: '0.65rem' }}>
+          <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
+            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Carbohidratos</div>
-              <div className="mono" style={{ fontWeight: 800, fontSize: '1.15rem', color: '#fdba74' }}>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
                 {todayMacros.carbsGrams} g
               </div>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>{todayMacros.carbsPerKg} g/kg</div>
+              <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.carbsPerKg} g/kg</div>
             </div>
-            <div style={{ background: 'rgba(16,185,129,0.12)', borderRadius: '12px', padding: '0.65rem' }}>
+            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Proteínas</div>
-              <div className="mono" style={{ fontWeight: 800, fontSize: '1.15rem', color: '#6ee7b7' }}>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--pine)' }}>
                 {todayMacros.proteinGrams} g
               </div>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>{todayMacros.proteinPerKg} g/kg</div>
+              <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.proteinPerKg} g/kg</div>
             </div>
-            <div style={{ background: 'rgba(56,189,248,0.12)', borderRadius: '12px', padding: '0.65rem' }}>
+            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Grasas</div>
-              <div className="mono" style={{ fontWeight: 800, fontSize: '1.15rem', color: '#7dd3fc' }}>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--cobalt)' }}>
                 {todayMacros.fatsGrams} g
               </div>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Agua: {todayMacros.hydrationLiters} L</div>
+              <div className="muted mono" style={{ fontSize: '0.72rem' }}>Agua: {todayMacros.hydrationLiters} L</div>
             </div>
           </div>
         </article>
@@ -369,39 +360,36 @@ export function DashboardView({
         <article className="card stack-sm">
           <div className="row-between">
             <div className="row-wrap">
-              <Trophy size={18} color="#fbbf24" aria-hidden="true" />
-              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Gamificación &amp; Puntos Cardio</h2>
+              <Trophy size={17} color="#b45309" aria-hidden="true" />
+              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Progreso y constancia</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('stats')}>
-              Mis datos y examen
+              Datos y examen físico
             </button>
           </div>
-          <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.3rem' }}>
-            <div style={{ background: 'rgba(15,23,42,0.75)', borderRadius: '12px', padding: '0.65rem' }}>
+          <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
+            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Puntos Cardio</div>
-              <div className="mono" style={{ fontWeight: 800, fontSize: '1.15rem' }}>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem' }}>
                 {profile.totalCardioPoints}
               </div>
             </div>
-            <div style={{ background: 'rgba(15,23,42,0.75)', borderRadius: '12px', padding: '0.65rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Medallas</div>
-              <div className="mono" style={{ fontWeight: 800, fontSize: '1.15rem', color: '#fbbf24' }}>
+            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+              <div className="muted" style={{ fontSize: '0.72rem' }}>Logros</div>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: '#b45309' }}>
                 {profile.unlockedBadges.length} / 8
               </div>
             </div>
-            <div style={{ background: 'rgba(15,23,42,0.75)', borderRadius: '12px', padding: '0.65rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Frecuencia</div>
-              <div className="mono" style={{ fontWeight: 800, fontSize: '1.15rem' }}>
+            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+              <div className="muted" style={{ fontSize: '0.72rem' }}>Plan semanal</div>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem' }}>
                 {profile.trainingDaysPerWeek} días/sem
               </div>
             </div>
           </div>
-          <div className="row-wrap" style={{ marginBlockStart: '0.2rem' }}>
-            <Activity size={15} color="#fb923c" aria-hidden="true" />
-            <span className="muted" style={{ fontSize: '0.8rem' }}>
-              Cada entrenamiento completado ajusta progresivamente tu VDOT y desbloquea insignias.
-            </span>
-          </div>
+          <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
+            Cada sesión registrada ajusta progresivamente tu VDOT según la sensación de esfuerzo (RPE).
+          </p>
         </article>
       </div>
     </div>

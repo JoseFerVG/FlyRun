@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Flame, Footprints, Ruler } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { CardioModality, FitnessGoal, PhysicalExamType, SexType, UserProfile } from '../types/fitness';
 import { calculateVDOTFromExam, estimateMaxHR, getLynxLevel } from '../services/scienceEngine';
 
@@ -26,7 +26,6 @@ export function OnboardingModal({
 }: OnboardingModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Paso 1: Biometría
   const [displayName, setDisplayName] = useState(existingProfile?.displayName ?? initialName);
   const [age, setAge] = useState(existingProfile?.age ?? 29);
   const [weightKg, setWeightKg] = useState(existingProfile?.weightKg ?? 72);
@@ -34,7 +33,6 @@ export function OnboardingModal({
   const [sex, setSex] = useState<SexType>(existingProfile?.sex ?? 'male');
   const [goal, setGoal] = useState<FitnessGoal>(existingProfile?.goal ?? 'start_running');
 
-  // Paso 2: Días, Caminata y Modalidades
   const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState(existingProfile?.trainingDaysPerWeek ?? 4);
   const [weeklyWalkGoalSessions, setWeeklyWalkGoalSessions] = useState(existingProfile?.weeklyWalkGoalSessions ?? 5);
   const [dailyStepsTarget, setDailyStepsTarget] = useState(existingProfile?.dailyStepsTarget ?? 8500);
@@ -42,14 +40,13 @@ export function OnboardingModal({
     existingProfile?.preferredModalities ?? ['running', 'cycling', 'soccer']
   );
 
-  // Paso 3: Medición objetiva inicial de nivel
   const [examType, setExamType] = useState<PhysicalExamType>('caco_continuous_test');
-  const [rawValue, setRawValue] = useState(12); // minutos trotando seguidos por defecto
+  const [rawValue, setRawValue] = useState(12);
   const [perceivedEffort, setPerceivedEffort] = useState(5);
   const [restHR, setRestHR] = useState(existingProfile?.restHR ?? 62);
 
   const toggleModality = (mod: CardioModality) => {
-    if (mod === 'running') return; // Running es la modalidad principal
+    if (mod === 'running') return;
     setPreferredModalities((prev) =>
       prev.includes(mod) ? prev.filter((m) => m !== mod) : [...prev, mod]
     );
@@ -70,20 +67,16 @@ export function OnboardingModal({
       setStep((s) => Math.min(3, s + 1) as 1 | 2 | 3);
       return;
     }
+
     const maxHR = estimateMaxHR(age);
     const vdot = previewVdot;
     const baseXp = existingProfile?.xp ?? 100;
     const lvl = getLynxLevel(vdot, baseXp);
-    const strategyId =
-      lvl.level <= 2
-        ? 'caco_progressive'
-        : goal === 'improve_5k' || goal === 'improve_10k'
-        ? 'polarized_80_20'
-        : 'polarized_80_20';
+    const strategyId = lvl.level <= 2 ? 'caco_progressive' : 'polarized_80_20';
 
     const profile: UserProfile = {
       uid,
-      displayName: displayName.trim() || 'Atleta FlyRun',
+      displayName: displayName.trim() || 'Usuario FlyRun',
       email,
       photoURL,
       age: Math.max(14, Math.min(90, Number(age))),
@@ -115,25 +108,16 @@ export function OnboardingModal({
   };
 
   return (
-    <main className="main-container" style={{ maxInlineSize: '840px' }}>
-      <form onSubmit={handleSubmit} className="card card-highlight stack-lg">
+    <main className="main-container" style={{ maxInlineSize: '780px' }}>
+      <form onSubmit={handleSubmit} className="card stack-lg">
         <div className="row-between">
-          <div className="row-wrap">
-            <img
-              src="/assets/lynx/lynx-exam-clipboard.png"
-              alt="Coach Lince evaluador"
-              width={64}
-              height={64}
-              style={{ borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--lynx-amber)' }}
-            />
-            <div>
-              <span className="pill pill-amber">Paso {step} de 3 · Creación de Perfil FlyRun</span>
-              <h1 style={{ margin: '0.35rem 0 0', fontSize: 'clamp(1.25rem, 3vw, 1.65rem)' }}>
-                {step === 1 && 'Tus Datos Biométricos'}
-                {step === 2 && 'Días de Entreno, Caminata y Deportes'}
-                {step === 3 && 'Medición Objetiva de tu Nivel Inicial'}
-              </h1>
-            </div>
+          <div>
+            <span className="pill pill-amber">Paso {step} de 3 · Configuración inicial</span>
+            <h1 style={{ margin: '0.4rem 0 0', fontSize: 'clamp(1.25rem, 3vw, 1.55rem)', letterSpacing: '-0.02em' }}>
+              {step === 1 && 'Datos personales y objetivo'}
+              {step === 2 && 'Días de entreno, caminata y deportes'}
+              {step === 3 && 'Medición inicial de tu nivel'}
+            </h1>
           </div>
 
           {onCancel && (
@@ -150,9 +134,10 @@ export function OnboardingModal({
         {step === 1 && (
           <div className="grid-2">
             <div className="field">
-              <label htmlFor="onb-name">Nombre de Atleta</label>
+              <label htmlFor="onb-name">Nombre</label>
               <input
                 id="onb-name"
+                name="displayName"
                 className="input"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -161,18 +146,19 @@ export function OnboardingModal({
             </div>
 
             <div className="field">
-              <label htmlFor="onb-goal">Objetivo Principal</label>
+              <label htmlFor="onb-goal">Objetivo principal</label>
               <select
                 id="onb-goal"
+                name="goal"
                 className="select"
                 value={goal}
                 onChange={(e) => setGoal(e.target.value as FitnessGoal)}
               >
-                <option value="start_running">Empezar a correr sin lesiones (CaCo → 5K)</option>
-                <option value="health_maintenance">Mantenimiento físico y cardio diario</option>
-                <option value="improve_5k">Mejorar marca y resistencia en 5K</option>
-                <option value="improve_10k">Preparar 10K con método 80/20</option>
-                <option value="fat_loss_cardio">Recomposición corporal y gasto cardio</option>
+                <option value="start_running">Empezar a correr sin lesiones (CaCo)</option>
+                <option value="health_maintenance">Salud diaria y condición cardiovascular</option>
+                <option value="improve_5k">Mejorar marca en 5 km</option>
+                <option value="improve_10k">Preparar 10 km con método 80/20</option>
+                <option value="fat_loss_cardio">Mejorar composición corporal</option>
               </select>
             </div>
 
@@ -180,6 +166,7 @@ export function OnboardingModal({
               <label htmlFor="onb-age">Edad (años)</label>
               <input
                 id="onb-age"
+                name="age"
                 type="number"
                 min={14}
                 max={90}
@@ -194,6 +181,7 @@ export function OnboardingModal({
               <label htmlFor="onb-weight">Peso corporal (kg)</label>
               <input
                 id="onb-weight"
+                name="weightKg"
                 type="number"
                 min={35}
                 max={220}
@@ -209,6 +197,7 @@ export function OnboardingModal({
               <label htmlFor="onb-height">Altura (cm)</label>
               <input
                 id="onb-height"
+                name="heightCm"
                 type="number"
                 min={120}
                 max={230}
@@ -220,9 +209,10 @@ export function OnboardingModal({
             </div>
 
             <div className="field">
-              <label htmlFor="onb-sex">Sexo fisiológico (para fórmulas VO2 y TMB)</label>
+              <label htmlFor="onb-sex">Sexo fisiológico (cálculo de VO2 y metabolismo)</label>
               <select
                 id="onb-sex"
+                name="sex"
                 className="select"
                 value={sex}
                 onChange={(e) => setSex(e.target.value as SexType)}
@@ -242,29 +232,31 @@ export function OnboardingModal({
                 <label htmlFor="onb-days">¿Cuántos días a la semana quieres entrenar?</label>
                 <select
                   id="onb-days"
+                  name="trainingDaysPerWeek"
                   className="select"
                   value={trainingDaysPerWeek}
                   onChange={(e) => setTrainingDaysPerWeek(Number(e.target.value))}
                 >
-                  <option value={2}>2 días / semana (Mantenimiento mínimo efectivo)</option>
-                  <option value={3}>3 días / semana (Equilibrio perfecto)</option>
-                  <option value={4}>4 días / semana (Óptimo 80/20 recomendado)</option>
-                  <option value={5}>5 días / semana (Progresión avanzada)</option>
+                  <option value={2}>2 días / semana (Mantenimiento)</option>
+                  <option value={3}>3 días / semana (Equilibrado)</option>
+                  <option value={4}>4 días / semana (Recomendado 80/20)</option>
+                  <option value={5}>5 días / semana (Volumen medio-alto)</option>
                   <option value={6}>6 días / semana (Alto volumen)</option>
                 </select>
               </div>
 
               <div className="field">
-                <label htmlFor="onb-walks">¿Cuántas veces/días a la semana quieres salir a andar?</label>
+                <label htmlFor="onb-walks">¿Cuántos días a la semana quieres salir a andar?</label>
                 <select
                   id="onb-walks"
+                  name="weeklyWalkGoalSessions"
                   className="select"
                   value={weeklyWalkGoalSessions}
                   onChange={(e) => setWeeklyWalkGoalSessions(Number(e.target.value))}
                 >
-                  <option value={3}>3 días de caminata consciente</option>
-                  <option value={5}>5 días de caminata diaria</option>
-                  <option value={7}>Todos los días (7/7 hábito activo)</option>
+                  <option value={3}>3 días por semana</option>
+                  <option value={5}>5 días por semana</option>
+                  <option value={7}>Todos los días (7 días)</option>
                 </select>
               </div>
 
@@ -272,6 +264,7 @@ export function OnboardingModal({
                 <label htmlFor="onb-steps">Objetivo diario de pasos (Google Fit)</label>
                 <input
                   id="onb-steps"
+                  name="dailyStepsTarget"
                   type="number"
                   min={3000}
                   max={25000}
@@ -283,9 +276,10 @@ export function OnboardingModal({
               </div>
 
               <div className="field">
-                <label htmlFor="onb-rhr">Pulso en reposo estimado (ppm)</label>
+                <label htmlFor="onb-rhr">Frecuencia cardíaca en reposo (ppm)</label>
                 <input
                   id="onb-rhr"
+                  name="restHR"
                   type="number"
                   min={38}
                   max={110}
@@ -297,12 +291,11 @@ export function OnboardingModal({
             </div>
 
             <div className="stack-sm">
-              <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>
-                Modos de Cardio en tu rutina (Running es el eje principal; añade alternativos):
+              <span style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Modalidades de cardio que practicas (Running es la base del plan; marca las alternativas que te gusten):
               </span>
               <div className="row-wrap">
                 <button type="button" className="btn btn-primary btn-sm" disabled>
-                  <Flame size={15} aria-hidden="true" />
                   Running (Principal)
                 </button>
                 <button
@@ -310,22 +303,21 @@ export function OnboardingModal({
                   className={`btn btn-sm ${preferredModalities.includes('cycling') ? 'btn-emerald' : 'btn-secondary'}`}
                   onClick={() => toggleModality('cycling')}
                 >
-                  Ciclismo / Bici {preferredModalities.includes('cycling') ? '✓' : ''}
+                  Ciclismo / Bici {preferredModalities.includes('cycling') ? '· Activo' : ''}
                 </button>
                 <button
                   type="button"
                   className={`btn btn-sm ${preferredModalities.includes('soccer') ? 'btn-emerald' : 'btn-secondary'}`}
                   onClick={() => toggleModality('soccer')}
                 >
-                  Partido de Fútbol {preferredModalities.includes('soccer') ? '✓' : ''}
+                  Partido de Fútbol {preferredModalities.includes('soccer') ? '· Activo' : ''}
                 </button>
                 <button
                   type="button"
                   className={`btn btn-sm ${preferredModalities.includes('walking') ? 'btn-emerald' : 'btn-secondary'}`}
                   onClick={() => toggleModality('walking')}
                 >
-                  <Footprints size={14} aria-hidden="true" />
-                  Caminata Activa {preferredModalities.includes('walking') ? '✓' : ''}
+                  Caminata Activa {preferredModalities.includes('walking') ? '· Activo' : ''}
                 </button>
               </div>
             </div>
@@ -335,15 +327,15 @@ export function OnboardingModal({
         {step === 3 && (
           <div className="stack-md">
             <p className="secondary" style={{ margin: 0, fontSize: '0.92rem' }}>
-              Coach Lince necesita una <strong>medición clara y objetiva</strong> para no ponerte ritmos demasiado suaves ni lesionarte.
-              Elige la prueba o referencia que mejor conoces ahora mismo:
+              Para fijar tus zonas de entrenamiento con rigor necesitamos una referencia objetiva real. Selecciona la que mejor refleje tu estado hoy:
             </p>
 
             <div className="grid-2">
               <div className="field">
-                <label htmlFor="onb-exam-type">Tipo de medición inicial</label>
+                <label htmlFor="onb-exam-type">Referencia de partida</label>
                 <select
                   id="onb-exam-type"
+                  name="initialExamType"
                   className="select"
                   value={examType}
                   onChange={(e) => {
@@ -355,22 +347,23 @@ export function OnboardingModal({
                     else setRawValue(12);
                   }}
                 >
-                  <option value="caco_continuous_test">¿Cuántos minutos aguantas trotando seguido sin parar?</option>
+                  <option value="caco_continuous_test">Minutos que aguantas trotando seguido sin parar</option>
                   <option value="cooper_12min">Test de Cooper (metros recorridos en 12 min)</option>
-                  <option value="time_trial_5k">Tu mejor marca actual/reciente en 5 km (minutos)</option>
-                  <option value="rockport_walk_1600m">Test Rockport: tiempo caminando 1.6 km rápido (min)</option>
+                  <option value="time_trial_5k">Marca reciente en 5 km (minutos totales)</option>
+                  <option value="rockport_walk_1600m">Test de caminata 1,6 km (minutos)</option>
                 </select>
               </div>
 
               <div className="field">
                 <label htmlFor="onb-raw-val">
-                  {examType === 'cooper_12min' && 'Metros recorridos en 12 minutos'}
-                  {examType === 'time_trial_5k' && 'Minutos empleados en 5 km'}
-                  {examType === 'rockport_walk_1600m' && 'Minutos empleados en 1.6 km caminando'}
+                  {examType === 'cooper_12min' && 'Distancia en 12 minutos (metros)'}
+                  {examType === 'time_trial_5k' && 'Tiempo total en 5 km (minutos)'}
+                  {examType === 'rockport_walk_1600m' && 'Tiempo en 1,6 km caminando (minutos)'}
                   {examType === 'caco_continuous_test' && 'Minutos seguidos trotando cómodo'}
                 </label>
                 <input
                   id="onb-raw-val"
+                  name="initialExamValue"
                   type="number"
                   min={1}
                   max={5000}
@@ -383,37 +376,30 @@ export function OnboardingModal({
               </div>
 
               <div className="field">
-                <label htmlFor="onb-rpe">Sensación de esfuerzo en esa referencia (1 muy fácil – 10 máximo)</label>
+                <label htmlFor="onb-rpe">Esfuerzo percibido en esa referencia ({perceivedEffort}/10)</label>
                 <input
                   id="onb-rpe"
+                  name="initialPerceivedEffort"
                   type="range"
                   min={2}
                   max={10}
                   value={perceivedEffort}
                   onChange={(e) => setPerceivedEffort(Number(e.target.value))}
                 />
-                <span className="muted" style={{ fontSize: '0.8rem' }}>
-                  Esfuerzo percibido (RPE): <strong>{perceivedEffort}/10</strong>
+                <span className="muted" style={{ fontSize: '0.78rem' }}>
+                  1 = muy suave · 10 = esfuerzo máximo
                 </span>
               </div>
 
-              <div
-                style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px solid rgba(16, 185, 129, 0.35)',
-                  borderRadius: '14px',
-                  padding: '0.9rem 1rem',
-                }}
-              >
-                <div className="row-between">
-                  <span className="muted" style={{ fontSize: '0.8rem' }}>Diagnóstico instantáneo del Lince</span>
-                  <Ruler size={16} color="#34d399" aria-hidden="true" />
-                </div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, marginBlockStart: '0.25rem' }}>
+              <div className="inset-panel stack-sm">
+                <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Evaluación resultante
+                </span>
+                <div style={{ fontSize: '1.08rem', fontWeight: 700 }}>
                   Nivel {previewLevel.level}: {previewLevel.spanishTitle}
                 </div>
-                <div className="mono" style={{ fontSize: '0.86rem', color: '#6ee7b7' }}>
-                  VDOT estimado: {previewVdot} · FCmax: {estimateMaxHR(age)} ppm
+                <div className="mono" style={{ fontSize: '0.84rem', color: 'var(--pine)' }}>
+                  VDOT {previewVdot} · FCmáx estimada {estimateMaxHR(age)} ppm
                 </div>
               </div>
             </div>
@@ -443,7 +429,7 @@ export function OnboardingModal({
           ) : (
             <button key="btn-submit-onboarding" type="submit" className="btn btn-emerald">
               <CheckCircle2 size={17} aria-hidden="true" />
-              Crear Plan Científico con Coach Lince
+              Guardar perfil y generar plan
             </button>
           )}
         </div>

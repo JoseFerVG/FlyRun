@@ -21,93 +21,93 @@ const LEVEL_DEFINITIONS: Array<{
 }> = [
   {
     level: 1,
-    title: 'Doñana Cub',
-    spanishTitle: 'Cachorro de Doñana',
+    title: 'Adaptation Base',
+    spanishTitle: 'Iniciación y Adaptación',
     minVdot: 20,
     minXp: 0,
-    badgeColor: '#94a3b8',
-    lynxQuote: 'Todo depredador empieza caminando con cabeza. Construyamos tus tendones con CaCo sin prisa.',
+    badgeColor: '#64748b',
+    lynxQuote: 'Empezamos alternando tramos cortos de trote y caminata para que tendones y articulaciones se fortalezcan sin molestias.',
   },
   {
     level: 2,
-    title: 'Trail Scout',
-    spanishTitle: 'Rastreador del Monte',
+    title: 'CaCo Foundation',
+    spanishTitle: 'Base CaCo',
     minVdot: 26,
     minXp: 350,
-    badgeColor: '#38bdf8',
-    lynxQuote: 'Tu corazón ya nota el ritmo. Seguimos protegiendo rodillas mientras subimos minutos de trote.',
+    badgeColor: '#2563eb',
+    lynxQuote: 'Tu corazón ya responde bien. Seguimos ampliando poco a poco el tiempo corriendo sin perder comodidad al respirar.',
   },
   {
     level: 3,
-    title: 'Active Runner',
-    spanishTitle: 'Lince Ágil',
+    title: 'Aerobic Continuity',
+    spanishTitle: 'Continuidad Aeróbica',
     minVdot: 31,
     minXp: 800,
-    badgeColor: '#22c55e',
-    lynxQuote: 'Ya puedes sostener carrera continua. Activamos el modelo científico 80/20 esta semana.',
+    badgeColor: '#186a4b',
+    lynxQuote: 'Ya sostienes carrera continua. A partir de aquí estructuramos la semana con el reparto 80/20.',
   },
   {
     level: 4,
-    title: 'Aerobic Hunter',
-    spanishTitle: 'Cazador Aeróbico',
+    title: 'Consistent Runner',
+    spanishTitle: 'Corredor Consistente',
     minVdot: 36,
     minXp: 1400,
-    badgeColor: '#10b981',
-    lynxQuote: 'Tu base aeróbica es sólida. Introducimos bloques controlados en Zona 3 Umbral.',
+    badgeColor: '#15803d',
+    lynxQuote: 'Tu base aeróbica es sólida. Empezamos a introducir bloques controlados en Zona 3 para mejorar tu umbral.',
   },
   {
     level: 5,
-    title: 'Sierra Predator',
-    spanishTitle: 'Lince de Sierra Morena',
+    title: 'Threshold Pace',
+    spanishTitle: 'Ritmo de Umbral',
     minVdot: 41,
     minXp: 2200,
-    badgeColor: '#f59e0b',
-    lynxQuote: 'Nivel intermedio-alto desbloqueado. Tu VO2max responde de maravilla a intervalos Billat.',
+    badgeColor: '#b45309',
+    lynxQuote: 'Nivel intermedio-alto. Combina tus rodajes suaves en Zona 1 con series cortas para seguir subiendo el VO2max.',
   },
   {
     level: 6,
-    title: 'Velocity Lynx',
-    spanishTitle: 'Velocista Ibérico',
+    title: 'Advanced Mid-Distance',
+    spanishTitle: 'Mediofondo Avanzado',
     minVdot: 46,
     minXp: 3200,
-    badgeColor: '#f97316',
-    lynxQuote: 'Tus ritmos en umbral y series ya imponen respeto. Vigila el descanso y los pasos de recuperación.',
+    badgeColor: '#d94814',
+    lynxQuote: 'Tus ritmos ya son exigentes. Cuida tanto la hidratación como el descanso entre sesiones intensas.',
   },
   {
     level: 7,
-    title: 'Endurance Alpha',
-    spanishTitle: 'Alfa de Resistencia',
+    title: 'Competitive Fitness',
+    spanishTitle: 'Rendimiento Competitivo',
     minVdot: 51,
     minXp: 4500,
-    badgeColor: '#fb7185',
-    lynxQuote: 'Motor aeróbico de élite amateur. Cuidemos carbohidratos pre-entreno en tus días de carga.',
+    badgeColor: '#c2410c',
+    lynxQuote: 'Buen motor aeróbico. Ajusta la ingesta de carbohidratos los días de series o partido para rendir al máximo.',
   },
   {
     level: 8,
-    title: 'Apex Strider',
-    spanishTitle: 'Zancada Suprema',
+    title: 'High Performance',
+    spanishTitle: 'Alto Rendimiento',
     minVdot: 56,
     minXp: 6000,
-    badgeColor: '#a855f7',
-    lynxQuote: 'Eficiencia biomecánica brutal. Cada sesión de calidad tiene un propósito quirúrgico.',
+    badgeColor: '#7c3aed',
+    lynxQuote: 'Economía de carrera muy afinada. Cada sesión intensa tiene un objetivo claro y suficiente recuperación detrás.',
   },
   {
     level: 9,
-    title: 'Iberian Legend',
-    spanishTitle: 'Leyenda Ibérica',
+    title: 'Amateur Elite',
+    spanishTitle: 'Élite Amateur',
     minVdot: 62,
     minXp: 8000,
-    badgeColor: '#eab308',
-    lynxQuote: 'Pocos humanos alcanzan este equilibrio entre potencia VO2max y economía de carrera.',
+    badgeColor: '#0f766e',
+    lynxQuote: 'Capacidad cardiovascular sobresaliente. Mantén la precisión en las zonas sin pasarte en los rodajes suaves.',
   },
   {
     level: 10,
-    title: 'Indomitable Spirit',
-    spanishTitle: 'Espíritu Indomable',
+    title: 'Peak Conditioning',
+    spanishTitle: 'Rendimiento Máximo',
     minVdot: 68,
     minXp: 10500,
-    badgeColor: '#2dd4bf',
-    lynxQuote: 'Nivel máximo de FlyRun. Eres la referencia absoluta del territorio lince.',
+    badgeColor: '#121417',
+    lynxQuote: 'Techo máximo de la escala. Mantén la constancia semanal y utiliza los test periódicos para ajustar ritmos al segundo.',
   },
 ];
 
@@ -119,18 +119,13 @@ export function formatPace(secPerKm: number): string {
 }
 
 export function estimateMaxHR(age: number): number {
-  // Tanaka et al. (2001): 208 - 0.7 * age (más precisa que 220 - age)
   return Math.round(208 - 0.7 * Math.max(14, Math.min(90, age)));
 }
 
-/**
- * Fórmula científica de Jack Daniels & Jimmy Gilbert:
- * Estima el VDOT a partir de una distancia (metros) y tiempo (minutos).
- */
 export function calculateDanielsVDOT(distanceMeters: number, timeMinutes: number): number {
   const safeDist = Math.max(400, distanceMeters);
   const safeTime = Math.max(2, timeMinutes);
-  const velocity = safeDist / safeTime; // m/min
+  const velocity = safeDist / safeTime;
   const vo2 = -4.6 + 0.182258 * velocity + 0.000104 * velocity * velocity;
   const pctMax =
     0.8 +
@@ -152,7 +147,6 @@ export function calculateVDOTFromExam(
   }
 ): number {
   if (examType === 'cooper_12min') {
-    // Cooper original: (d - 504.9) / 44.73, y cruzado con Daniels para coherencia
     const cooperVo2 = (rawValue - 504.9) / 44.73;
     const daniels = calculateDanielsVDOT(rawValue, 12);
     const blended = cooperVo2 * 0.45 + daniels * 0.55;
@@ -160,12 +154,10 @@ export function calculateVDOTFromExam(
   }
 
   if (examType === 'time_trial_5k') {
-    // rawValue en minutos (ej. 25.5 min)
     return calculateDanielsVDOT(5000, Math.max(13, Math.min(60, rawValue)));
   }
 
   if (examType === 'rockport_walk_1600m') {
-    // Ecuación oficial Rockport Fitness Walking Test (Kline et al., 1987)
     const weightLbs = (options?.weightKg ?? 72) * 2.20462;
     const age = options?.age ?? 30;
     const genderFactor = options?.sex === 'female' ? 0 : 1;
@@ -181,7 +173,6 @@ export function calculateVDOTFromExam(
     return Number(Math.max(20, Math.min(58, vo2)).toFixed(1));
   }
 
-  // caco_continuous_test: minutos trotando sin parar (rawValue) + ritmo percibido o esfuerzo
   const minutes = Math.max(1, Math.min(90, rawValue));
   const perceivedEasyBonus = options?.secondaryValue ? Math.max(-2, Math.min(4, (6 - options.secondaryValue) * 0.6)) : 0;
   let estimated = 22;
@@ -197,7 +188,6 @@ export function getLynxLevel(vdot: number, xp: number): LynxLevelInfo {
   let active = LEVEL_DEFINITIONS[0];
 
   for (const def of LEVEL_DEFINITIONS) {
-    // Sube de nivel cuando cumple el VDOT o la XP acumulada (progresivo por constancia + rendimiento)
     if (vdot >= def.minVdot || xp >= def.minXp * 1.15) {
       active = def;
     }
@@ -228,12 +218,8 @@ export function getAllLevelDefinitions() {
   return LEVEL_DEFINITIONS;
 }
 
-/**
- * Invierte el modelo VDOT para obtener velocidad (m/min) a un porcentaje de VO2max.
- */
 function paceAtVO2Fraction(vdot: number, fraction: number): number {
   const targetVo2 = vdot * fraction;
-  // 0.000104 v^2 + 0.182258 v - (4.6 + targetVo2) = 0
   const a = 0.000104;
   const b = 0.182258;
   const c = -(4.6 + targetVo2);
@@ -265,7 +251,7 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
   return [
     {
       id: 'Z1',
-      name: 'Aeróbico Suave / Base',
+      name: 'Aeróbico Suave',
       danielsCode: 'E-Pace (Easy)',
       vo2PctRange: '60–74% VO2max',
       paceMinSecPerKm: z1Fast,
@@ -273,12 +259,12 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       paceFormatted: `${formatPace(z1Fast)} – ${formatPace(z1Slow)} /km`,
       hrMin: hrAt(0.58),
       hrMax: hrAt(0.72),
-      purpose: 'Capilarización, mitocondrias y recuperación sin fatiga (el 80% de tu plan).',
-      color: '#22c55e',
+      purpose: 'Base aeróbica, capilarización y recuperación sin fatiga (80% del volumen semanal).',
+      color: '#186a4b',
     },
     {
       id: 'Z2',
-      name: 'Resistencia Maratón / Estable',
+      name: 'Aeróbico Estable',
       danielsCode: 'M-Pace',
       vo2PctRange: '75–82% VO2max',
       paceMinSecPerKm: z2Fast,
@@ -286,12 +272,12 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       paceFormatted: `${formatPace(z2Fast)} – ${formatPace(z2Slow)} /km`,
       hrMin: hrAt(0.73),
       hrMax: hrAt(0.81),
-      purpose: 'Economía de glucógeno y ritmo sostenido controlado.',
-      color: '#38bdf8',
+      purpose: 'Ritmo sostenido cómodo y economía de glucógeno.',
+      color: '#2563eb',
     },
     {
       id: 'Z3',
-      name: 'Umbral de Lactato (Tempo)',
+      name: 'Umbral de Lactato',
       danielsCode: 'T-Pace (Threshold)',
       vo2PctRange: '83–89% VO2max',
       paceMinSecPerKm: z3Fast,
@@ -299,8 +285,8 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       paceFormatted: `${formatPace(z3Fast)} – ${formatPace(z3Slow)} /km`,
       hrMin: hrAt(0.82),
       hrMax: hrAt(0.88),
-      purpose: 'Eleva tu segundo umbral (VT2) para sostener ritmos altos sin saturarte.',
-      color: '#f59e0b',
+      purpose: 'Eleva tu segundo umbral (VT2) para sostener ritmos vivos sin saturar las piernas.',
+      color: '#b45309',
     },
     {
       id: 'Z4',
@@ -312,12 +298,12 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       paceFormatted: `${formatPace(z4Fast)} – ${formatPace(z4Slow)} /km`,
       hrMin: hrAt(0.89),
       hrMax: hrAt(0.96),
-      purpose: 'Maximiza el volumen sistólico cardíaco y tu techo de oxígeno.',
-      color: '#f97316',
+      purpose: 'Mejora el volumen sistólico cardíaco y tu consumo máximo de oxígeno.',
+      color: '#d94814',
     },
     {
       id: 'Z5',
-      name: 'Repeticiones Neuromusculares',
+      name: 'Velocidad Neuromuscular',
       danielsCode: 'R-Pace (Repetition)',
       vo2PctRange: '>104% VO2max',
       paceMinSecPerKm: z5Fast,
@@ -325,8 +311,8 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       paceFormatted: `${formatPace(z5Fast)} – ${formatPace(z5Slow)} /km`,
       hrMin: hrAt(0.95),
       hrMax: maxHR,
-      purpose: 'Velocidad pura, técnica de zancada y eficiencia elástica.',
-      color: '#ef4444',
+      purpose: 'Eficiencia mecánica de zancada y velocidad punta.',
+      color: '#b91c1c',
     },
   ];
 }
@@ -354,36 +340,36 @@ const MODALITY_CONFIG: Record<
     label: 'Running (Principal)',
     baseMet: 7.2,
     rpeSlope: 0.65,
-    impact: '1.0x (Estándar óseo-tendinoso)',
+    impact: '1.0x (Referencia estándar)',
     effect: 'Máxima especificidad de carrera, economía neuromuscular y densidad mitocondrial.',
   },
   cycling: {
-    label: 'Ciclismo (Bici Ruta / Estática)',
+    label: 'Ciclismo (Ruta o Estática)',
     baseMet: 5.5,
     rpeSlope: 0.55,
-    impact: '0.15x (Ultra bajo impacto articular)',
-    effect: 'Fuerte estímulo aeróbico central y fuerza de cuádriceps protegiendo rodillas y tobillos.',
+    impact: '0.15x (Bajo impacto articular)',
+    effect: 'Estímulo aeróbico central y fuerza de cuádriceps protegiendo rodillas y tobillos.',
   },
   soccer: {
     label: 'Partido de Fútbol',
     baseMet: 7.0,
     rpeSlope: 0.52,
     impact: '1.25x (Cambios de dirección y sprints)',
-    effect: 'Carga intermitente tipo Fartlek/HIIT: picos de VO2max, agilidad y desgaste anaeróbico.',
+    effect: 'Carga intermitente tipo Fartlek: picos de VO2max, aceleraciones y gasto anaeróbico.',
   },
   walking: {
-    label: 'Caminata Activa / Pasos',
+    label: 'Caminata Activa',
     baseMet: 3.3,
     rpeSlope: 0.35,
-    impact: '0.3x (Regenerativo)',
-    effect: 'Capilarización suave, limpieza metabólica y quema lipídica sin estrés del SNC.',
+    impact: '0.3x (Recuperación suave)',
+    effect: 'Capilarización ligera y movimiento diario sin fatiga del sistema nervioso.',
   },
   swimming: {
     label: 'Natación / Elíptica',
     baseMet: 6.0,
     rpeSlope: 0.52,
-    impact: '0.1x (Descarga completa)',
-    effect: 'Capacidad pulmonar y descarga total del aparato locomotor.',
+    impact: '0.1x (Descarga total)',
+    effect: 'Trabajo respiratorio y descarga completa del tren inferior.',
   },
 };
 
@@ -402,18 +388,12 @@ export function calculateCardioEquivalence(
   const effectiveMets = Math.max(3.0, mets);
   const metMinutes = Math.round(effectiveMets * safeDuration);
 
-  // Banister TRIMP aproximado usando reserva de frecuencia cardíaca equivalente al RPE
   const deltaHR = Math.max(0.28, Math.min(0.95, 0.25 + safeRPE * 0.068));
   const b = sex === 'female' ? 1.67 : 1.92;
   const trimp = Math.round(safeDuration * deltaHR * 0.64 * Math.exp(b * deltaHR));
-
-  // Puntos Cardio Lince: combina volumen metabólico (MET-min) + carga fisiológica (TRIMP)
   const cardioPoints = Math.round(metMinutes * 0.16 + trimp * 0.55);
-
-  // Calorías: MET * 3.5 * weightKg / 200 * minutes
   const calories = Math.round(((effectiveMets * 3.5 * weightKg) / 200) * safeDuration);
 
-  // Equivalencia en minutos y km de running suave-moderado (Z1-Z2 ~9.8 METs)
   const equivalentRunningMinutes = Math.round(metMinutes / 9.8);
   const easyPaceSec = paceAtVO2Fraction(vdot, 0.68);
   const equivalentRunningKm = Number(((equivalentRunningMinutes * 60) / easyPaceSec).toFixed(1));
@@ -469,11 +449,11 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Descanso Activo & Pasos Google Fit',
-      subtitle: 'Recuperación parasimpática y remodelación de tejido',
+      title: 'Descanso Activo y Caminata',
+      subtitle: 'Asimilación de carga y movilidad suave',
       modality: 'walking',
       sessionType: 'rest',
-      strategyTag: 'Recuperación Biológica',
+      strategyTag: 'Recuperación',
       durationMinutes: 25,
       targetDistanceKm: 2.0,
       targetZone: 'Z1',
@@ -484,14 +464,14 @@ function createSessionFromTemplate(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Movilidad + Caminata ligera',
+          label: 'Caminata ligera + movilidad',
           durationMinutes: 25,
-          intensity: 'Muy suave · 40–55% FCmax',
-          description: `Completa tus ${profile.dailyStepsTarget.toLocaleString('es-ES')} pasos diarios sin correr. El músculo crece y el tendón se fortalece hoy.`,
+          intensity: '40–55% FCmax',
+          description: `Completa tus ${profile.dailyStepsTarget.toLocaleString('es-ES')} pasos diarios sin impacto de carrera.`,
           zone: 'Z1',
         },
       ],
-      coachTip: 'El descanso no es perder el tiempo: es consolidar las adaptaciones de ayer.',
+      coachTip: 'Hoy no toca sumar fatiga: caminar suave favorece el retorno venoso y consolida el trabajo de ayer.',
       completed: false,
     };
   }
@@ -500,17 +480,17 @@ function createSessionFromTemplate(
     const eq = calculateCardioEquivalence('running', 28, 8, profile.weightKg, profile.sex, profile.vdot);
     const examDesc =
       profile.level <= 2
-        ? 'Test CaCo / Caminata Rockport 1.6 km para medir tu evolución aeróbica sin forzar impacto.'
-        : 'Test de Cooper (12 minutos al máximo ritmo sostenible) o Contrarreloj 5K para recalibrar tu VDOT.';
+        ? 'Caminata rápida de 1,6 km (Test Rockport) o prueba continua para medir tu estado actual.'
+        : 'Test de Cooper (12 minutos al mayor ritmo constante que puedas sostener) o contrarreloj de 5 km.';
     return {
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Día de Examen Físico del Lince',
-      subtitle: 'Evaluación objetiva de VDOT, Nivel y Zonas',
+      title: 'Día de Examen Físico',
+      subtitle: 'Evaluación periódica para recalibrar VDOT y ritmos',
       modality: 'running',
       sessionType: 'physical_exam',
-      strategyTag: 'Examen Oficial FlyRun',
+      strategyTag: 'Evaluación',
       durationMinutes: 28,
       targetDistanceKm: profile.level <= 2 ? 2.2 : 3.2,
       targetZone: 'Z4',
@@ -521,16 +501,16 @@ function createSessionFromTemplate(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Calentamiento Progresivo',
+          label: 'Calentamiento progresivo',
           durationMinutes: 10,
-          intensity: 'Z1 suave + 3 aceleraciones de 15s',
-          description: 'Prepara temperatura muscular y sistema cardiovascular sin fatigarte.',
+          intensity: 'Z1 suave + 3 progresivos de 15 s',
+          description: 'Prepara temperatura muscular sin llegar cansado al bloque principal.',
           zone: 'Z1',
         },
         {
-          label: 'Bloque Examen Oficial',
+          label: 'Bloque de Test Oficial',
           durationMinutes: 12,
-          intensity: 'Esfuerzo máximo sostenible (RPE 8-9/10)',
+          intensity: 'Esfuerzo constante (RPE 8-9/10)',
           description: examDesc,
           zone: 'Z4',
         },
@@ -538,11 +518,11 @@ function createSessionFromTemplate(
           label: 'Vuelta a la calma',
           durationMinutes: 6,
           intensity: 'Caminata suave',
-          description: 'Registra tu resultado en la pestaña "Examen Físico" para actualizar nivel.',
+          description: 'Registra tu marca en la pestaña "Datos y Examen" para actualizar tu nivel.',
           zone: 'Z1',
         },
       ],
-      coachTip: 'Hoy no entrenamos por ego, hoy medimos tu fisiología real para optimizar las próximas semanas.',
+      coachTip: 'Sal con control los primeros 3 minutos para no pinchar al final; queremos una medida real de tu nivel.',
       completed: false,
       isExamDay: true,
     };
@@ -557,24 +537,24 @@ function createSessionFromTemplate(
     const eq = calculateCardioEquivalence('running', totalMinutes, 5, profile.weightKg, profile.sex, profile.vdot);
     const blocks: WorkoutBlock[] = [
       {
-        label: 'Activación articular + caminata rápida',
+        label: 'Calentamiento caminando',
         durationMinutes: 5,
         intensity: 'Muy suave',
-        description: 'Rotaciones de tobillo, rodilla, cadera y 5 min caminando alegre.',
+        description: 'Movilidad de tobillos y 5 minutos de caminata ligera.',
         zone: 'Z1',
       },
       {
-        label: `Bloque CaCo ${rounds}x (${runMin}' correr / ${walkMin}' andar)`,
+        label: `Bloque CaCo: ${rounds} x (${runMin}' trote / ${walkMin}' caminata)`,
         durationMinutes: mainMinutes,
         intensity: `Trote Z1 (${z1.paceFormatted}) + Caminata activa`,
-        description: `Estrategia CaCo: corre ${runMin} min suave pudiendo hablar, camina ${walkMin} min para descargar tendones.`,
+        description: `Alterna ${runMin} min corriendo suave (pudiendo hablar) con ${walkMin} min andando a buen paso.`,
         zone: 'Z1',
       },
       {
         label: 'Enfriamiento',
         durationMinutes: 5,
         intensity: 'Paseo tranquilo',
-        description: 'Baja pulsaciones y estira suavemente gemelos y sóleo.',
+        description: 'Baja pulsaciones caminando los últimos 5 minutos.',
         zone: 'Z1',
       },
     ];
@@ -582,8 +562,8 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: `CaCo Científico: ${runMin}' Correr / ${walkMin}' Andar`,
-      subtitle: 'Construcción segura de tendones y capacidad aeróbica',
+      title: `Sesión CaCo: ${runMin}' Correr / ${walkMin}' Andar`,
+      subtitle: 'Adaptación progresiva de tendones y capacidad aeróbica',
       modality: 'running',
       sessionType: 'caco',
       strategyTag: `CaCo ${runMin}'/${walkMin}'`,
@@ -596,7 +576,7 @@ function createSessionFromTemplate(
       trimp: eq.trimp,
       estimatedCalories: eq.calories,
       blocks,
-      coachTip: `Si terminas los bloques sintiendo que podrías hacer uno más, lo has clavado. Así se evita el 90% de lesiones.`,
+      coachTip: 'Si acabas con la sensación de poder hacer un bloque más, el ritmo ha sido el correcto.',
       completed: false,
     };
   }
@@ -608,11 +588,11 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Umbral de Lactato (Cruise Intervals Z3)',
-      subtitle: 'El 20% de calidad · Protocolo Jack Daniels T-Pace',
+      title: 'Bloques de Umbral (3 x 6 min en Z3)',
+      subtitle: 'Trabajo de calidad (20% semanal) para elevar tu ritmo sostenible',
       modality: 'running',
       sessionType: 'threshold_z3',
-      strategyTag: '80/20 · Calidad Z3',
+      strategyTag: '80/20 · Umbral Z3',
       durationMinutes: duration,
       targetDistanceKm: Number(((duration * 60) / z3.paceMinSecPerKm * 0.88).toFixed(1)),
       targetZone: 'Z3',
@@ -623,28 +603,28 @@ function createSessionFromTemplate(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Calentamiento progresivo',
+          label: 'Calentamiento',
           durationMinutes: 10,
           intensity: z1.paceFormatted,
-          description: 'Rodaje cómodo Z1 + 2 rectas progresivas de 15 segundos.',
+          description: '10 min de rodaje suave en Zona 1 y 2 rectas cortas.',
           zone: 'Z1',
         },
         {
-          label: '3 x 6 min a Ritmo Umbral (1 min trote suave)',
+          label: '3 x 6 min en Umbral (1 min trote suave entre bloques)',
           durationMinutes: 20,
           intensity: `${z3.paceFormatted} · ${z3.hrMin}-${z3.hrMax} ppm`,
-          description: 'Ritmo "cómodamente duro": controlado, respiración rítmica 2-2 sin sprintar.',
+          description: 'Ritmo vivo pero controlado: exige concentración sin llegar al sprint.',
           zone: 'Z3',
         },
         {
           label: 'Vuelta a la calma',
           durationMinutes: duration - 30,
           intensity: z1.paceFormatted,
-          description: 'Trote muy suave para acelerar la reutilización de lactato.',
+          description: 'Trote muy suave para bajar pulsaciones progresivamente.',
           zone: 'Z1',
         },
       ],
-      coachTip: 'Esta sesión eleva la velocidad a la que puedes correr sin que tus piernas se llenen de acidez.',
+      coachTip: 'Controla los primeros 2 minutos de cada serie para no salir por encima del ritmo objetivo.',
       completed: false,
     };
   }
@@ -656,8 +636,8 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Intervalos Billat 30-30 VO2max',
-      subtitle: 'El 20% de calidad · Potencia cardíaca máxima',
+      title: 'Intervalos 30-30 en Zona 4 (VO2max)',
+      subtitle: 'Sesión de potencia aeróbica (20% intenso semanal)',
       modality: 'running',
       sessionType: 'intervals_z4',
       strategyTag: 'Billat 30-30 · Z4',
@@ -674,25 +654,25 @@ function createSessionFromTemplate(
           label: 'Calentamiento completo',
           durationMinutes: 12,
           intensity: z1.paceFormatted,
-          description: 'Trote suave + técnica de carrera (skipping bajo y talones al glúteo).',
+          description: 'Rodaje suave y técnica básica de carrera antes de las series.',
           zone: 'Z1',
         },
         {
-          label: '2 bloques x 8 repeticiones (30s Z4 / 30s Z1 suave)',
+          label: '2 bloques x 8 repeticiones (30 s Z4 / 30 s Z1)',
           durationMinutes: 18,
-          intensity: `${z4.paceFormatted} en rápidos · Trote suave 30s`,
-          description: '2 min andando entre los dos bloques. No te pares en seco entre 30s.',
+          intensity: `${z4.paceFormatted} · 30 s trote suave`,
+          description: 'Camina 2 min entre bloques. Mantén un trote muy suave en las pausas de 30 s.',
           zone: 'Z4',
         },
         {
           label: 'Enfriamiento',
           durationMinutes: 8,
-          intensity: 'Z1 regenerativo',
-          description: 'Trote suave o caminata hasta bajar de 125 ppm.',
+          intensity: 'Z1 suave',
+          description: 'Trote ligero o caminata hasta estabilizar respiración.',
           zone: 'Z1',
         },
       ],
-      coachTip: 'Con el método Billat pasas más minutos cerca del 100% VO2max con la mitad de fatiga muscular.',
+      coachTip: 'Busca regularidad entre la primera y la última repetición en lugar de quemarte en las dos primeras.',
       completed: false,
     };
   }
@@ -704,11 +684,11 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Ciclismo Aeróbico Equivalente (Descarga Articular)',
-      subtitle: `Equivale a ${eq.equivalentRunningKm} km de running sin impacto`,
+      title: 'Ciclismo Aeróbico Equivalente',
+      subtitle: `Equivale a ${eq.equivalentRunningKm} km de carrera sin impacto articular`,
       modality: 'cycling',
       sessionType: 'cycling',
-      strategyTag: 'Cardio Alternativo Bici',
+      strategyTag: 'Cardio Cruzado Bici',
       durationMinutes: duration,
       targetDistanceKm: Number((duration * 0.36).toFixed(1)),
       targetZone: 'Z2',
@@ -719,28 +699,28 @@ function createSessionFromTemplate(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Calentamiento cadencia ágil',
+          label: 'Calentamiento en cadencia ágil',
           durationMinutes: 10,
           intensity: 'Z1 ligero · 90 rpm',
-          description: 'Desarrollo suave para lubricar rodillas sin tensión.',
+          description: 'Pedaleo suave con desarrollo cómodo para activar piernas.',
           zone: 'Z1',
         },
         {
-          label: 'Bloque aeróbico continuo en bici',
+          label: 'Bloque aeróbico continuo',
           durationMinutes: duration - 15,
           intensity: `Z1–Z2 · ${z1.hrMin}–${z2.hrMax} ppm`,
-          description: 'Pedaleo redondo constante. Si puedes cantar o hablar frases fluidas, estás en la zona óptima.',
+          description: 'Ritmo constante en bici sin atrancarse con desarrollos duros.',
           zone: 'Z2',
         },
         {
           label: 'Soltura final',
           durationMinutes: 5,
           intensity: 'Muy suave',
-          description: 'Baja resistencia al mínimo los últimos 5 min.',
+          description: 'Últimos 5 minutos con resistencia baja.',
           zone: 'Z1',
         },
       ],
-      coachTip: 'Hoy sumas Puntos Cardio de primer nivel protegiendo tus articulaciones al 85%.',
+      coachTip: 'Buena sesión para acumular trabajo cardiovascular descargando tendones y rodillas.',
       completed: false,
     };
   }
@@ -752,36 +732,36 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Cardio Alternativo: Partido de Fútbol / HIIT Juego',
-      subtitle: `Equivalente a ~${eq.equivalentRunningKm} km con sprints intermitentes`,
+      title: 'Partido de Fútbol (Equivalencia Cardio)',
+      subtitle: `Equivale a ~${eq.equivalentRunningKm} km con cambios de ritmo`,
       modality: 'soccer',
       sessionType: 'soccer',
-      strategyTag: 'Cardio Alternativo Fútbol',
+      strategyTag: 'Cardio Cruzado Fútbol',
       durationMinutes: duration,
       targetDistanceKm: 5.5,
       targetZone: 'Z4',
-      targetPace: 'Intermitente juego real',
+      targetPace: 'Esfuerzo intermitente',
       cardioPoints: eq.cardioPoints,
       metMinutes: eq.metMinutes,
       trimp: eq.trimp,
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Movilidad pre-partido (obligatoria)',
+          label: 'Movilidad pre-partido',
           durationMinutes: 8,
-          intensity: 'Activación neuromuscular',
-          description: 'Aductores, isquios y desplazamientos laterales antes de golpear balón.',
+          intensity: 'Activación progresiva',
+          description: 'Calienta aductores, isquios y desplazamientos laterales antes de empezar.',
           zone: 'Z1',
         },
         {
-          label: 'Partido de Fútbol (Carga Intermitente)',
+          label: 'Partido de fútbol',
           durationMinutes: 52,
-          intensity: 'Ráfagas Z4/Z5 + recuperación caminando',
-          description: 'FlyRun contabiliza automáticamente este partido como tu sesión intensa del 20% semanal.',
+          intensity: 'Sprints Z4/Z5 + pausas caminando',
+          description: 'Se contabiliza dentro del 20% intenso semanal para evitar sobrecarga.',
           zone: 'Z4',
         },
       ],
-      coachTip: '¡Disfruta el partido! Mañana tocará regeneración suave para equilibrar tus cargas.',
+      coachTip: 'Al tener esfuerzos repetidos de sprint, mañana te conviene descanso activo o caminata suave.',
       completed: false,
     };
   }
@@ -794,8 +774,8 @@ function createSessionFromTemplate(
       id: `wk_${dateStr}`,
       date: dateStr,
       dayIndex,
-      title: 'Tirada Larga Aeróbica del Lince',
-      subtitle: 'Base mitocondrial y resistencia cardiovascular profunda',
+      title: 'Tirada Larga Aeróbica',
+      subtitle: 'Construcción de resistencia cardiovascular de fondo',
       modality: 'running',
       sessionType: 'long_run',
       strategyTag: '80/20 · Base Z1-Z2',
@@ -809,41 +789,40 @@ function createSessionFromTemplate(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Arranque conservador',
+          label: 'Inicio suave',
           durationMinutes: 10,
-          intensity: 'Z1 muy cómodo',
-          description: 'Empieza 15 seg/km más lento de tu objetivo para estabilizar pulsaciones.',
+          intensity: 'Z1 cómodo',
+          description: 'Empieza unos 15 s/km más lento de tu objetivo para estabilizar el pulso.',
           zone: 'Z1',
         },
         {
-          label: 'Cuerpo de tirada aeróbica',
+          label: 'Bloque principal de fondo',
           durationMinutes: duration - 15,
           intensity: `${paceStr} · ${z1.hrMin}–${z2.hrMax} ppm`,
-          description: 'Mantén cadencia fluida (170+ ppm si es posible) e hidrátate cada 25 min.',
+          description: 'Mantén una zancada ligera y constante durante todo el recorrido.',
           zone: 'Z1',
         },
         {
           label: 'Vuelta a la calma',
           durationMinutes: 5,
           intensity: 'Caminata suave',
-          description: 'Respira profundo y prioriza carbohidratos + proteína en los siguientes 45 min.',
+          description: 'Camina 5 minutos al terminar e hidrátate bien.',
           zone: 'Z1',
         },
       ],
-      coachTip: 'La tirada larga es el pilar que hace crecer tu red capilar. Sin prisa, pero sin pausa.',
+      coachTip: 'Esta sesión es la que más hace crecer tu resistencia de base si respetas el ritmo tranquilo.',
       completed: false,
     };
   }
 
-  // Default: easy_z1 rodaje polarizado 80%
   const duration = Math.min(48, 28 + profile.level * 2);
   const eq = calculateCardioEquivalence('running', duration, 4, profile.weightKg, profile.sex, profile.vdot);
   return {
     id: `wk_${dateStr}`,
     date: dateStr,
     dayIndex,
-    title: 'Rodaje Aeróbico 80/20 (Zona 1)',
-    subtitle: 'Volumen inteligente sin desgaste del sistema nervioso',
+    title: 'Rodaje Suave en Zona 1 (80/20)',
+    subtitle: 'Volumen aeróbico sin fatiga acumulada',
     modality: 'running',
     sessionType: 'easy_z1',
     strategyTag: '80/20 · Zona 1',
@@ -857,32 +836,24 @@ function createSessionFromTemplate(
     estimatedCalories: eq.calories,
     blocks: [
       {
-        label: 'Rodaje continuo en Zona 1',
+        label: 'Rodaje continuo Z1',
         durationMinutes: duration,
         intensity: `${z1.paceFormatted} · ${z1.hrMin}–${z1.hrMax} ppm`,
-        description: 'Prueba del habla: debes poder mantener una conversación sin jadear. Si subes de pulso, baja el ritmo.',
+        description: 'Ritmo conversacional real. Si notas que respiras forzado, baja el ritmo.',
         zone: 'Z1',
       },
     ],
-    coachTip: 'El 80% de tus días deben sentirse así de controlados. Eso te dará alas el día de calidad.',
+    coachTip: 'Mantener los días suaves realmente suaves es lo que permite asimilar bien las sesiones exigentes.',
     completed: false,
   };
 }
 
-/**
- * Genera 28 días (4 semanas) desde hoy aplicando:
- * - Días de entrenamiento configurados (2..6)
- * - Estrategia elegida o adecuada al nivel (CaCo vs 80/20)
- * - Alternativa de bici o fútbol si está en preferencias del usuario
- * - Día de Examen Físico programado en el día 14 y día 28
- */
 export function generateWeeklyPlan(profile: UserProfile, startDate = new Date()): WorkoutSession[] {
   const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
   const daysPerWeek = Math.max(2, Math.min(6, profile.trainingDaysPerWeek));
   const prefersBike = profile.preferredModalities.includes('cycling');
   const prefersSoccer = profile.preferredModalities.includes('soccer');
 
-  // Patrones semanales científicos según frecuencia (índice 0 = hoy)
   const buildWeekPattern = (weekNum: number): SessionType[] => {
     const isBeginner = profile.level <= 2 || profile.preferredStrategyId === 'caco_progressive';
     const baseEasy: SessionType = isBeginner ? 'caco' : 'easy_z1';
@@ -905,7 +876,6 @@ export function generateWeeklyPlan(profile: UserProfile, startDate = new Date())
     if (daysPerWeek === 5) {
       return [baseEasy, qualityA, 'rest', baseEasy, altCardio, 'long_run', 'rest'];
     }
-    // 6 días
     return [baseEasy, qualityA, baseEasy, altCardio, 'threshold_z3', 'long_run', 'rest'];
   };
 
@@ -916,7 +886,6 @@ export function generateWeeklyPlan(profile: UserProfile, startDate = new Date())
     const pattern = buildWeekPattern(weekNumber);
     let sessionType = pattern[dayInWeek];
 
-    // Programar Exámenes Físicos oficiales el día 13 (fin semana 2) y día 27 (fin semana 4)
     if (dayOffset === 13 || dayOffset === 27) {
       sessionType = 'physical_exam';
     }
@@ -939,11 +908,11 @@ export function swapWorkoutModality(
     const eq = calculateCardioEquivalence('cycling', targetDuration, 5, profile.weightKg, profile.sex, profile.vdot);
     return {
       ...workout,
-      title: `Equivalencia Bici: ${workout.title.split(':')[0]}`,
+      title: `Ciclismo equivalente: ${workout.title.split(':')[0]}`,
       subtitle: `Mantiene ${eq.cardioPoints} Puntos Cardio protegiendo articulaciones`,
       modality: 'cycling',
       sessionType: 'cycling',
-      strategyTag: 'Equivalencia Ciclismo',
+      strategyTag: 'Equivalencia Bici',
       durationMinutes: targetDuration,
       targetDistanceKm: Number((targetDuration * 0.37).toFixed(1)),
       targetPace: '85–95 rpm · Zona 1-2',
@@ -960,7 +929,7 @@ export function swapWorkoutModality(
           zone: 'Z2',
         },
       ],
-      coachTip: 'Excelente decisión si notas las piernas cargadas o quieres variedad sin perder carga aeróbica.',
+      coachTip: 'Buena opción si notas piernas cargadas o prefieres variar de disciplina sin perder trabajo aeróbico.',
     };
   }
 
@@ -968,11 +937,11 @@ export function swapWorkoutModality(
     const eq = calculateCardioEquivalence('soccer', 60, 7, profile.weightKg, profile.sex, profile.vdot);
     return {
       ...workout,
-      title: 'Equivalencia Partido de Fútbol',
-      subtitle: `Equivale a ${eq.equivalentRunningKm} km de running con carga intermitente`,
+      title: 'Partido de Fútbol (Equivalencia)',
+      subtitle: `Equivale a ${eq.equivalentRunningKm} km de carrera con sprints intermitentes`,
       modality: 'soccer',
       sessionType: 'soccer',
-      strategyTag: 'Equivalencia Fútbol HIIT',
+      strategyTag: 'Equivalencia Fútbol',
       durationMinutes: 60,
       targetDistanceKm: 5.5,
       targetZone: 'Z4',
@@ -983,14 +952,14 @@ export function swapWorkoutModality(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Calentamiento articular + Partido 60 min',
+          label: 'Calentamiento + Partido 60 min',
           durationMinutes: 60,
           intensity: 'Intermitente Z3–Z5',
-          description: `Cuenta como sesión intensa del 20% semanal (${eq.cardioPoints} Puntos Cardio).`,
+          description: `Cuenta como sesión intensa semanal (${eq.cardioPoints} Puntos Cardio).`,
           zone: 'Z4',
         },
       ],
-      coachTip: 'Partido contabilizado en tu microciclo. Hidrátate bien y repón carbohidratos al terminar.',
+      coachTip: 'Partido contabilizado en tu carga semanal. Hidrátate bien al terminar.',
     };
   }
 
@@ -999,8 +968,8 @@ export function swapWorkoutModality(
     const eq = calculateCardioEquivalence('walking', targetDuration, 4, profile.weightKg, profile.sex, profile.vdot);
     return {
       ...workout,
-      title: 'Caminata Enérgica Equivalente',
-      subtitle: `${eq.cardioPoints} Puntos Cardio · 0% riesgo de impacto`,
+      title: 'Caminata Rápida Equivalente',
+      subtitle: `${eq.cardioPoints} Puntos Cardio sin impacto`,
       modality: 'walking',
       sessionType: 'active_walk',
       strategyTag: 'Equivalencia Caminata',
@@ -1014,14 +983,14 @@ export function swapWorkoutModality(
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Caminata a paso firme',
+          label: 'Caminata a ritmo constante',
           durationMinutes: targetDuration,
-          intensity: 'Z1 · Paso rápido con braceo',
-          description: 'Ideal para días de cansancio elevado o para sumar pasos hacia tu meta de Google Fit.',
+          intensity: 'Z1 · Paso alegre',
+          description: 'Opción recomendada si necesitas descargar fatiga sin quedarte quieto.',
           zone: 'Z1',
         },
       ],
-      coachTip: 'Caminar rápido suma salud mitocondrial y mantiene viva tu racha diaria.',
+      coachTip: 'Caminar a buen ritmo mantiene la constancia y favorece la recuperación.',
     };
   }
 
@@ -1035,11 +1004,6 @@ export function swapWorkoutModality(
   );
 }
 
-/**
- * Actualización progresiva automática tras completar un entrenamiento:
- * - Suma XP y Puntos Cardio
- * - Ajusta sutilmente el VDOT (+0.1 a +0.6) si el usuario rinde bien con RPE moderado
- */
 export function evaluateProgressiveLevelUpdate(
   profile: UserProfile,
   workout: WorkoutSession,
@@ -1061,7 +1025,6 @@ export function evaluateProgressiveLevelUpdate(
     profile.vdot
   );
 
-  // Si completó con buena sensación (RPE <= 6) o aguantó todo el bloque, progresa el VDOT gradualmente
   let vdotDelta = 0.1;
   if (rpe <= 5 && actualDurationMinutes >= workout.durationMinutes) {
     vdotDelta = 0.4;
@@ -1132,7 +1095,6 @@ export function applyPhysicalExamResult(
     sex: profile.sex,
   });
 
-  // Promediamos con suavidad si el examen anterior era cercano, o adoptamos la marca objetiva
   const blendedVdot = Number(Math.max(20, newVdot).toFixed(1));
   const xpBonus = 220;
   const nextXp = profile.xp + xpBonus;
@@ -1149,8 +1111,8 @@ export function applyPhysicalExamResult(
   const labels: Record<PhysicalExamType, string> = {
     cooper_12min: `Test de Cooper 12 min (${rawValue} m)`,
     time_trial_5k: `Contrarreloj 5K (${rawValue} min)`,
-    rockport_walk_1600m: `Test Rockport 1.6 km (${rawValue} min, ${heartRateBpm ?? 135} ppm)`,
-    caco_continuous_test: `Test Continuo Base (${rawValue} min sin parar)`,
+    rockport_walk_1600m: `Test Rockport 1,6 km (${rawValue} min, ${heartRateBpm ?? 135} ppm)`,
+    caco_continuous_test: `Test Continuo (${rawValue} min sin parar)`,
   };
 
   const examResult: PhysicalExamResult = {
@@ -1164,7 +1126,7 @@ export function applyPhysicalExamResult(
     previousVdot: profile.vdot,
     newLevel: newLevelInfo.level,
     previousLevel: profile.level,
-    summary: `${labels[examType]} → VDOT ${blendedVdot} · Nivel ${newLevelInfo.level} (${newLevelInfo.spanishTitle})`,
+    summary: `${labels[examType]} — VDOT ${blendedVdot} · Nivel ${newLevelInfo.level} (${newLevelInfo.spanishTitle})`,
   };
 
   const updatedProfile: UserProfile = {

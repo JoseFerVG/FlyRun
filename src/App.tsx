@@ -114,7 +114,7 @@ export function App() {
     const minTimer = window.setTimeout(() => {
       timerDone = true;
       setBooting(false);
-    }, 1450);
+    }, 1250);
 
     if (demo) {
       const s: AuthSessionInfo = { ...demo, isDemoMode: true };
@@ -127,7 +127,7 @@ export function App() {
           if (fbUser) {
             const s: AuthSessionInfo = {
               uid: fbUser.uid,
-              displayName: fbUser.displayName ?? 'Atleta FlyRun',
+              displayName: fbUser.displayName ?? 'Usuario FlyRun',
               email: fbUser.email ?? '',
               photoURL: fbUser.photoURL ?? '',
               isDemoMode: false,
@@ -178,11 +178,11 @@ export function App() {
       const msg = err instanceof Error ? err.message : 'Error de autenticación';
       if (msg === 'FIREBASE_NOT_CONFIGURED') {
         setAuthError(
-          'Primero configura tus claves en "Configurar Firebase" arriba a la derecha, o usa el botón de Acceso Rápido Google Demo.'
+          'Configura primero tus claves en "Conectar Firebase" arriba a la derecha, o usa el perfil de ejemplo.'
         );
       } else {
         setAuthError(
-          `No se pudo completar Google Sign-In (${msg}). Revisa que localhost esté autorizado en Firebase Auth o usa Acceso Rápido Demo.`
+          `No se pudo completar el inicio con Google (${msg}). Comprueba los dominios autorizados en Firebase o prueba con el perfil de ejemplo.`
         );
       }
     } finally {
@@ -193,8 +193,8 @@ export function App() {
   const handleDemoLogin = async () => {
     const demoSession = {
       uid: 'demo_google_flyrun_user',
-      displayName: 'Carlos Lince',
-      email: 'carlos.lince@gmail.com',
+      displayName: 'Carlos Martín',
+      email: 'carlos.martin@gmail.com',
       photoURL: '',
     };
     saveDemoGoogleSession(demoSession);
@@ -210,7 +210,7 @@ export function App() {
     saveAll(newProfile, generated, exams, initialSteps);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
-    showToast(`¡Bienvenido al Nivel ${newProfile.level}! Coach Lince ha preparado tus próximas 4 semanas.`);
+    showToast(`Perfil guardado (Nivel ${newProfile.level}). Calendario de 4 semanas generado.`);
   };
 
   const handleCompleteWorkout = (
@@ -245,8 +245,8 @@ export function App() {
 
     saveAll(evalResult.updatedProfile, nextWorkouts, exams, fitDays);
     showToast(
-      `+${evalResult.xpEarned} XP · VDOT +${evalResult.vdotDelta}${
-        evalResult.leveledUp ? ` · ¡SUBISTE AL NIVEL ${evalResult.updatedProfile.level}!` : ''
+      `Sesión registrada: +${evalResult.xpEarned} XP, VDOT +${evalResult.vdotDelta}${
+        evalResult.leveledUp ? `. Has subido al Nivel ${evalResult.updatedProfile.level}.` : '.'
       }`
     );
   };
@@ -257,7 +257,7 @@ export function App() {
       w.id === workoutId ? swapWorkoutModality(w, modality, profile) : w
     );
     saveAll(profile, nextWorkouts, exams, fitDays);
-    showToast('Sesión adaptada manteniendo equivalencia científica en Puntos Cardio.');
+    showToast('Sesión adaptada manteniendo la equivalencia de Puntos Cardio.');
   };
 
   const handleSelectStrategy = (strategyId: string) => {
@@ -269,7 +269,7 @@ export function App() {
     };
     const nextWorkouts = generateWeeklyPlan(updatedProfile);
     saveAll(updatedProfile, nextWorkouts, exams, fitDays);
-    showToast('Estrategia aplicada y calendario regenerado con tus nuevos bloques.');
+    showToast('Estrategia aplicada y calendario actualizado.');
   };
 
   const handleSubmitExam = (
@@ -281,7 +281,6 @@ export function App() {
     if (!profile) return;
     const result = applyPhysicalExamResult(profile, examType, rawValue, secondaryValue, heartRateBpm);
     const regenerated = generateWeeklyPlan(result.updatedProfile);
-    // Preservar sesiones ya completadas
     const mergedWorkouts = regenerated.map((rw) => {
       const existing = workouts.find((w) => w.date === rw.date && w.completed);
       return existing ?? rw;
@@ -290,8 +289,8 @@ export function App() {
     saveAll(result.updatedProfile, mergedWorkouts, nextExams, fitDays);
     showToast(
       result.leveledUp
-        ? `¡Examen superado! Nuevo VDOT ${result.updatedProfile.vdot} y Nivel ${result.updatedProfile.level}!`
-        : `VDOT actualizado a ${result.updatedProfile.vdot} y ritmos recalibrados.`
+        ? `Examen registrado: nuevo VDOT ${result.updatedProfile.vdot} y Nivel ${result.updatedProfile.level}.`
+        : `VDOT actualizado a ${result.updatedProfile.vdot} y zonas recalculadas.`
     );
   };
 
@@ -303,11 +302,11 @@ export function App() {
       let syncedDays: GoogleFitDay[];
       if (session?.googleFitAccessToken) {
         syncedDays = await fetchGoogleFitLast7Days(session.googleFitAccessToken);
-        setFitNotice('Sincronizado en vivo desde Google Fit API.');
+        setFitNotice('Datos obtenidos de Google Fit.');
       } else {
         const boost = Math.round(profile.dailyStepsTarget * 1.04);
         syncedDays = buildInitialWeekSteps(boost);
-        setFitNotice('Sincronizado (Modo Demo Google Fit · conecta Firebase OAuth para datos reales del móvil).');
+        setFitNotice('Sincronizado con datos de ejemplo (conecta Google OAuth para lectura real).');
       }
       const nextBadges = profile.unlockedBadges.includes('google_fit_sync')
         ? profile.unlockedBadges
@@ -331,7 +330,7 @@ export function App() {
     const updatedToday = createManualGoogleFitUpdate(steps);
     const nextFit = [...fitDays.slice(0, -1), updatedToday];
     saveAll(profile, workouts, exams, nextFit);
-    setFitNotice(`Pasos de hoy actualizados a ${updatedToday.steps.toLocaleString('es-ES')}.`);
+    setFitNotice(`Pasos de hoy guardados: ${updatedToday.steps.toLocaleString('es-ES')}.`);
   };
 
   const handleViewedMacros = () => {
@@ -381,10 +380,10 @@ export function App() {
   const todayMacros = calculateDailyMacros(profile, todayWorkout, fitToday);
 
   const navItems: Array<{ id: NavTab; label: string; shortLabel: string; icon: typeof Compass }> = [
-    { id: 'dashboard', label: 'Centro Lince', shortLabel: 'Hoy', icon: Compass },
+    { id: 'dashboard', label: 'Hoy', shortLabel: 'Hoy', icon: Compass },
     { id: 'calendar', label: 'Calendario', shortLabel: 'Calendario', icon: Calendar },
-    { id: 'stats', label: 'Mis Datos & Examen', shortLabel: 'Examen', icon: UserCheck },
-    { id: 'strategies', label: 'Estrategias & Cardio', shortLabel: 'Cardio', icon: BookOpen },
+    { id: 'stats', label: 'Datos y Examen', shortLabel: 'Examen', icon: UserCheck },
+    { id: 'strategies', label: 'Estrategias y Cardio', shortLabel: 'Cardio', icon: BookOpen },
     { id: 'nutrition', label: 'Macros', shortLabel: 'Macros', icon: Utensils },
   ];
 
@@ -393,19 +392,13 @@ export function App() {
       <header className="top-header">
         <div className="header-inner">
           <div className="brand-mark">
-            <img
-              src="/assets/lynx/lynx-coach-hero.png"
-              alt="FlyRun Coach Lince"
-              width={42}
-              height={42}
-              className="brand-avatar"
-            />
+            <span className="brand-monogram" aria-hidden="true">FR</span>
             <div>
               <div className="brand-title">
-                FlyRun <span className="brand-badge">Nv.{levelInfo.level}</span>
+                FlyRun <span className="brand-badge">Nivel {levelInfo.level}</span>
               </div>
               <div className="muted" style={{ fontSize: '0.72rem' }}>
-                {session.isDemoMode ? 'Google Demo' : 'Google + Firebase Sync'}
+                {session.isDemoMode ? 'Perfil de ejemplo' : 'Google + Firebase'}
               </div>
             </div>
           </div>
@@ -421,7 +414,7 @@ export function App() {
                   aria-current={activeTab === item.id ? 'page' : undefined}
                   onClick={() => setActiveTab(item.id)}
                 >
-                  <Icon size={16} aria-hidden="true" />
+                  <Icon size={15} aria-hidden="true" />
                   {item.label}
                 </button>
               );
@@ -430,7 +423,7 @@ export function App() {
 
           <div className="header-actions">
             <span className="xp-chip mono">
-              <Activity size={14} aria-hidden="true" />
+              <Activity size={13} color="#186a4b" aria-hidden="true" />
               {profile.xp} XP
             </span>
             <button
@@ -445,7 +438,7 @@ export function App() {
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
             >
-              <LogOut size={16} aria-hidden="true" />
+              <LogOut size={15} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -454,22 +447,8 @@ export function App() {
       <main className="main-container">
         <div className="stack-lg">
           {toastMessage && (
-            <div
-              role="status"
-              style={{
-                background: 'rgba(16, 185, 129, 0.16)',
-                border: '1px solid rgba(16, 185, 129, 0.5)',
-                borderRadius: '14px',
-                padding: '0.75rem 1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.55rem',
-                fontWeight: 600,
-                fontSize: '0.88rem',
-                color: '#a7f3d0',
-              }}
-            >
-              <ShieldCheck size={18} aria-hidden="true" />
+            <div role="status" className="notice-banner">
+              <ShieldCheck size={17} aria-hidden="true" />
               {toastMessage}
             </div>
           )}
@@ -547,7 +526,7 @@ export function App() {
               aria-current={activeTab === item.id ? 'page' : undefined}
               onClick={() => setActiveTab(item.id)}
             >
-              <Icon size={19} aria-hidden="true" />
+              <Icon size={18} aria-hidden="true" />
               <span>{item.shortLabel}</span>
             </button>
           );

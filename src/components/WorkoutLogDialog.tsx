@@ -68,8 +68,8 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
         <div className="stack-md" style={{ padding: '1.4rem' }}>
           <div className="row-between">
             <div>
-              <span className="pill pill-emerald">Registro de Entrenamiento</span>
-              <h2 id="workout-log-title" style={{ margin: '0.35rem 0 0', fontSize: '1.2rem' }}>
+              <span className="pill pill-emerald">Registro de sesión</span>
+              <h2 id="workout-log-title" style={{ margin: '0.35rem 0 0', fontSize: '1.15rem' }}>
                 {workout.title}
               </h2>
             </div>
@@ -89,14 +89,15 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                 <label htmlFor="log-modality">Modalidad realizada</label>
                 <select
                   id="log-modality"
+                  name="logModality"
                   className="select"
                   value={modality}
                   onChange={(e) => setModality(e.target.value as CardioModality)}
                 >
-                  <option value="running">Running (Carrera)</option>
-                  <option value="cycling">Ciclismo / Bici</option>
-                  <option value="soccer">Partido de Fútbol</option>
-                  <option value="walking">Caminata Activa</option>
+                  <option value="running">Running</option>
+                  <option value="cycling">Ciclismo / Bicicleta</option>
+                  <option value="soccer">Partido de fútbol</option>
+                  <option value="walking">Caminata activa</option>
                   <option value="swimming">Natación / Elíptica</option>
                 </select>
               </div>
@@ -105,6 +106,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                 <label htmlFor="log-duration">Duración real (minutos)</label>
                 <input
                   id="log-duration"
+                  name="logDuration"
                   type="number"
                   min={5}
                   max={300}
@@ -119,6 +121,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                 <label htmlFor="log-distance">Distancia aproximada (km)</label>
                 <input
                   id="log-distance"
+                  name="logDistance"
                   type="number"
                   min={0}
                   max={100}
@@ -130,9 +133,10 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
               </div>
 
               <div className="field">
-                <label htmlFor="log-rpe">Esfuerzo Percibido RPE ({rpe}/10)</label>
+                <label htmlFor="log-rpe">Esfuerzo percibido RPE ({rpe}/10)</label>
                 <input
                   id="log-rpe"
+                  name="logRpe"
                   type="range"
                   min={1}
                   max={10}
@@ -146,7 +150,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                     ? 'Moderado / Controlado'
                     : rpe <= 8
                     ? 'Exigente / Umbral'
-                    : 'Máximo / Casi al límite'}
+                    : 'Máximo'}
                 </span>
               </div>
             </div>
@@ -155,9 +159,10 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
               <label htmlFor="log-notes">Sensaciones (opcional)</label>
               <textarea
                 id="log-notes"
+                name="logNotes"
                 rows={2}
                 className="textarea"
-                placeholder="Ej: Piernas ligeras en el bloque CaCo, buenas pulsaciones..."
+                placeholder="Ej. Buenas sensaciones en los tramos de trote, pulso estable..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -168,8 +173,8 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                 Cancelar
               </button>
               <button type="submit" className="btn btn-emerald" autoFocus>
-                <CheckCircle2 size={17} aria-hidden="true" />
-                Guardar Sesión y Actualizar Nivel
+                <CheckCircle2 size={16} aria-hidden="true" />
+                Guardar entrenamiento
               </button>
             </div>
           </form>
