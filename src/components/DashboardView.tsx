@@ -27,7 +27,7 @@ import {
   type DailyReadiness,
 } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
-import { AnimatedNumber, BiometricRing, SpotlightCard } from './MotionPrimitives';
+import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 import { assetUrl } from '../services/assets';
 
 function getSessionBannerPhoto(workout?: WorkoutSession): { src: string; alt: string; badge: string } {
@@ -89,6 +89,7 @@ interface DashboardViewProps {
   todayMacros: MacroRecommendation;
   fitSyncLoading: boolean;
   fitNotice: string | null;
+  hasGoogleFitOAuth: boolean;
   readiness: DailyReadiness;
   onReadinessChange: (r: DailyReadiness) => void;
   onStartTimer: (workout: WorkoutSession) => void;
@@ -110,6 +111,7 @@ export function DashboardView({
   todayMacros,
   fitSyncLoading,
   fitNotice,
+  hasGoogleFitOAuth,
   readiness,
   onReadinessChange,
   onStartTimer,
@@ -146,53 +148,33 @@ export function DashboardView({
     return () => window.removeEventListener('devicemotion', handleMotion);
   }, [livePedometerOn, fitToday?.steps, onManualStepsUpdate]);
 
-  const isGoogleFitConnected =
-    profile.unlockedBadges.includes('google_fit_sync') || fitToday?.source === 'google_fit_api';
+  const isRealOAuthConnected = hasGoogleFitOAuth && fitToday?.source === 'google_fit_api';
+  const isSyncedRecently = isRealOAuthConnected || profile.unlockedBadges.includes('google_fit_sync');
   const todayZoneInfo = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR).find(
     (z) => z.id === todayWorkout?.targetZone
   );
   const stepsPct = Math.min(100, Math.round(((fitToday?.steps ?? 0) / Math.max(1000, profile.dailyStepsTarget)) * 100));
   const balance8020 = calculateWeekly8020Balance(workouts);
-  const todayChargePct = todayWorkout?.completed
-    ? 100
-    : Math.min(100, Math.max(12, Math.round(((todayWorkout?.cardioPoints ?? 0) / 110) * 100)));
+
+  const toggleLivePedometer = async () => {
+    if (!livePedometerOn) {
+      const dm = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
+      if (typeof dm?.requestPermission === 'function') {
+        try {
+          const perm = await dm.requestPermission();
+          if (perm !== 'granted') return;
+        } catch {
+          return;
+        }
+      }
+    }
+    setLivePedometerOn((v) => !v);
+  };
 
   return (
     <div className="stack-lg">
-      <SpotlightCard as="section" staggerIndex={0} className="stack-sm" aria-label="Telemetría biométrica diaria">
-        <div className="row-between">
-          <span className="pill pill-cyan">Instrumentación biométrica</span>
-          <span className="muted mono" style={{ fontSize: '0.75rem' }}>
-            Nivel {profile.level} · VDOT {profile.vdot}
-          </span>
-        </div>
-        <div className="biometric-rings-grid">
-          <BiometricRing
-            percent={todayChargePct}
-            label="Carga de hoy"
-            valueText={`${todayWorkout?.cardioPoints ?? 0} PC`}
-            subText={todayWorkout?.completed ? 'Sesión completada' : `${todayWorkout?.durationMinutes ?? 0} min planificados`}
-            color="var(--accent)"
-          />
-          <BiometricRing
-            percent={balance8020.lowPct}
-            label="Equilibrio 80/20"
-            valueText={`${balance8020.lowPct}%`}
-            subText={`${balance8020.lowMinutes} min suave · ${balance8020.highMinutes} int.`}
-            color="var(--pine)"
-          />
-          <BiometricRing
-            percent={stepsPct}
-            label="Pasos Google Fit"
-            valueText={`${stepsPct}%`}
-            subText={`${(fitToday?.steps ?? 0).toLocaleString('es-ES')} / ${profile.dailyStepsTarget.toLocaleString('es-ES')}`}
-            color="var(--cobalt)"
-          />
-        </div>
-      </SpotlightCard>
-
       <div className="grid-2">
-        <SpotlightCard staggerIndex={1} className="stack-md" aria-label="Rutina de Hoy">
+        <SpotlightCard staggerIndex={0} className="stack-md" aria-label="Rutina de Hoy">
           <div className="row-between">
             <span className="pill pill-amber">Hoy · {todayWorkout?.strategyTag ?? 'Descanso'}</span>
             {todayWorkout?.completed ? (
@@ -212,7 +194,7 @@ export function DashboardView({
               {(() => {
                 const photo = getSessionBannerPhoto(todayWorkout);
                 return (
-                  <div className="editorial-photo-banner" style={{ blockSize: '138px' }}>
+                  <div className="editorial-photo-banner" style={{ blockSize: '132px' }}>
                     <img
                       src={photo.src}
                       alt={photo.alt}
@@ -223,7 +205,7 @@ export function DashboardView({
                     />
                     <div className="editorial-photo-scrim">
                       <span className="editorial-photo-caption">{photo.badge}</span>
-                      <span className="pill mono">{todayWorkout.targetZone}</span>
+                      <span className="pill mono">{todayWorkout.targetZone} · {getModalityLabel(todayWorkout.modality)}</span>
                     </div>
                   </div>
                 );
@@ -236,12 +218,92 @@ export function DashboardView({
                 </p>
               </div>
 
-              {/* Check-in diario de fatiga / sensaciones */}
+              <WorkoutVisualBar blocks={todayWorkout.blocks} />
+
+              <div className="grid-3" style={{ gap: '0.6rem' }}>
+                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>Duración</div>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
+                    <AnimatedNumber value={todayWorkout.durationMinutes} suffix=" min" />
+                  </div>
+                </div>
+                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>Zona / Ritmo</div>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '0.88rem' }}>
+                    {todayWorkout.targetZone} · {todayWorkout.targetPace}
+                  </div>
+                  {todayZoneInfo && todayWorkout.modality === 'running' && todayWorkout.sessionType !== 'rest' && (
+                    <div className="muted mono" style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
+                      {todayZoneInfo.speedKmhFormatted} · {todayZoneInfo.speedKmMinFormatted}
+                    </div>
+                  )}
+                </div>
+                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
+                  <div className="muted" style={{ fontSize: '0.72rem' }}>Carga metabólica</div>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
+                    <AnimatedNumber value={todayWorkout.metMinutes} suffix=" MET-m" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Acciones principales directamente visibles */}
+              <div className="row-wrap" style={{ justifyContent: 'space-between' }}>
+                {!todayWorkout.completed && todayWorkout.blocks.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: '1 1 170px' }}
+                    onClick={() => onStartTimer(todayWorkout)}
+                  >
+                    <Timer size={16} weight="duotone" aria-hidden="true" />
+                    Cronómetro guiado
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
+                  style={{ flex: '1 1 180px' }}
+                  onClick={() => onCompleteWorkout(todayWorkout)}
+                >
+                  <CheckCircle size={17} weight="duotone" aria-hidden="true" />
+                  {todayWorkout.completed ? 'Editar registro' : 'Completar sesión'}
+                </button>
+              </div>
+
+              {todayWorkout.blocks.length > 0 && (
+                <details className="faq-details" style={{ padding: '0.65rem 0.85rem' }}>
+                  <summary style={{ fontSize: '0.84rem' }}>
+                    Ver estructura de {todayWorkout.blocks.length} bloques ({todayWorkout.durationMinutes} min)
+                  </summary>
+                  <div className="stack-sm" style={{ marginTop: '0.65rem' }}>
+                    {todayWorkout.blocks.map((block, idx) => (
+                      <div
+                        key={`${block.label}-${idx}`}
+                        className="inset-panel"
+                        style={{ padding: '0.55rem 0.75rem' }}
+                      >
+                        <div className="row-between">
+                          <strong style={{ fontSize: '0.84rem' }}>{block.label}</strong>
+                          <span className="pill mono" style={{ fontSize: '0.7rem' }}>
+                            {block.durationMinutes} min · {block.zone}
+                          </span>
+                        </div>
+                        <div style={{ color: 'var(--accent)', fontSize: '0.76rem', fontWeight: 600 }}>{block.intensity}</div>
+                        <p className="muted" style={{ margin: '0.18rem 0 0', fontSize: '0.78rem' }}>
+                          {block.description}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              {/* Check-in de fatiga y adaptación */}
               {!todayWorkout.completed && todayWorkout.sessionType !== 'rest' && (
-                <div className="inset-panel stack-sm" style={{ padding: '0.62rem 0.78rem' }}>
+                <div className="inset-panel stack-sm" style={{ padding: '0.65rem 0.8rem' }}>
                   <div className="row-between">
                     <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
-                      ¿Cómo te sientes hoy antes de salir?
+                      Sensación hoy
                     </span>
                     <div className="segmented-group" role="group" aria-label="Estado de fatiga diaria">
                       {(
@@ -263,149 +325,72 @@ export function DashboardView({
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
 
-              <WorkoutVisualBar blocks={todayWorkout.blocks} />
-
-              <div className="grid-3" style={{ gap: '0.6rem' }}>
-                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-                  <div className="muted" style={{ fontSize: '0.72rem' }}>Duración</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
-                    <AnimatedNumber value={todayWorkout.durationMinutes} suffix=" min" />
-                  </div>
-                </div>
-                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-                  <div className="muted" style={{ fontSize: '0.72rem' }}>Zona / Ritmo</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '0.86rem' }}>
-                    {todayWorkout.targetZone} · {todayWorkout.targetPace}
-                  </div>
-                  {todayZoneInfo && todayWorkout.modality === 'running' && todayWorkout.sessionType !== 'rest' && (
-                    <div className="muted mono" style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
-                      {todayZoneInfo.speedKmMinFormatted}
-                    </div>
-                  )}
-                </div>
-                <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-                  <div className="muted" style={{ fontSize: '0.72rem' }}>Carga metabólica</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
-                    <AnimatedNumber value={todayWorkout.metMinutes} suffix=" MET-m" />
-                  </div>
-                </div>
-              </div>
-
-              {todayWorkout.sessionType === 'caco' && !todayWorkout.completed && (
-                <div className="row-between">
-                  <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-                    Proporción CaCo:
-                  </span>
-                  <div className="segmented-group" role="group" aria-label="Proporción correr y andar">
-                    {[
-                      [2, 6],
-                      [3, 5],
-                      [4, 4],
-                      [5, 2],
-                    ].map(([r, w]) => {
-                      const activeRatio = todayWorkout.strategyTag.includes(`${r}'/${w}'`);
-                      return (
-                        <button
-                          key={`${r}-${w}`}
-                          type="button"
-                          aria-pressed={activeRatio}
-                          className="segmented-btn is-accent mono"
-                          onClick={() => onChangeCaCoRatio(todayWorkout.id, r, w)}
-                        >
-                          {r}&apos; / {w}&apos;
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="stack-sm">
-                {todayWorkout.blocks.map((block, idx) => (
-                  <div
-                    key={`${block.label}-${idx}`}
-                    className="inset-panel"
-                    style={{ padding: '0.65rem 0.85rem' }}
-                  >
+                  {todayWorkout.sessionType === 'caco' && (
                     <div className="row-between">
-                      <strong style={{ fontSize: '0.88rem' }}>{block.label}</strong>
-                      <span className="pill mono" style={{ fontSize: '0.72rem' }}>
-                        {block.durationMinutes} min · {block.zone}
+                      <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
+                        Proporción CaCo
                       </span>
+                      <div className="segmented-group" role="group" aria-label="Proporción correr y andar">
+                        {[
+                          [2, 6],
+                          [3, 5],
+                          [4, 4],
+                          [5, 2],
+                        ].map(([r, w]) => {
+                          const activeRatio = todayWorkout.strategyTag.includes(`${r}'/${w}'`);
+                          return (
+                            <button
+                              key={`${r}-${w}`}
+                              type="button"
+                              aria-pressed={activeRatio}
+                              className="segmented-btn is-accent mono"
+                              onClick={() => onChangeCaCoRatio(todayWorkout.id, r, w)}
+                            >
+                              {r}&apos; / {w}&apos;
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div style={{ color: 'var(--accent)', fontSize: '0.78rem', fontWeight: 600 }}>{block.intensity}</div>
-                    <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
-                      {block.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  )}
 
-              {!todayWorkout.completed && todayWorkout.sessionType !== 'rest' && (
-                <div className="stack-sm">
-                  <div className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-                    Cambiar modalidad hoy manteniendo equivalencia de carga:
-                  </div>
-                  <div className="segmented-group" role="group" aria-label="Modalidad alternativa de hoy">
-                    <button
-                      type="button"
-                      aria-pressed={todayWorkout.modality === 'running'}
-                      className="segmented-btn is-accent"
-                      onClick={() => onSwapTodayModality(todayWorkout.id, 'running')}
-                    >
-                      <PersonSimpleRun size={14} weight="duotone" aria-hidden="true" />
-                      Running
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={todayWorkout.modality === 'cycling'}
-                      className="segmented-btn is-accent"
-                      onClick={() => onSwapTodayModality(todayWorkout.id, 'cycling')}
-                    >
-                      <Bicycle size={14} weight="duotone" aria-hidden="true" />
-                      Bicicleta
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={todayWorkout.modality === 'soccer'}
-                      className="segmented-btn is-accent"
-                      onClick={() => onSwapTodayModality(todayWorkout.id, 'soccer')}
-                    >
-                      <SoccerBall size={14} weight="duotone" aria-hidden="true" />
-                      Partido de fútbol
-                    </button>
+                  <div className="row-between">
+                    <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
+                      Cambiar deporte
+                    </span>
+                    <div className="segmented-group" role="group" aria-label="Modalidad alternativa de hoy">
+                      <button
+                        type="button"
+                        aria-pressed={todayWorkout.modality === 'running'}
+                        className="segmented-btn is-accent"
+                        onClick={() => onSwapTodayModality(todayWorkout.id, 'running')}
+                      >
+                        <PersonSimpleRun size={14} weight="duotone" aria-hidden="true" />
+                        Running
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={todayWorkout.modality === 'cycling'}
+                        className="segmented-btn is-accent"
+                        onClick={() => onSwapTodayModality(todayWorkout.id, 'cycling')}
+                      >
+                        <Bicycle size={14} weight="duotone" aria-hidden="true" />
+                        Bicicleta
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={todayWorkout.modality === 'soccer'}
+                        className="segmented-btn is-accent"
+                        onClick={() => onSwapTodayModality(todayWorkout.id, 'soccer')}
+                      >
+                        <SoccerBall size={14} weight="duotone" aria-hidden="true" />
+                        Fútbol
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
-
-              <div className="row-between">
-                <span className="muted" style={{ fontSize: '0.8rem' }}>
-                  Modalidad: <strong>{getModalityLabel(todayWorkout.modality)}</strong>
-                </span>
-                <div className="row-wrap">
-                  {!todayWorkout.completed && todayWorkout.blocks.length > 0 && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => onStartTimer(todayWorkout)}
-                    >
-                      <Timer size={15} weight="duotone" aria-hidden="true" />
-                      Cronómetro guiado
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
-                    onClick={() => onCompleteWorkout(todayWorkout)}
-                  >
-                    <CheckCircle size={17} weight="duotone" aria-hidden="true" />
-                    {todayWorkout.completed ? 'Editar registro' : 'Completar sesión'}
-                  </button>
-                </div>
-              </div>
             </>
           ) : (
             <p className="muted">No hay sesión registrada para hoy.</p>
@@ -413,7 +398,7 @@ export function DashboardView({
         </SpotlightCard>
 
         <div className="stack-md">
-          <SpotlightCard staggerIndex={2} className="stack-md" aria-label="Rutina de Mañana">
+          <SpotlightCard staggerIndex={1} className="stack-md" aria-label="Rutina de Mañana">
             <div className="row-between">
               <span className="pill pill-cyan">
                 <CalendarBlank size={14} weight="duotone" aria-hidden="true" />
@@ -442,7 +427,7 @@ export function DashboardView({
                 <div className="row-wrap">
                   <span className="pill mono">{tomorrowWorkout.durationMinutes} min</span>
                   <span className="pill mono">{tomorrowWorkout.targetPace}</span>
-                  <span className="pill pill-emerald mono">{tomorrowWorkout.cardioPoints} Puntos Cardio</span>
+                  <span className="pill pill-emerald mono">{tomorrowWorkout.cardioPoints} PC</span>
                 </div>
 
                 <p className="inset-panel secondary" style={{ margin: 0, fontSize: '0.84rem' }}>
@@ -452,8 +437,7 @@ export function DashboardView({
             ) : null}
           </SpotlightCard>
 
-          {/* Balance 80/20 semanal + actividad libre */}
-          <SpotlightCard staggerIndex={3} className="stack-sm" aria-label="Balance semanal 80/20">
+          <SpotlightCard staggerIndex={2} className="stack-sm" aria-label="Balance semanal 80/20">
             <div className="row-between">
               <div className="row-wrap">
                 <span className="duotone-icon-box is-pine" style={{ inlineSize: '30px', blockSize: '30px' }}>
@@ -463,7 +447,7 @@ export function DashboardView({
               </div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={onLogExtraActivity}>
                 <PlusCircle size={15} weight="duotone" aria-hidden="true" />
-                Registrar actividad libre
+                Actividad libre
               </button>
             </div>
 
@@ -482,7 +466,7 @@ export function DashboardView({
             </div>
           </SpotlightCard>
 
-          <SpotlightCard staggerIndex={4} className="stack-md" aria-label="Integración Google Fit">
+          <SpotlightCard staggerIndex={3} className="stack-md" aria-label="Integración Google Fit">
             <div className="row-between">
               <div className="row-wrap">
                 <span className="duotone-icon-box is-pine">
@@ -491,13 +475,17 @@ export function DashboardView({
                 <div>
                   <div className="row-wrap" style={{ gap: '0.45rem' }}>
                     <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Google Fit · Pasos diarios</h2>
-                    {isGoogleFitConnected ? (
+                    {isRealOAuthConnected ? (
                       <span className="pill pill-emerald" style={{ fontSize: '0.7rem' }}>
-                        Conectado con Google Fit
+                        Google Fit conectado
+                      </span>
+                    ) : isSyncedRecently ? (
+                      <span className="pill pill-cyan" style={{ fontSize: '0.7rem' }}>
+                        Sincronización activa
                       </span>
                     ) : (
                       <span className="pill" style={{ fontSize: '0.7rem' }}>
-                        Sin conectar
+                        Sin sincronizar
                       </span>
                     )}
                   </div>
@@ -509,15 +497,15 @@ export function DashboardView({
 
               <button
                 type="button"
-                className={`btn btn-sm ${isGoogleFitConnected ? 'btn-secondary' : 'btn-emerald'}`}
+                className={`btn btn-sm ${isSyncedRecently ? 'btn-secondary' : 'btn-emerald'}`}
                 onClick={onSyncGoogleFit}
                 disabled={fitSyncLoading}
               >
                 <ArrowsClockwise size={15} weight="duotone" aria-hidden="true" />
                 {fitSyncLoading
                   ? 'Conectando…'
-                  : isGoogleFitConnected
-                  ? 'Resincronizar Google Fit'
+                  : isSyncedRecently
+                  ? 'Resincronizar'
                   : 'Conectar Google Fit'}
               </button>
             </div>
@@ -580,82 +568,71 @@ export function DashboardView({
               })}
             </div>
 
-            <div className="row-wrap">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm mono"
-                onClick={() => onManualStepsUpdate((fitToday?.steps ?? 0) + 1000)}
-              >
-                +1.000 pasos
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm mono"
-                onClick={() => onManualStepsUpdate((fitToday?.steps ?? 0) + 2500)}
-              >
-                +2.500 pasos
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => onManualStepsUpdate(Math.max(fitToday?.steps ?? 0, profile.dailyStepsTarget))}
-              >
-                Cumplir meta hoy
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm ${livePedometerOn ? 'btn-emerald' : 'btn-ghost'}`}
-                onClick={() => setLivePedometerOn((v) => !v)}
-              >
-                {livePedometerOn ? 'Podómetro en vivo: Activo' : 'Activar podómetro sensor'}
-              </button>
-            </div>
+            {fitNotice && (
+              <div className="muted" style={{ fontSize: '0.77rem', color: 'var(--pine)', fontWeight: 500 }}>
+                {fitNotice}
+              </div>
+            )}
 
-            <div className="row-wrap">
-              <label htmlFor="manual-fit-steps" className="sr-only">
-                Pasos diarios de hoy
-              </label>
-              <input
-                id="manual-fit-steps"
-                name="manualFitSteps"
-                type="number"
-                inputMode="numeric"
-                className="input mono"
-                style={{ inlineSize: '140px', padding: '0.4rem 0.65rem' }}
-                min={0}
-                max={50000}
-                step={1}
-                value={stepsInput}
-                onChange={(e) => setStepsInput(Number(e.target.value))}
-              />
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => onManualStepsUpdate(stepsInput)}
-              >
-                Actualizar pasos de hoy
-              </button>
-              {fitNotice && <span style={{ color: 'var(--pine)', fontSize: '0.78rem', fontWeight: 600 }}>{fitNotice}</span>}
-            </div>
+            <details className="faq-details" style={{ padding: '0.58rem 0.78rem' }}>
+              <summary style={{ fontSize: '0.8rem' }}>Registro manual o podómetro de movimiento</summary>
+              <div className="stack-sm" style={{ marginTop: '0.6rem' }}>
+                <div className="row-wrap" style={{ justifyContent: 'space-between' }}>
+                  <div className="row-wrap" style={{ gap: '0.4rem' }}>
+                    <label htmlFor="manual-fit-steps" className="sr-only">
+                      Pasos diarios de hoy
+                    </label>
+                    <input
+                      id="manual-fit-steps"
+                      name="manualFitSteps"
+                      type="number"
+                      inputMode="numeric"
+                      className="input mono"
+                      style={{ inlineSize: '115px', padding: '0.35rem 0.6rem', minBlockSize: '34px' }}
+                      min={0}
+                      max={50000}
+                      step={100}
+                      value={stepsInput}
+                      onChange={(e) => setStepsInput(Number(e.target.value))}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => onManualStepsUpdate(stepsInput)}
+                    >
+                      Guardar pasos
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`btn btn-sm ${livePedometerOn ? 'btn-emerald' : 'btn-ghost'}`}
+                    onClick={() => void toggleLivePedometer()}
+                  >
+                    {livePedometerOn ? 'Sensor activo (contando)' : 'Podómetro móvil'}
+                  </button>
+                </div>
+              </div>
+            </details>
           </SpotlightCard>
         </div>
       </div>
 
       <div className="grid-2">
-        <SpotlightCard staggerIndex={5} className="stack-sm">
+        <SpotlightCard staggerIndex={4} className="stack-sm">
           <div className="row-between">
             <div className="row-wrap">
               <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
                 <CookingPot size={16} weight="duotone" aria-hidden="true" />
               </span>
-              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición recomendada hoy (macros)</h2>
+              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición recomendada hoy</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('nutrition')}>
-              Ver reparto por comidas
+              Ver reparto en 4 comidas
             </button>
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-            {todayMacros.dayTypeLabel} · Estimación diaria:{' '}
+            {todayMacros.dayTypeLabel} ·{' '}
             <strong className="mono">
               <AnimatedNumber value={todayMacros.calories} locale suffix=" kcal" />
             </strong>
@@ -676,25 +653,25 @@ export function DashboardView({
               <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.proteinPerKg} g/kg</div>
             </div>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Grasas</div>
+              <div className="muted" style={{ fontSize: '0.72rem' }}>Grasas · Agua</div>
               <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--cobalt)' }}>
                 <AnimatedNumber value={todayMacros.fatsGrams} suffix=" g" />
               </div>
-              <div className="muted mono" style={{ fontSize: '0.72rem' }}>Agua: {todayMacros.hydrationLiters} L</div>
+              <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.hydrationLiters} L/día</div>
             </div>
           </div>
         </SpotlightCard>
 
-        <SpotlightCard staggerIndex={6} className="stack-sm">
+        <SpotlightCard staggerIndex={5} className="stack-sm">
           <div className="row-between">
             <div className="row-wrap">
               <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
                 <Trophy size={16} weight="duotone" aria-hidden="true" />
               </span>
-              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Progreso y constancia</h2>
+              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Progreso del plan</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('stats')}>
-              Marcas, zonas y examen
+              Zonas y examen
             </button>
           </div>
           <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
@@ -711,15 +688,12 @@ export function DashboardView({
               </div>
             </div>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Plan semanal</div>
+              <div className="muted" style={{ fontSize: '0.72rem' }}>Frecuencia</div>
               <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                {profile.trainingDaysPerWeek} días/sem
+                {profile.trainingDaysPerWeek} d/sem
               </div>
             </div>
           </div>
-          <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
-            Cada sesión registrada ajusta progresivamente tu VDOT según la sensación de esfuerzo (RPE).
-          </p>
         </SpotlightCard>
       </div>
     </div>

@@ -148,6 +148,25 @@ export function formatSpeedKmMin(secPerKm: number): string {
   return `${secPerKmToKmPerMin(secPerKm).toFixed(3).replace('.', ',')} km/min`;
 }
 
+export function secPerKmToPaceMinSec(secPerKm: number): { mins: number; secs: number } {
+  const clamped = Math.max(120, Math.min(900, Math.round(secPerKm)));
+  return {
+    mins: Math.floor(clamped / 60),
+    secs: clamped % 60,
+  };
+}
+
+export function paceMinSecToSecPerKm(mins: number, secs: number): number {
+  const m = Math.max(2, Math.min(20, Math.floor(Number.isFinite(mins) ? mins : 6)));
+  const s = Math.max(0, Math.min(59, Math.round(Number.isFinite(secs) ? secs : 0)));
+  return m * 60 + s;
+}
+
+export function vdotToEstimatedKmh(vdot: number): number {
+  const cooperMeters = 504.9 + 44.73 * Math.max(20, Math.min(72, vdot));
+  return Number(((cooperMeters / 1000) * 5).toFixed(1));
+}
+
 export function convertSpeedValue(
   value: number,
   fromUnit: SpeedUnit
@@ -339,9 +358,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '60–74% VO2max',
       paceMinSecPerKm: z1Fast,
       paceMaxSecPerKm: z1Slow,
-      paceFormatted: `${formatPace(z1Fast)}–${formatPace(z1Slow)} /km (${secPerKmToKmh(z1Slow)}–${secPerKmToKmh(z1Fast)} km/h)`,
-      speedKmhFormatted: `${secPerKmToKmh(z1Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z1Fast).toFixed(1).replace('.', ',')} km/h`,
-      speedKmMinFormatted: `${secPerKmToKmPerMin(z1Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z1Fast).toFixed(3).replace('.', ',')} km/min`,
+      paceFormatted: `${formatPace(z1Fast)}–${formatPace(z1Slow)} /km`,
+      speedKmhFormatted: `${secPerKmToKmh(z1Slow).toFixed(1).replace('.', ',')}–${secPerKmToKmh(z1Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z1Slow).toFixed(3).replace('.', ',')}–${secPerKmToKmPerMin(z1Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.58),
       hrMax: hrAt(0.72),
       purpose: 'Base aeróbica, capilarización y recuperación sin fatiga (80% del volumen semanal).',
@@ -354,9 +373,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '75–82% VO2max',
       paceMinSecPerKm: z2Fast,
       paceMaxSecPerKm: z2Slow,
-      paceFormatted: `${formatPace(z2Fast)}–${formatPace(z2Slow)} /km (${secPerKmToKmh(z2Slow)}–${secPerKmToKmh(z2Fast)} km/h)`,
-      speedKmhFormatted: `${secPerKmToKmh(z2Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z2Fast).toFixed(1).replace('.', ',')} km/h`,
-      speedKmMinFormatted: `${secPerKmToKmPerMin(z2Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z2Fast).toFixed(3).replace('.', ',')} km/min`,
+      paceFormatted: `${formatPace(z2Fast)}–${formatPace(z2Slow)} /km`,
+      speedKmhFormatted: `${secPerKmToKmh(z2Slow).toFixed(1).replace('.', ',')}–${secPerKmToKmh(z2Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z2Slow).toFixed(3).replace('.', ',')}–${secPerKmToKmPerMin(z2Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.73),
       hrMax: hrAt(0.81),
       purpose: 'Ritmo sostenido cómodo y economía de glucógeno.',
@@ -369,9 +388,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '83–89% VO2max',
       paceMinSecPerKm: z3Fast,
       paceMaxSecPerKm: z3Slow,
-      paceFormatted: `${formatPace(z3Fast)}–${formatPace(z3Slow)} /km (${secPerKmToKmh(z3Slow)}–${secPerKmToKmh(z3Fast)} km/h)`,
-      speedKmhFormatted: `${secPerKmToKmh(z3Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z3Fast).toFixed(1).replace('.', ',')} km/h`,
-      speedKmMinFormatted: `${secPerKmToKmPerMin(z3Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z3Fast).toFixed(3).replace('.', ',')} km/min`,
+      paceFormatted: `${formatPace(z3Fast)}–${formatPace(z3Slow)} /km`,
+      speedKmhFormatted: `${secPerKmToKmh(z3Slow).toFixed(1).replace('.', ',')}–${secPerKmToKmh(z3Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z3Slow).toFixed(3).replace('.', ',')}–${secPerKmToKmPerMin(z3Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.82),
       hrMax: hrAt(0.88),
       purpose: 'Eleva tu segundo umbral (VT2) para sostener ritmos vivos sin saturar las piernas.',
@@ -384,9 +403,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '94–100% VO2max',
       paceMinSecPerKm: z4Fast,
       paceMaxSecPerKm: z4Slow,
-      paceFormatted: `${formatPace(z4Fast)}–${formatPace(z4Slow)} /km (${secPerKmToKmh(z4Slow)}–${secPerKmToKmh(z4Fast)} km/h)`,
-      speedKmhFormatted: `${secPerKmToKmh(z4Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z4Fast).toFixed(1).replace('.', ',')} km/h`,
-      speedKmMinFormatted: `${secPerKmToKmPerMin(z4Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z4Fast).toFixed(3).replace('.', ',')} km/min`,
+      paceFormatted: `${formatPace(z4Fast)}–${formatPace(z4Slow)} /km`,
+      speedKmhFormatted: `${secPerKmToKmh(z4Slow).toFixed(1).replace('.', ',')}–${secPerKmToKmh(z4Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z4Slow).toFixed(3).replace('.', ',')}–${secPerKmToKmPerMin(z4Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.89),
       hrMax: hrAt(0.96),
       purpose: 'Mejora el volumen sistólico cardíaco y tu consumo máximo de oxígeno.',
@@ -399,9 +418,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '>104% VO2max',
       paceMinSecPerKm: z5Fast,
       paceMaxSecPerKm: z5Slow,
-      paceFormatted: `${formatPace(z5Fast)}–${formatPace(z5Slow)} /km (${secPerKmToKmh(z5Slow)}–${secPerKmToKmh(z5Fast)} km/h)`,
-      speedKmhFormatted: `${secPerKmToKmh(z5Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z5Fast).toFixed(1).replace('.', ',')} km/h`,
-      speedKmMinFormatted: `${secPerKmToKmPerMin(z5Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z5Fast).toFixed(3).replace('.', ',')} km/min`,
+      paceFormatted: `${formatPace(z5Fast)}–${formatPace(z5Slow)} /km`,
+      speedKmhFormatted: `${secPerKmToKmh(z5Slow).toFixed(1).replace('.', ',')}–${secPerKmToKmh(z5Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z5Slow).toFixed(3).replace('.', ',')}–${secPerKmToKmPerMin(z5Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.95),
       hrMax: maxHR,
       purpose: 'Eficiencia mecánica de zancada y velocidad punta.',

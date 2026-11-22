@@ -28,7 +28,8 @@ interface AuthLandingProps {
   onInstallApp?: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
-  authLoading: boolean;
+  googleLoading: boolean;
+  demoLoading: boolean;
   authError: string | null;
 }
 
@@ -65,7 +66,8 @@ export function AuthLanding({
   onInstallApp,
   theme,
   onToggleTheme,
-  authLoading,
+  googleLoading,
+  demoLoading,
   authError,
 }: AuthLandingProps) {
   return (
@@ -101,7 +103,15 @@ export function AuthLanding({
                   <img src={assetUrl('images/avatar-javier.jpg')} alt="" width={20} height={20} />
                   <img src={assetUrl('images/avatar-elena.jpg')} alt="" width={20} height={20} />
                 </span>
-                7 Perfiles
+                Casos por nivel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => void onGoogleLogin()}
+                disabled={googleLoading || demoLoading}
+              >
+                Entrar gratis
               </button>
               <button
                 type="button"
@@ -168,20 +178,20 @@ export function AuthLanding({
                   type="button"
                   className="btn btn-google"
                   onClick={() => void onGoogleLogin()}
-                  disabled={authLoading}
+                  disabled={googleLoading || demoLoading}
                 >
                   <GoogleLogoMark />
-                  {authLoading ? 'Conectando con Google…' : 'Continuar con Google'}
+                  {googleLoading ? 'Conectando con Google…' : 'Continuar con Google'}
                 </button>
 
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => void onDemoLogin()}
-                  disabled={authLoading}
+                  disabled={googleLoading || demoLoading}
                 >
                   <ArrowRight size={17} weight="bold" aria-hidden="true" />
-                  Ver demo interactiva
+                  {demoLoading ? 'Cargando examen…' : 'Probar examen inicial'}
                 </button>
               </div>
 
@@ -444,7 +454,7 @@ export function AuthLanding({
                     className="btn btn-primary"
                     style={{ inlineSize: '100%' }}
                     onClick={() => void onGoogleLogin()}
-                    disabled={authLoading}
+                    disabled={googleLoading || demoLoading}
                   >
                     <GoogleLogoMark />
                     Empezar gratis con Google
@@ -490,9 +500,9 @@ export function AuthLanding({
                     className="btn btn-secondary"
                     style={{ inlineSize: '100%' }}
                     onClick={() => void onDemoLogin()}
-                    disabled={authLoading}
+                    disabled={googleLoading || demoLoading}
                   >
-                    Probar funciones ahora en la demo
+                    Probar examen de nivel ahora
                   </button>
                 </div>
               </SpotlightCard>
@@ -503,13 +513,13 @@ export function AuthLanding({
           <section id="opiniones" className="stack-md" aria-label="Experiencias reales de usuarios">
             <div className="row-between">
               <div>
-                <span className="pill pill-amber">Perfiles validados</span>
+                <span className="pill pill-amber">Atletas por nivel</span>
                 <h2 style={{ margin: '0.35rem 0 0', fontSize: '1.35rem', letterSpacing: '-0.02em' }}>
-                  Cómo usan FlyRun distintos perfiles de corredor
+                  Cómo adapta FlyRun el plan según tu nivel y deporte
                 </h2>
               </div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPersonas}>
-                Ver los 7 perfiles completos
+                Ver todos los perfiles
               </button>
             </div>
 
@@ -546,7 +556,7 @@ export function AuthLanding({
                       className="btn btn-ghost btn-sm"
                       onClick={() => onSelectPersona(persona)}
                     >
-                      Entrar como {persona.name.split(' ')[0]}
+                      Explorar demo con este nivel
                       <ArrowRight size={14} weight="bold" aria-hidden="true" />
                     </button>
                   </div>

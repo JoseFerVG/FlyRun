@@ -97,24 +97,31 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
           ))}
         </div>
 
-        <div className="grid-3">
-          <div className="field">
-            <label htmlFor="eq-mod">Actividad de referencia</label>
-            <select
-              id="eq-mod"
-              name="eqModality"
-              className="select"
-              value={modality}
-              onChange={(e) => setModality(e.target.value as CardioModality)}
-            >
-              <option value="running">Running (Principal)</option>
-              <option value="cycling">Ciclismo / Bicicleta</option>
-              <option value="soccer">Partido de fútbol</option>
-              <option value="walking">Caminata rápida</option>
-              <option value="swimming">Natación / Elíptica</option>
-            </select>
+        <div className="row-wrap" style={{ justifyContent: 'space-between', gap: '0.75rem' }}>
+          <div className="segmented-group" role="group" aria-label="Disciplina de comparación">
+            {(
+              [
+                { id: 'running', label: 'Running' },
+                { id: 'cycling', label: 'Ciclismo / Bici' },
+                { id: 'soccer', label: 'Partido de fútbol' },
+                { id: 'walking', label: 'Caminata rápida' },
+                { id: 'swimming', label: 'Natación / Elíptica' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                aria-pressed={modality === opt.id}
+                className="segmented-btn is-accent"
+                onClick={() => setModality(opt.id)}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
+        </div>
 
+        <div className="grid-2">
           <div className="field">
             <label htmlFor="eq-dur">Duración ({duration} min)</label>
             <input

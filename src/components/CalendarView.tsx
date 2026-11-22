@@ -34,7 +34,6 @@ export function CalendarView({
 }: CalendarViewProps) {
   const [selectedId, setSelectedId] = useState<string>(workouts[0]?.id ?? '');
   const [activeWeek, setActiveWeek] = useState<number>(1);
-  const [swapTargetId, setSwapTargetId] = useState<string>('');
 
   const weekWorkouts = workouts.slice((activeWeek - 1) * 7, activeWeek * 7);
   const selected = weekWorkouts.find((w) => w.id === selectedId) ?? weekWorkouts[0] ?? workouts[0];
@@ -142,7 +141,6 @@ export function CalendarView({
                 className={classes}
                 onClick={() => {
                   setSelectedId(w.id);
-                  setSwapTargetId('');
                 }}
               >
                 <div className="row-between" style={{ inlineSize: '100%' }}>
@@ -264,10 +262,11 @@ export function CalendarView({
               {!selected.isExamDay && selected.sessionType !== 'rest' && (
                 <div className="stack-sm">
                   <strong style={{ fontSize: '0.86rem' }}>Adaptar este día a otro deporte:</strong>
-                  <div className="row-wrap">
+                  <div className="segmented-group" role="group" aria-label="Cambiar deporte del día seleccionado">
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      aria-pressed={selected.modality === 'running'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapModality(selected.id, 'running')}
                     >
                       <PersonSimpleRun size={14} weight="duotone" aria-hidden="true" />
@@ -275,7 +274,8 @@ export function CalendarView({
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      aria-pressed={selected.modality === 'cycling'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapModality(selected.id, 'cycling')}
                     >
                       <Bicycle size={14} weight="duotone" aria-hidden="true" />
@@ -283,7 +283,8 @@ export function CalendarView({
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      aria-pressed={selected.modality === 'soccer'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapModality(selected.id, 'soccer')}
                     >
                       <SoccerBall size={14} weight="duotone" aria-hidden="true" />
@@ -291,7 +292,8 @@ export function CalendarView({
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      aria-pressed={selected.modality === 'walking'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapModality(selected.id, 'walking')}
                     >
                       <Footprints size={14} weight="duotone" aria-hidden="true" />
@@ -301,40 +303,26 @@ export function CalendarView({
                 </div>
               )}
 
-              {/* Intercambiar entrenamiento entre días */}
+              {/* Intercambiar entrenamiento entre días con 1 clic */}
               {swapCandidates.length > 0 && (
                 <div className="inset-panel stack-sm">
-                  <strong style={{ fontSize: '0.84rem' }}>Mover o intercambiar este día en la semana:</strong>
-                  <div className="row-wrap">
-                    <select
-                      id="swap-day-select"
-                      name="swapDayTarget"
-                      aria-label="Seleccionar día para intercambiar"
-                      className="select"
-                      style={{ flex: '1 1 200px' }}
-                      value={swapTargetId}
-                      onChange={(e) => setSwapTargetId(e.target.value)}
-                    >
-                      <option value="">Elige otro día de la Semana {activeWeek}…</option>
-                      {swapCandidates.map((cand) => (
-                        <option key={cand.id} value={cand.id}>
-                          {formatShortDate(cand.date)} — {cand.title}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      disabled={!swapTargetId}
-                      onClick={() => {
-                        if (!swapTargetId) return;
-                        onSwapWorkoutDays(selected.id, swapTargetId);
-                        setSwapTargetId('');
-                      }}
-                    >
-                      <ArrowsLeftRight size={14} weight="duotone" aria-hidden="true" />
-                      Intercambiar
-                    </button>
+                  <div className="row-between">
+                    <strong style={{ fontSize: '0.84rem' }}>Mover sesión a otro día (Semana {activeWeek}):</strong>
+                    <span className="muted" style={{ fontSize: '0.74rem' }}>Un clic intercambia ambos días</span>
+                  </div>
+                  <div className="grid-3" style={{ gap: '0.45rem' }}>
+                    {swapCandidates.map((cand) => (
+                      <button
+                        key={cand.id}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ justifyContent: 'space-between', textAlign: 'left' }}
+                        onClick={() => onSwapWorkoutDays(selected.id, cand.id)}
+                      >
+                        <span style={{ textTransform: 'capitalize' }}>{formatShortDate(cand.date)}</span>
+                        <ArrowsLeftRight size={13} weight="duotone" aria-hidden="true" />
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}

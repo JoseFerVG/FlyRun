@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Pause, Play, Plus, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
+import { CheckCircle2, Pause, Play, Plus, RotateCcw, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import type { WorkoutSession } from '../types/fitness';
 
 interface LiveWorkoutTimerDialogProps {
@@ -153,6 +153,7 @@ export function LiveWorkoutTimerDialog({
   }
 
   const currentBlock = workout.blocks[blockIndex] ?? workout.blocks[0];
+  const nextBlock = blockIndex + 1 < workout.blocks.length ? workout.blocks[blockIndex + 1] : null;
   const blockTotalSec = Math.max(60, (currentBlock?.durationMinutes ?? 5) * 60);
   const blockProgressPct = Math.min(100, Math.round(((blockTotalSec - secondsLeft) / blockTotalSec) * 100));
 
@@ -245,6 +246,15 @@ export function LiveWorkoutTimerDialog({
           <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
             {currentBlock.description}
           </p>
+          {nextBlock ? (
+            <div className="pill pill-cyan" style={{ fontSize: '0.73rem' }}>
+              A continuación: {nextBlock.label} ({nextBlock.durationMinutes} min · {nextBlock.zone})
+            </div>
+          ) : (
+            <div className="pill pill-emerald" style={{ fontSize: '0.73rem' }}>
+              Último bloque de la sesión
+            </div>
+          )}
         </div>
 
         <div className="row-between">
@@ -271,6 +281,16 @@ export function LiveWorkoutTimerDialog({
             <button
               type="button"
               className="btn btn-secondary btn-sm"
+              aria-label="Reiniciar bloque actual"
+              title="Reiniciar bloque actual"
+              onClick={() => setSecondsLeft(currentBlock.durationMinutes * 60)}
+            >
+              <RotateCcw size={14} aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
               disabled={blockIndex >= workout.blocks.length - 1}
               onClick={() => {
                 const next = blockIndex + 1;
@@ -290,9 +310,12 @@ export function LiveWorkoutTimerDialog({
             type="button"
             className="btn btn-emerald"
             onClick={() => {
-              const mins = Math.max(5, Math.round(totalElapsedSec / 60) || workout.durationMinutes);
+              const mins =
+                totalElapsedSec >= 60
+                  ? Math.round(totalElapsedSec / 60)
+                  : workout.durationMinutes;
               handleClose();
-              onFinishToLog(workout, mins);
+              onFinishToLog(workout, Math.max(1, mins));
             }}
           >
             <CheckCircle2 size={16} aria-hidden="true" />

@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, X } from 'lucide-react';
 import type { CardioModality, WorkoutSession } from '../types/fitness';
-import { convertSpeedValue, formatPace, type SpeedUnit } from '../services/scienceEngine';
+import {
+  calculateCardioEquivalence,
+  convertSpeedValue,
+  formatPace,
+  paceMinSecToSecPerKm,
+  secPerKmToPaceMinSec,
+  type SpeedUnit,
+} from '../services/scienceEngine';
 
 interface WorkoutLogDialogProps {
   workout: WorkoutSession | null;
+  weightKg?: number;
+  sex?: 'male' | 'female' | 'other';
+  vdot?: number;
   onClose: () => void;
   onConfirmComplete: (
     workoutId: string,
@@ -16,13 +26,22 @@ interface WorkoutLogDialogProps {
   ) => void;
 }
 
-export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: WorkoutLogDialogProps) {
+export function WorkoutLogDialog({
+  workout,
+  weightKg = 72,
+  sex = 'male',
+  vdot = 35,
+  onClose,
+  onConfirmComplete,
+}: WorkoutLogDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [rpe, setRpe] = useState(5);
   const [duration, setDuration] = useState(35);
   const [distance, setDistance] = useState(4.5);
   const [speedUnit, setSpeedUnit] = useState<SpeedUnit>('kmh');
   const [speedInput, setSpeedInput] = useState(10.0);
+  const [paceMinPart, setPaceMinPart] = useState(6);
+  const [paceSecPart, setPaceSecPart] = useState(0);
   const [modality, setModality] = useState<CardioModality>('running');
   const [notes, setNotes] = useState('');
 
@@ -36,8 +55,12 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
       setDuration(dur);
       setDistance(dist);
       const initialKmh = Number(((dist / dur) * 60).toFixed(1));
+      const conv = convertSpeedValue(initialKmh, 'kmh');
+      const parts = secPerKmToPaceMinSec(conv.secPerKm);
       setSpeedUnit('kmh');
-      setSpeedInput(initialKmh);
+      setSpeedInput(conv.kmh);
+      setPaceMinPart(parts.mins);
+      setPaceSecPart(parts.secs);
       setModality(workout.modality);
       setRpe(workout.sessionType === 'intervals_z4' || workout.sessionType === 'soccer' ? 7 : 5);
       setNotes('');
@@ -60,6 +83,9 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
     if (nextDist <= 0 || nextDur <= 0) return;
     const secPerKm = (nextDur * 60) / nextDist;
     const conv = convertSpeedValue(3600 / Math.max(120, secPerKm), 'kmh');
+    const parts = secPerKmToPaceMinSec(conv.secPerKm);
+    setPaceMinPart(parts.mins);
+    setPaceSecPart(parts.secs);
     setSpeedInput(unit === 'kmh' ? conv.kmh : unit === 'km_min' ? conv.kmPerMin : conv.minPerKmDecimal);
   };
 
@@ -74,7 +100,14 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
   };
 
   const handleUnitChange = (nextUnit: SpeedUnit) => {
-    const conv = convertSpeedValue(speedInput, speedUnit);
+    const secPerKm =
+      speedUnit === 'min_km'
+        ? paceMinSecToSecPerKm(paceMinPart, paceSecPart)
+        : convertSpeedValue(speedInput, speedUnit).secPerKm;
+    const conv = convertSpeedValue(3600 / Math.max(120, secPerKm), 'kmh');
+    const parts = secPerKmToPaceMinSec(conv.secPerKm);
+    setPaceMinPart(parts.mins);
+    setPaceSecPart(parts.secs);
     setSpeedUnit(nextUnit);
     setSpeedInput(nextUnit === 'kmh' ? conv.kmh : nextUnit === 'km_min' ? conv.kmPerMin : conv.minPerKmDecimal);
   };
@@ -87,11 +120,25 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
     setDistance(derivedDist);
   };
 
+  const handlePacePartChange = (nextMin: number, nextSec: number) => {
+    setPaceMinPart(nextMin);
+    setPaceSecPart(nextSec);
+    const sec = paceMinSecToSecPerKm(nextMin, nextSec);
+    const conv = convertSpeedValue(3600 / Math.max(120, sec), 'kmh');
+    setDistance(Number(((conv.kmh * Math.max(5, duration)) / 60).toFixed(2)));
+  };
+
   const safeSecPerKm =
     distance > 0 && duration > 0
       ? (duration * 60) / distance
+      : speedUnit === 'min_km'
+      ? paceMinSecToSecPerKm(paceMinPart, paceSecPart)
       : convertSpeedValue(speedInput, speedUnit).secPerKm;
   const liveConv = convertSpeedValue(3600 / Math.max(120, safeSecPerKm), 'kmh');
+  const liveEq = calculateCardioEquivalence(modality, duration, rpe, weightKg, sex, vdot);
+  const projectedXp = Math.round(
+    liveEq.cardioPoints * 1.4 + (workout && duration >= workout.durationMinutes ? 40 : 15)
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +202,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                   type="number"
                   min={5}
                   max={300}
-                  className="input"
+                  className="input mono"
                   value={duration}
                   onChange={(e) => handleDurationChange(Number(e.target.value))}
                   required
@@ -163,7 +210,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
               </div>
 
               <div className="field">
-                <label htmlFor="log-distance">Distancia aproximada (km)</label>
+                <label htmlFor="log-distance">Distancia recorrida (km)</label>
                 <input
                   id="log-distance"
                   name="logDistance"
@@ -171,7 +218,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                   min={0}
                   max={150}
                   step="0.05"
-                  className="input"
+                  className="input mono"
                   value={distance}
                   onChange={(e) => handleDistanceChange(Number(e.target.value))}
                 />
@@ -179,7 +226,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
 
               <div className="field">
                 <div className="row-between">
-                  <label htmlFor="log-speed">Velocidad o ritmo</label>
+                  <label htmlFor="log-speed">Velocidad / ritmo medio</label>
                   <div className="segmented-group" role="group" aria-label="Unidad de velocidad">
                     {(
                       [
@@ -200,17 +247,46 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                     ))}
                   </div>
                 </div>
-                <input
-                  id="log-speed"
-                  name="logSpeed"
-                  type="number"
-                  min={speedUnit === 'km_min' ? 0.04 : 2}
-                  max={speedUnit === 'km_min' ? 0.5 : 35}
-                  step={speedUnit === 'km_min' ? '0.005' : '0.1'}
-                  className="input mono"
-                  value={speedInput}
-                  onChange={(e) => handleSpeedInputChange(Number(e.target.value))}
-                />
+
+                {speedUnit === 'min_km' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.4rem', alignItems: 'center' }}>
+                    <input
+                      id="log-speed"
+                      name="logPaceMins"
+                      type="number"
+                      min={2}
+                      max={18}
+                      className="input mono"
+                      value={paceMinPart}
+                      onChange={(e) => handlePacePartChange(Number(e.target.value), paceSecPart)}
+                      aria-label="Minutos por km"
+                    />
+                    <span className="mono muted" style={{ fontWeight: 700 }}>:</span>
+                    <input
+                      id="log-speed-secs"
+                      name="logPaceSecs"
+                      type="number"
+                      min={0}
+                      max={59}
+                      className="input mono"
+                      value={paceSecPart}
+                      onChange={(e) => handlePacePartChange(paceMinPart, Number(e.target.value))}
+                      aria-label="Segundos por km"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    id="log-speed"
+                    name="logSpeed"
+                    type="number"
+                    min={speedUnit === 'km_min' ? 0.04 : 2}
+                    max={speedUnit === 'km_min' ? 0.5 : 35}
+                    step={speedUnit === 'km_min' ? '0.005' : '0.1'}
+                    className="input mono"
+                    value={speedInput}
+                    onChange={(e) => handleSpeedInputChange(Number(e.target.value))}
+                  />
+                )}
                 <span className="muted mono" style={{ fontSize: '0.73rem' }}>
                   {liveConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveConv.kmPerMin.toFixed(3).replace('.', ',')} km/min · {formatPace(safeSecPerKm)} /km
                 </span>
@@ -236,6 +312,15 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                   : rpe <= 8
                   ? 'Exigente / Umbral'
                   : 'Máximo'}
+              </span>
+            </div>
+
+            <div className="inset-panel row-between" style={{ padding: '0.62rem 0.85rem' }}>
+              <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                Impacto fisiológico estimado:
+              </span>
+              <span className="mono" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--pine)' }}>
+                +{liveEq.cardioPoints} PC · {liveEq.trimp} TRIMP · {liveEq.calories} kcal · +{projectedXp} XP
               </span>
             </div>
 

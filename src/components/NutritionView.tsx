@@ -106,13 +106,13 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
           <div>
             <span className="pill pill-emerald">
               <CookingPot size={14} weight="duotone" aria-hidden="true" />
-              Orientación en macronutrientes (sin dieta cerrada)
+              Nutrición adaptativa por carga
             </span>
             <h1 style={{ margin: '0.38rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
-              Recomendación diaria de macros
+              Recomendación diaria de macronutrientes
             </h1>
             <p className="secondary" style={{ margin: '0.22rem 0 0', fontSize: '0.87rem' }}>
-              Estimada con Mifflin-St Jeor ({baseMacros.bmr} kcal basales), tus pasos diarios y la exigencia de la sesión.
+              Calculada con Mifflin-St Jeor ({baseMacros.bmr} kcal basales), tu actividad diaria y el desgaste energético de la sesión.
             </p>
           </div>
           <span className="pill pill-amber mono">
@@ -276,9 +276,9 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
       {/* Reparto práctico en 4 comidas */}
       <SpotlightCard as="section" staggerIndex={5} className="stack-md" aria-label="Reparto orientativo en 4 comidas">
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.12rem' }}>Cómo repartir estos macros en 4 tomas prácticas</h2>
+          <h2 style={{ margin: 0, fontSize: '1.12rem' }}>Distribución sugerida en 4 comidas</h2>
           <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.82rem' }}>
-            No es un menú obligatorio, sino una referencia orientativa para alcanzar tus gramos diarios con comodidad.
+            Propuesta flexible adaptada al gasto energético del día seleccionado para cubrir tus gramos objetivo.
           </p>
         </div>
 

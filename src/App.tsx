@@ -32,6 +32,7 @@ import {
   requestGoogleFitOAuthToken,
   saveDemoGoogleSession,
   saveGoogleFitToken,
+  saveLocalState,
   signInWithGoogleFirebase,
   signOutFirebase,
   subscribeFirebaseAuth,
@@ -96,7 +97,8 @@ export function App() {
   });
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [booting, setBooting] = useState(true);
-  const [authLoading, setAuthLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [session, setSession] = useState<AuthSessionInfo | null>(null);
 
@@ -174,6 +176,16 @@ export function App() {
   const handleSelectTab = (tab: NavTab) => {
     if (tab === activeTab) return;
     runViewTransition(() => setActiveTab(tab));
+  };
+
+  const handleOpenPhysicalExam = () => {
+    runViewTransition(() => setActiveTab('stats'));
+    window.setTimeout(() => {
+      document.getElementById('physical-exam-section')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 100);
   };
 
   const handleToggleTheme = () => {
@@ -269,12 +281,15 @@ export function App() {
   };
 
   const handleSelectPersona = async (persona: SimulatedUserPersona) => {
-    const cloudUid = await ensureCloudAuthSession();
-    const targetUid = cloudUid ?? persona.profile.uid;
+    const clients = getFirebaseClients();
+    if (clients?.auth.currentUser && !clients.auth.currentUser.isAnonymous) {
+      await signOutFirebase();
+    }
+    const targetUid = persona.profile.uid;
     const demoSession = {
       uid: targetUid,
       displayName: persona.profile.displayName,
-      email: persona.profile.email,
+      email: '',
       photoURL: '',
     };
     const personaProfile: UserProfile = {
@@ -287,17 +302,26 @@ export function App() {
     setReadiness('normal');
     setTodayBaselineWorkout(null);
     const generatedWorkouts = persona.buildWorkouts();
-    saveAll(personaProfile, generatedWorkouts, persona.exams, persona.fitDays);
+    saveLocalState(personaProfile.uid, {
+      profile: personaProfile,
+      workouts: generatedWorkouts,
+      exams: persona.exams,
+      fitDays: persona.fitDays,
+    });
+    setProfile(personaProfile);
+    setWorkouts(generatedWorkouts);
+    setExams(persona.exams);
+    setFitDays(persona.fitDays);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
     showToast(
-      `Perfil de ${persona.name} cargado (Nivel ${personaProfile.level}, VDOT ${personaProfile.vdot}).`
+      `Caso demo de ${persona.name} cargado (Nivel ${personaProfile.level}, VDOT ${personaProfile.vdot}).`
     );
   };
 
   const handleGoogleLogin = async () => {
     setAuthError(null);
-    setAuthLoading(true);
+    setGoogleLoading(true);
     try {
       const res = await signInWithGoogleFirebase();
       const s: AuthSessionInfo = { ...res, isDemoMode: false };
@@ -306,36 +330,35 @@ export function App() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error de autenticación';
       setAuthError(
-        `No se pudo completar el inicio con Google (${msg}). Inténtalo de nuevo o explora la demo interactiva.`
+        `No se pudo completar el inicio con Google (${msg}). Inténtalo de nuevo o prueba el examen inicial.`
       );
     } finally {
-      setAuthLoading(false);
+      setGoogleLoading(false);
     }
   };
 
   const handleDemoLogin = async () => {
     setAuthError(null);
-    setAuthLoading(true);
+    setDemoLoading(true);
     try {
       const cloudUid = await ensureCloudAuthSession();
       const freshDemoUid = cloudUid ?? `demo_exam_${Date.now()}`;
       const demoSession = {
         uid: freshDemoUid,
-        displayName: 'Carlos Martín',
+        displayName: 'Atleta Demo',
         email: '',
         photoURL: '',
       };
       saveDemoGoogleSession(demoSession);
       const s: AuthSessionInfo = { ...demoSession, isDemoMode: true };
       setSession(s);
-      // Fuerza empezar siempre por el Examen Inicial Obligatorio antes de entrar al panel
       setProfile(null);
       setWorkouts([]);
       setExams([]);
       setFitDays([]);
       setIsEditingProfile(false);
     } finally {
-      setAuthLoading(false);
+      setDemoLoading(false);
     }
   };
 
@@ -568,7 +591,7 @@ export function App() {
       const boost = Math.round(profile.dailyStepsTarget * 1.04);
       const base = buildInitialWeekSteps(boost).map((d) => ({
         ...d,
-        source: 'google_fit_api' as const,
+        source: 'simulated_sync' as const,
       }));
       if (base.length > 0 && existingTodaySteps > base[base.length - 1].steps) {
         const last = base[base.length - 1];
@@ -634,8 +657,10 @@ export function App() {
       saveAll(nextProfile, workouts, exams, syncedDays);
       setFitNotice(
         usedRealApi
-          ? 'Conectado con Google Fit API · Pasos reales de 7 días sincronizados.'
-          : 'Google Fit conectado · Pasos de 7 días sincronizados.'
+          ? 'Google Fit conectado · Pasos reales de 7 días sincronizados.'
+          : session?.isDemoMode
+          ? 'Sincronización activa en modo demo · Pasos semanales actualizados.'
+          : 'Sincronización local activada · Acepta el permiso de Google Fit para lectura directa.'
       );
       showToast(
         alreadySynced
@@ -683,7 +708,8 @@ export function App() {
           onInstallApp={installPrompt ? () => void handleInstallApp() : undefined}
           theme={theme}
           onToggleTheme={handleToggleTheme}
-          authLoading={authLoading}
+          googleLoading={googleLoading}
+          demoLoading={demoLoading}
           authError={authError}
         />
         <UserPersonasModal
@@ -732,7 +758,7 @@ export function App() {
       </a>
       <header className="top-header" style={{ viewTransitionName: 'persistent-nav' }}>
         <div className="header-inner">
-          <FlyRunLogo size="md" badgeText={`Nivel ${levelInfo.level}`} subtitle={profile.displayName} />
+          <FlyRunLogo size="md" badgeText={`Nivel ${levelInfo.level}`} />
 
           <nav className="desktop-nav" aria-label="Navegación principal">
             {navItems.map((item) => {
@@ -770,30 +796,43 @@ export function App() {
                 Instalar App
               </button>
             )}
-            {(() => {
-              const matchedPersona = SIMULATED_USER_PERSONAS.find(
-                (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
-              );
-              const avatarSrc = profile.photoURL || (matchedPersona ? assetUrl(matchedPersona.avatarFile) : '');
-              return avatarSrc ? (
-                <img
-                  src={avatarSrc}
-                  alt={profile.displayName}
-                  width={32}
-                  height={32}
-                  className="athlete-avatar"
-                  style={{ inlineSize: '32px', blockSize: '32px' }}
-                />
-              ) : null;
-            })()}
+            {session.isDemoMode && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setPersonasOpen(true)}
+                title="Cambiar entre configuraciones de ejemplo"
+              >
+                <UsersThree size={15} weight="duotone" aria-hidden="true" />
+                Casos demo
+              </button>
+            )}
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setPersonasOpen(true)}
-              title="Ver opiniones de los 7 usuarios simulados y cambiar de perfil"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setIsEditingProfile(true)}
+              title="Configurar perfil, datos y objetivo"
+              style={{ gap: '0.45rem', paddingInline: '0.5rem' }}
             >
-              <UsersThree size={15} weight="duotone" aria-hidden="true" />
-              7 Usuarios
+              {(() => {
+                const matchedPersona = SIMULATED_USER_PERSONAS.find(
+                  (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
+                );
+                const avatarSrc = profile.photoURL || (matchedPersona ? assetUrl(matchedPersona.avatarFile) : '');
+                return avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="athlete-avatar"
+                    style={{ inlineSize: '24px', blockSize: '24px' }}
+                  />
+                ) : null;
+              })()}
+              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                {profile.displayName.split(' ')[0]}
+              </span>
             </button>
             <button
               type="button"
@@ -844,9 +883,10 @@ export function App() {
               <CoachLynxBanner
                 profile={profile}
                 levelInfo={levelInfo}
+                workouts={workouts}
                 todayWorkout={todayWorkout}
-                tomorrowWorkout={tomorrowWorkout}
-                onOpenExam={() => handleSelectTab('stats')}
+                fitToday={fitToday}
+                onOpenExam={handleOpenPhysicalExam}
               />
               <DashboardView
                 profile={profile}
@@ -857,6 +897,7 @@ export function App() {
                 todayMacros={todayMacros}
                 fitSyncLoading={fitSyncLoading}
                 fitNotice={fitNotice}
+                hasGoogleFitOAuth={Boolean(session.googleFitAccessToken || getSavedGoogleFitToken())}
                 readiness={readiness}
                 onReadinessChange={handleReadinessChange}
                 onStartTimer={(w) => setTimerWorkout(w)}
@@ -878,7 +919,7 @@ export function App() {
               onSelectComplete={(w) => setLoggingWorkout(w)}
               onSwapModality={handleSwapModality}
               onSwapWorkoutDays={handleSwapWorkoutDays}
-              onOpenExam={() => handleSelectTab('stats')}
+              onOpenExam={handleOpenPhysicalExam}
             />
           )}
 
@@ -930,6 +971,9 @@ export function App() {
 
       <WorkoutLogDialog
         workout={loggingWorkout}
+        weightKg={profile.weightKg}
+        sex={profile.sex}
+        vdot={profile.vdot}
         onClose={() => setLoggingWorkout(null)}
         onConfirmComplete={handleCompleteWorkout}
       />
