@@ -1,24 +1,29 @@
 import { useState } from 'react';
-import { Bike, Calendar, CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { ArrowLeftRight, Bike, Calendar, CheckCircle2, ClipboardCheck, Play } from 'lucide-react';
 import type { CardioModality, WorkoutSession } from '../types/fitness';
 import { getModalityLabel } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
 
 interface CalendarViewProps {
   workouts: WorkoutSession[];
+  onStartTimer: (workout: WorkoutSession) => void;
   onSelectComplete: (workout: WorkoutSession) => void;
   onSwapModality: (workoutId: string, modality: CardioModality) => void;
+  onSwapWorkoutDays: (sourceId: string, targetId: string) => void;
   onOpenExam: () => void;
 }
 
 export function CalendarView({
   workouts,
+  onStartTimer,
   onSelectComplete,
   onSwapModality,
+  onSwapWorkoutDays,
   onOpenExam,
 }: CalendarViewProps) {
   const [selectedId, setSelectedId] = useState<string>(workouts[0]?.id ?? '');
   const [activeWeek, setActiveWeek] = useState<number>(1);
+  const [swapTargetId, setSwapTargetId] = useState<string>('');
 
   const selected = workouts.find((w) => w.id === selectedId) ?? workouts[0];
   const weekWorkouts = workouts.slice((activeWeek - 1) * 7, activeWeek * 7);
@@ -27,6 +32,8 @@ export function CalendarView({
     const d = new Date(`${iso}T12:00:00`);
     return d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
   };
+
+  const swapCandidates = weekWorkouts.filter((w) => w.id !== selected?.id);
 
   return (
     <div className="stack-lg">
@@ -39,7 +46,7 @@ export function CalendarView({
                 Calendario de 4 semanas
               </h1>
               <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-                Periodización semanal adaptada a tus días elegidos, con días de examen físico cada dos semanas.
+                Periodización semanal adaptada a tus días elegidos, flexible para mover días según tu semana real.
               </p>
             </div>
           </div>
@@ -82,7 +89,10 @@ export function CalendarView({
                 key={w.id}
                 type="button"
                 className={classes}
-                onClick={() => setSelectedId(w.id)}
+                onClick={() => {
+                  setSelectedId(w.id);
+                  setSwapTargetId('');
+                }}
               >
                 <div className="row-between" style={{ inlineSize: '100%' }}>
                   <span className="muted" style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize' }}>
@@ -125,9 +135,19 @@ export function CalendarView({
             </div>
 
             <div className="row-wrap">
+              {!selected.completed && selected.blocks.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => onStartTimer(selected)}
+                >
+                  <Play size={14} aria-hidden="true" />
+                  Cronómetro guiado
+                </button>
+              )}
               {selected.isExamDay && (
-                <button type="button" className="btn btn-primary" onClick={onOpenExam}>
-                  <ClipboardCheck size={16} aria-hidden="true" />
+                <button type="button" className="btn btn-primary btn-sm" onClick={onOpenExam}>
+                  <ClipboardCheck size={15} aria-hidden="true" />
                   Ir a examen físico
                 </button>
               )}
@@ -222,6 +242,44 @@ export function CalendarView({
                       onClick={() => onSwapModality(selected.id, 'walking')}
                     >
                       Caminata rápida
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Intercambiar entrenamiento entre días */}
+              {swapCandidates.length > 0 && (
+                <div className="inset-panel stack-sm">
+                  <strong style={{ fontSize: '0.84rem' }}>Mover o intercambiar este día en la semana:</strong>
+                  <div className="row-wrap">
+                    <select
+                      id="swap-day-select"
+                      name="swapDayTarget"
+                      aria-label="Seleccionar día para intercambiar"
+                      className="select"
+                      style={{ flex: '1 1 200px' }}
+                      value={swapTargetId}
+                      onChange={(e) => setSwapTargetId(e.target.value)}
+                    >
+                      <option value="">Elige otro día de la Semana {activeWeek}...</option>
+                      {swapCandidates.map((cand) => (
+                        <option key={cand.id} value={cand.id}>
+                          {formatShortDate(cand.date)} — {cand.title}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled={!swapTargetId}
+                      onClick={() => {
+                        if (!swapTargetId) return;
+                        onSwapWorkoutDays(selected.id, swapTargetId);
+                        setSwapTargetId('');
+                      }}
+                    >
+                      <ArrowLeftRight size={14} aria-hidden="true" />
+                      Intercambiar
                     </button>
                   </div>
                 </div>

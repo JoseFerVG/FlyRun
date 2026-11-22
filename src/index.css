@@ -36,6 +36,38 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+[data-theme='dark'] {
+  --bg-canvas: #111315;
+  --bg-surface: #181b1f;
+  --bg-subtle: #21252b;
+  --bg-inset: #13161a;
+  --border-hairline: #272b31;
+  --border-strong: #373d47;
+
+  --text-primary: #f3f4f6;
+  --text-secondary: #b9c0cc;
+  --text-muted: #848d9b;
+
+  --accent: #ea5826;
+  --accent-hover: #f26939;
+  --accent-soft: #2a1813;
+  --accent-border: #6b2e1b;
+
+  --pine: #269c70;
+  --pine-soft: #11261e;
+  --pine-border: #1e523e;
+
+  --cobalt: #60a5fa;
+  --cobalt-soft: #141f33;
+  --cobalt-border: #25406b;
+
+  --amber-zone: #f59e0b;
+  --amber-soft: #292010;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
 *,
 *::before,
 *::after {
@@ -114,8 +146,8 @@ dialog::backdrop {
   position: sticky;
   inset-block-start: 0;
   z-index: 40;
-  background: rgba(246, 245, 240, 0.92);
-  backdrop-filter: blur(12px);
+  background: var(--bg-canvas);
+  opacity: 0.98;
   border-block-end: 1px solid var(--border-hairline);
 }
 
@@ -251,8 +283,7 @@ dialog::backdrop {
   inset-block-end: 0;
   inset-inline: 0;
   z-index: 45;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
+  background: var(--bg-surface);
   border-block-start: 1px solid var(--border-hairline);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -458,7 +489,7 @@ dialog::backdrop {
 .pill-amber {
   background: var(--accent-soft);
   border-color: var(--accent-border);
-  color: #9e310a;
+  color: var(--accent);
 }
 
 .pill-emerald {
@@ -470,7 +501,36 @@ dialog::backdrop {
 .pill-cyan {
   background: var(--cobalt-soft);
   border-color: var(--cobalt-border);
-  color: #1d4ed8;
+  color: var(--cobalt);
+}
+
+.split-8020-track {
+  display: flex;
+  inline-size: 100%;
+  block-size: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-hairline);
+}
+
+.split-8020-low {
+  background: var(--pine);
+  block-size: 100%;
+}
+
+.split-8020-high {
+  background: var(--accent);
+  block-size: 100%;
+}
+
+.timer-clock {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 /* Form controls */

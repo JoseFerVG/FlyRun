@@ -1144,3 +1144,179 @@ export function applyPhysicalExamResult(
     leveledUp: newLevelInfo.level > profile.level,
   };
 }
+
+export interface RacePrediction {
+  distanceLabel: string;
+  distanceMeters: number;
+  timeFormatted: string;
+  pacePerKm: string;
+  split400m: string;
+}
+
+function formatDurationHMS(totalSeconds: number): string {
+  const sec = Math.max(1, Math.round(totalSeconds));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+export function calculateRacePredictions(vdot: number): RacePrediction[] {
+  const distances: Array<{ label: string; meters: number; vo2Fraction: number }> = [
+    { label: '1.500 m', meters: 1500, vo2Fraction: 1.04 },
+    { label: '3.000 m', meters: 3000, vo2Fraction: 0.99 },
+    { label: '5 km', meters: 5000, vo2Fraction: 0.945 },
+    { label: '10 km', meters: 10000, vo2Fraction: 0.895 },
+    { label: 'Media Maratón (21,1 km)', meters: 21097, vo2Fraction: 0.835 },
+  ];
+
+  return distances.map((d) => {
+    const secPerKm = paceAtVO2Fraction(vdot, d.vo2Fraction);
+    const totalSec = (d.meters / 1000) * secPerKm;
+    const split400Sec = Math.round(secPerKm * 0.4);
+    return {
+      distanceLabel: d.label,
+      distanceMeters: d.meters,
+      timeFormatted: formatDurationHMS(totalSec),
+      pacePerKm: `${formatPace(secPerKm)} /km`,
+      split400m: `${formatDurationHMS(split400Sec)} /400m`,
+    };
+  });
+}
+
+export type DailyReadiness = 'fresh' | 'normal' | 'tired';
+
+export function applyDailyReadinessAdjustment(
+  workout: WorkoutSession,
+  readiness: DailyReadiness,
+  profile: UserProfile
+): WorkoutSession {
+  if (readiness === 'normal' || workout.completed || workout.sessionType === 'rest') {
+    return workout;
+  }
+
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const z1 = zones[0];
+
+  if (readiness === 'tired') {
+    const reducedDuration = Math.max(20, Math.round(workout.durationMinutes * 0.75));
+    const eq = calculateCardioEquivalence('running', reducedDuration, 3, profile.weightKg, profile.sex, profile.vdot);
+    return {
+      ...workout,
+      title: `Sesión adaptada por fatiga: Rodaje regenerativo`,
+      subtitle: 'Intensidad reducida para favorecer recuperación muscular y evitar sobrecarga',
+      sessionType: 'easy_z1',
+      strategyTag: 'Ajuste fatiga · Z1',
+      durationMinutes: reducedDuration,
+      targetZone: 'Z1',
+      targetPace: z1.paceFormatted,
+      cardioPoints: eq.cardioPoints,
+      metMinutes: eq.metMinutes,
+      trimp: eq.trimp,
+      estimatedCalories: eq.calories,
+      blocks: [
+        {
+          label: 'Trote muy suave o caminata rápida',
+          durationMinutes: reducedDuration,
+          intensity: `${z1.paceFormatted} · ${z1.hrMin}–${z1.hrMax} ppm`,
+          description: 'Hoy priorizamos descargar piernas (RPE 3-4/10). Si notas pesadez, camina tramos de 2 min.',
+          zone: 'Z1',
+        },
+      ],
+      coachTip: 'Escuchar las sensaciones de fatiga hoy evita perder semanas enteras por lesión.',
+    };
+  }
+
+  // readiness === 'fresh'
+  const boostedDuration = Math.min(80, workout.durationMinutes + 6);
+  const eq = calculateCardioEquivalence(workout.modality, boostedDuration, 6, profile.weightKg, profile.sex, profile.vdot);
+  return {
+    ...workout,
+    subtitle: `${workout.subtitle} · Ampliada ligeramente por buenas sensaciones`,
+    durationMinutes: boostedDuration,
+    cardioPoints: eq.cardioPoints,
+    metMinutes: eq.metMinutes,
+    trimp: eq.trimp,
+    estimatedCalories: eq.calories,
+    coachTip: 'Te notas fresco hoy: añadimos 6 minutos aeróbicos suaves manteniendo el control del pulso.',
+  };
+}
+
+export function changeCaCoRatio(
+  workout: WorkoutSession,
+  runMin: number,
+  walkMin: number,
+  profile: UserProfile
+): WorkoutSession {
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const z1 = zones[0];
+  const rounds = 4;
+  const mainMinutes = rounds * (runMin + walkMin);
+  const totalMinutes = 10 + mainMinutes;
+  const eq = calculateCardioEquivalence('running', totalMinutes, 5, profile.weightKg, profile.sex, profile.vdot);
+
+  return {
+    ...workout,
+    title: `Sesión CaCo: ${runMin}' Correr / ${walkMin}' Andar`,
+    subtitle: 'Proporción CaCo personalizada para tu comodidad articular',
+    modality: 'running',
+    sessionType: 'caco',
+    strategyTag: `CaCo ${runMin}'/${walkMin}'`,
+    durationMinutes: totalMinutes,
+    targetDistanceKm: Number((totalMinutes * 0.115).toFixed(1)),
+    targetZone: 'Z1',
+    targetPace: z1.paceFormatted,
+    cardioPoints: eq.cardioPoints,
+    metMinutes: eq.metMinutes,
+    trimp: eq.trimp,
+    estimatedCalories: eq.calories,
+    blocks: [
+      {
+        label: 'Calentamiento caminando',
+        durationMinutes: 5,
+        intensity: 'Muy suave',
+        description: 'Movilidad de tobillos y 5 minutos de caminata ligera.',
+        zone: 'Z1',
+      },
+      {
+        label: `Bloque CaCo: ${rounds} x (${runMin}' trote / ${walkMin}' caminata)`,
+        durationMinutes: mainMinutes,
+        intensity: `Trote Z1 (${z1.paceFormatted}) + Caminata activa`,
+        description: `Alterna ${runMin} min corriendo suave con ${walkMin} min andando a buen paso.`,
+        zone: 'Z1',
+      },
+      {
+        label: 'Enfriamiento',
+        durationMinutes: 5,
+        intensity: 'Paseo tranquilo',
+        description: 'Camina 5 minutos suaves para bajar pulsaciones.',
+        zone: 'Z1',
+      },
+    ],
+  };
+}
+
+export function calculateWeekly8020Balance(workouts: WorkoutSession[]) {
+  const week = workouts.slice(0, 7);
+  let lowMinutes = 0;
+  let highMinutes = 0;
+
+  for (const w of week) {
+    if (w.sessionType === 'rest') continue;
+    for (const block of w.blocks) {
+      if (block.zone === 'Z1' || block.zone === 'Z2') {
+        lowMinutes += block.durationMinutes;
+      } else {
+        highMinutes += block.durationMinutes;
+      }
+    }
+  }
+
+  const total = Math.max(1, lowMinutes + highMinutes);
+  const lowPct = Math.round((lowMinutes / total) * 100);
+  const highPct = 100 - lowPct;
+  return { lowMinutes, highMinutes, lowPct, highPct };
+}

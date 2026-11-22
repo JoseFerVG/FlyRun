@@ -12,6 +12,9 @@ import type { WorkoutBlock } from '../types/fitness';
 interface AuthLandingProps {
   onGoogleLogin: () => Promise<void>;
   onDemoLogin: () => void;
+  onOpenPersonas: () => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
   authLoading: boolean;
   authError: string | null;
 }
@@ -26,7 +29,15 @@ const SAMPLE_BLOCKS: WorkoutBlock[] = [
   { label: 'Enfriamiento', durationMinutes: 8, intensity: 'Z1', description: '', zone: 'Z1' },
 ];
 
-export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError }: AuthLandingProps) {
+export function AuthLanding({
+  onGoogleLogin,
+  onDemoLogin,
+  onOpenPersonas,
+  theme,
+  onToggleTheme,
+  authLoading,
+  authError,
+}: AuthLandingProps) {
   const existingCfg = getSavedFirebaseConfig();
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [apiKey, setApiKey] = useState(existingCfg?.apiKey ?? '');
@@ -63,14 +74,22 @@ export function AuthLanding({ onGoogleLogin, onDemoLogin, authLoading, authError
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => setShowConfigPanel((prev) => !prev)}
-          >
-            <Settings2 size={15} aria-hidden="true" />
-            {existingCfg ? 'Firebase configurado' : 'Conectar Firebase'}
-          </button>
+          <div className="row-wrap">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPersonas}>
+              7 Perfiles de Prueba
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onToggleTheme}>
+              {theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowConfigPanel((prev) => !prev)}
+            >
+              <Settings2 size={15} aria-hidden="true" />
+              {existingCfg ? 'Firebase configurado' : 'Conectar Firebase'}
+            </button>
+          </div>
         </header>
 
         <section

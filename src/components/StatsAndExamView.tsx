@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Award, CheckCircle2, ClipboardCheck, Edit3, Lock, Medal, TrendingUp } from 'lucide-react';
+import { Award, CheckCircle2, ClipboardCheck, Edit3, Lock, Medal, Timer, TrendingUp } from 'lucide-react';
 import type { PhysicalExamResult, PhysicalExamType, UserProfile } from '../types/fitness';
 import {
+  calculateRacePredictions,
   calculateTrainingZones,
   getAllLevelDefinitions,
   getLynxLevel,
@@ -28,20 +29,47 @@ export function StatsAndExamView({
 }: StatsAndExamViewProps) {
   const [examType, setExamType] = useState<PhysicalExamType>('cooper_12min');
   const [rawValue, setRawValue] = useState<number>(2250);
+  const [timeMins, setTimeMins] = useState<number>(25);
+  const [timeSecs, setTimeSecs] = useState<number>(30);
   const [heartRate, setHeartRate] = useState<number>(152);
   const [examSubmittedMsg, setExamSubmittedMsg] = useState<string | null>(null);
 
   const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const predictions = calculateRacePredictions(profile.vdot);
   const levelInfo = getLynxLevel(profile.vdot, profile.xp);
   const allLevels = getAllLevelDefinitions();
   const bmi = (profile.weightKg / Math.pow(profile.heightCm / 100, 2)).toFixed(1);
 
+  const isSplitTimeExam = examType === 'time_trial_5k' || examType === 'rockport_walk_1600m';
+
   const handleExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmitExam(examType, rawValue, undefined, heartRate);
+    const numericVal = isSplitTimeExam
+      ? Number((Math.max(1, timeMins) + Math.max(0, Math.min(59, timeSecs)) / 60).toFixed(2))
+      : rawValue;
+    onSubmitExam(examType, numericVal, undefined, heartRate);
     setExamSubmittedMsg(
-      'Examen físico registrado. Tu VDOT, nivel y zonas de entrenamiento se han recalculado.'
+      'Examen físico registrado. Tu VDOT, nivel, predicciones y zonas de ritmo se han actualizado.'
     );
+  };
+
+  // Gráfica SVG simple y limpia de evolución de VDOT
+  const chartPoints = [...exams].reverse().map((ex, i) => ({
+    label: ex.date.slice(5),
+    vdot: ex.calculatedVdot,
+    idx: i,
+  }));
+  if (chartPoints.length === 0) {
+    chartPoints.push({ label: 'Inicio', vdot: profile.vdot, idx: 0 });
+  }
+
+  const getBadgeProgress = (id: string): { current: number; target: number; label: string } => {
+    const unlocked = profile.unlockedBadges.includes(id);
+    if (unlocked) return { current: 1, target: 1, label: 'Completado' };
+    if (id === 'streak_3') return { current: Math.min(3, profile.streakDays), target: 3, label: `${profile.streakDays}/3 días` };
+    if (id === 'level_5') return { current: Math.min(5, profile.level), target: 5, label: `Nivel ${profile.level}/5` };
+    if (id === 'exam_completed') return { current: Math.min(1, exams.length), target: 1, label: `${exams.length}/1 test` };
+    return { current: 0, target: 1, label: 'Pendiente' };
   };
 
   return (
@@ -51,7 +79,7 @@ export function StatsAndExamView({
           <div>
             <span className="pill pill-amber">Perfil fisiológico</span>
             <h1 style={{ margin: '0.35rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
-              Tus datos, zonas de ritmo y nivel
+              Tus datos, zonas de ritmo y predicciones
             </h1>
           </div>
           <button type="button" className="btn btn-secondary btn-sm" onClick={onEditProfile}>
@@ -132,6 +160,43 @@ export function StatsAndExamView({
         </div>
       </section>
 
+      {/* Tabla de predicción de marcas y ritmos por vuelta de 400m */}
+      <section className="card stack-md" aria-label="Predicción de marcas y paso por 400 m">
+        <div className="row-wrap">
+          <Timer size={18} color="#2563eb" aria-hidden="true" />
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.14rem' }}>Marcas equivalentes estimadas (VDOT {profile.vdot})</h2>
+            <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              Incluye el tiempo objetivo por cada vuelta de 400 m en pista de atletismo para preparar pruebas como el Test de Cooper o 5K.
+            </p>
+          </div>
+        </div>
+
+        <div className="scroll-table-wrap">
+          <table className="zone-table">
+            <thead>
+              <tr>
+                <th>Distancia</th>
+                <th>Tiempo estimado</th>
+                <th>Ritmo medio</th>
+                <th>Paso por vuelta (400 m)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {predictions.map((p) => (
+                <tr key={p.distanceLabel}>
+                  <td style={{ fontWeight: 600 }}>{p.distanceLabel}</td>
+                  <td className="mono" style={{ fontWeight: 700, color: 'var(--accent)' }}>{p.timeFormatted}</td>
+                  <td className="mono">{p.pacePerKm}</td>
+                  <td className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>{p.split400m}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* DÍA DE EXAMEN FÍSICO */}
       <section className="card stack-md" aria-label="Día de Examen Físico">
         <div className="row-between">
           <div>
@@ -143,7 +208,7 @@ export function StatsAndExamView({
               Registra tus marcas reales y actualiza tu nivel
             </h2>
             <p className="secondary" style={{ margin: '0.22rem 0 0', fontSize: '0.87rem' }}>
-              Protocolo: calienta 10 minutos suaves, realiza una de las pruebas de evaluación y guarda los resultados para recalcular tus ritmos.
+              Calienta 10 minutos suaves, realiza una de las pruebas estandarizadas e introduce tu resultado exacto (minutos y segundos reales).
             </p>
           </div>
         </div>
@@ -160,38 +225,73 @@ export function StatsAndExamView({
                 const next = e.target.value as PhysicalExamType;
                 setExamType(next);
                 if (next === 'cooper_12min') setRawValue(2250);
-                else if (next === 'time_trial_5k') setRawValue(25.5);
-                else if (next === 'rockport_walk_1600m') setRawValue(14.5);
-                else setRawValue(20);
+                else if (next === 'time_trial_5k') {
+                  setTimeMins(25);
+                  setTimeSecs(30);
+                } else if (next === 'rockport_walk_1600m') {
+                  setTimeMins(14);
+                  setTimeSecs(20);
+                } else setRawValue(20);
               }}
             >
               <option value="cooper_12min">Test de Cooper (12 min máx distancia)</option>
-              <option value="time_trial_5k">Contrarreloj 5K (minutos totales)</option>
-              <option value="rockport_walk_1600m">Test Rockport caminata 1,6 km (min)</option>
+              <option value="time_trial_5k">Contrarreloj 5K (min y seg)</option>
+              <option value="rockport_walk_1600m">Test Rockport caminata 1,6 km (min y seg)</option>
               <option value="caco_continuous_test">Test continuo base (min sin parar)</option>
             </select>
           </div>
 
-          <div className="field">
-            <label htmlFor="exam-value">
-              {examType === 'cooper_12min' && 'Distancia recorrida (metros)'}
-              {examType === 'time_trial_5k' && 'Tiempo total en 5 km (minutos)'}
-              {examType === 'rockport_walk_1600m' && 'Tiempo en 1,6 km (minutos)'}
-              {examType === 'caco_continuous_test' && 'Minutos trotando continuo'}
-            </label>
-            <input
-              id="exam-value"
-              name="examRawValue"
-              type="number"
-              min={1}
-              max={6000}
-              step="0.1"
-              className="input"
-              value={rawValue}
-              onChange={(e) => setRawValue(Number(e.target.value))}
-              required
-            />
-          </div>
+          {isSplitTimeExam ? (
+            <div className="field">
+              <label htmlFor="exam-mins">Tiempo empleado (min : seg)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <input
+                  id="exam-mins"
+                  name="examTimeMinutes"
+                  type="number"
+                  min={8}
+                  max={70}
+                  className="input"
+                  value={timeMins}
+                  onChange={(e) => setTimeMins(Number(e.target.value))}
+                  aria-label="Minutos"
+                  required
+                />
+                <input
+                  id="exam-secs"
+                  name="examTimeSeconds"
+                  type="number"
+                  min={0}
+                  max={59}
+                  className="input"
+                  value={timeSecs}
+                  onChange={(e) => setTimeSecs(Number(e.target.value))}
+                  aria-label="Segundos"
+                  required
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="field">
+              <label htmlFor="exam-value">
+                {examType === 'cooper_12min'
+                  ? 'Distancia recorrida (metros)'
+                  : 'Minutos trotando continuo'}
+              </label>
+              <input
+                id="exam-value"
+                name="examRawValue"
+                type="number"
+                min={1}
+                max={6000}
+                step="1"
+                className="input"
+                value={rawValue}
+                onChange={(e) => setRawValue(Number(e.target.value))}
+                required
+              />
+            </div>
+          )}
 
           <div className="field">
             <label htmlFor="exam-hr">Pulso final medio/pico (ppm)</label>
@@ -220,21 +320,63 @@ export function StatsAndExamView({
           </div>
         </form>
 
-        {exams.length > 0 && (
+        {/* Evolución visual de VDOT */}
+        <div className="grid-2">
+          <div className="inset-panel stack-sm">
+            <strong style={{ fontSize: '0.86rem' }}>Evolución de VDOT</strong>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', blockSize: '110px', paddingTop: '0.75rem' }}>
+              {chartPoints.map((pt, i) => {
+                const heightPct = Math.max(20, Math.min(100, Math.round(((pt.vdot - 15) / 55) * 100)));
+                return (
+                  <div
+                    key={`${pt.label}-${i}`}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      blockSize: '100%',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <span className="mono" style={{ fontSize: '0.72rem', fontWeight: 700 }}>{pt.vdot}</span>
+                    <div
+                      style={{
+                        inlineSize: '100%',
+                        maxInlineSize: '42px',
+                        blockSize: `${heightPct}%`,
+                        borderRadius: '6px 6px 2px 2px',
+                        background: 'var(--cobalt)',
+                      }}
+                    />
+                    <span className="muted mono" style={{ fontSize: '0.68rem' }}>{pt.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="stack-sm">
             <strong style={{ fontSize: '0.86rem' }}>Historial de evaluaciones</strong>
-            {exams.slice(0, 4).map((ex) => (
-              <div
-                key={ex.id}
-                className="inset-panel row-between"
-                style={{ padding: '0.55rem 0.8rem', fontSize: '0.82rem' }}
-              >
-                <span>{ex.summary}</span>
-                <span className="muted mono">{ex.date}</span>
+            {exams.length === 0 ? (
+              <div className="inset-panel muted" style={{ fontSize: '0.82rem' }}>
+                Aún no has registrado exámenes adicionales tras la evaluación inicial.
               </div>
-            ))}
+            ) : (
+              exams.slice(0, 4).map((ex) => (
+                <div
+                  key={ex.id}
+                  className="inset-panel row-between"
+                  style={{ padding: '0.55rem 0.8rem', fontSize: '0.82rem' }}
+                >
+                  <span>{ex.summary}</span>
+                  <span className="muted mono">{ex.date}</span>
+                </div>
+              ))
+            )}
           </div>
-        )}
+        </div>
       </section>
 
       <div className="grid-2">
@@ -296,9 +438,12 @@ export function StatsAndExamView({
           <div className="grid-2" style={{ gap: '0.68rem' }}>
             {BADGES_CATALOG.map((badge) => {
               const unlocked = profile.unlockedBadges.includes(badge.id);
+              const prog = getBadgeProgress(badge.id);
+              const pct = Math.round((prog.current / prog.target) * 100);
               return (
                 <article
                   key={badge.id}
+                  className="stack-sm"
                   style={{
                     padding: '0.78rem',
                     borderRadius: '10px',
@@ -306,7 +451,6 @@ export function StatsAndExamView({
                       ? '1px solid var(--pine-border)'
                       : '1px solid var(--border-hairline)',
                     background: unlocked ? 'var(--pine-soft)' : 'var(--bg-inset)',
-                    opacity: unlocked ? 1 : 0.65,
                   }}
                 >
                   <div className="row-between">
@@ -315,9 +459,16 @@ export function StatsAndExamView({
                       +{badge.xpReward} XP
                     </span>
                   </div>
-                  <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.77rem' }}>
+                  <p className="muted" style={{ margin: 0, fontSize: '0.77rem' }}>
                     {badge.description}
                   </p>
+                  <div className="progress-track" style={{ blockSize: '6px' }}>
+                    <div
+                      className={`progress-fill ${unlocked ? 'progress-fill-emerald' : ''}`}
+                      style={{ inlineSize: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="muted mono" style={{ fontSize: '0.7rem' }}>{prog.label}</span>
                 </article>
               );
             })}

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  Activity,
   Bike,
   CalendarClock,
   CheckCircle2,
   Footprints,
+  Play,
+  Plus,
   RefreshCw,
   Trophy,
   Utensils,
@@ -15,19 +18,29 @@ import type {
   UserProfile,
   WorkoutSession,
 } from '../types/fitness';
-import { getModalityLabel } from '../services/scienceEngine';
+import {
+  calculateWeekly8020Balance,
+  getModalityLabel,
+  type DailyReadiness,
+} from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
 
 interface DashboardViewProps {
   profile: UserProfile;
+  workouts: WorkoutSession[];
   todayWorkout?: WorkoutSession;
   tomorrowWorkout?: WorkoutSession;
   fitDays: GoogleFitDay[];
   todayMacros: MacroRecommendation;
   fitSyncLoading: boolean;
   fitNotice: string | null;
+  readiness: DailyReadiness;
+  onReadinessChange: (r: DailyReadiness) => void;
+  onStartTimer: (workout: WorkoutSession) => void;
   onCompleteWorkout: (workout: WorkoutSession) => void;
+  onLogExtraActivity: () => void;
   onSwapTodayModality: (workoutId: string, modality: CardioModality) => void;
+  onChangeCaCoRatio: (workoutId: string, runMin: number, walkMin: number) => void;
   onSyncGoogleFit: () => void;
   onManualStepsUpdate: (steps: number) => void;
   onNavigate: (tab: 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition') => void;
@@ -35,21 +48,31 @@ interface DashboardViewProps {
 
 export function DashboardView({
   profile,
+  workouts,
   todayWorkout,
   tomorrowWorkout,
   fitDays,
   todayMacros,
   fitSyncLoading,
   fitNotice,
+  readiness,
+  onReadinessChange,
+  onStartTimer,
   onCompleteWorkout,
+  onLogExtraActivity,
   onSwapTodayModality,
+  onChangeCaCoRatio,
   onSyncGoogleFit,
   onManualStepsUpdate,
   onNavigate,
 }: DashboardViewProps) {
   const fitToday = fitDays[fitDays.length - 1];
   const [stepsInput, setStepsInput] = useState(fitToday?.steps ?? profile.dailyStepsTarget);
+  useEffect(() => {
+    setStepsInput(fitToday?.steps ?? profile.dailyStepsTarget);
+  }, [fitToday?.steps, profile.dailyStepsTarget]);
   const stepsPct = Math.min(100, Math.round(((fitToday?.steps ?? 0) / Math.max(1000, profile.dailyStepsTarget)) * 100));
+  const balance8020 = calculateWeekly8020Balance(workouts);
 
   return (
     <div className="stack-lg">
@@ -76,6 +99,35 @@ export function DashboardView({
                 </p>
               </div>
 
+              {/* Check-in diario de fatiga / sensaciones */}
+              {!todayWorkout.completed && todayWorkout.sessionType !== 'rest' && (
+                <div className="inset-panel stack-sm" style={{ padding: '0.6rem 0.78rem' }}>
+                  <div className="row-between">
+                    <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
+                      ¿Cómo te sientes hoy antes de salir?
+                    </span>
+                    <div className="row-wrap" style={{ gap: '0.35rem' }}>
+                      {(
+                        [
+                          { id: 'fresh', label: 'Fresco' },
+                          { id: 'normal', label: 'Normal' },
+                          { id: 'tired', label: 'Piernas cargadas' },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={`btn btn-sm ${readiness === opt.id ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => onReadinessChange(opt.id)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <WorkoutVisualBar blocks={todayWorkout.blocks} />
 
               <div className="grid-3" style={{ gap: '0.6rem' }}>
@@ -98,6 +150,29 @@ export function DashboardView({
                   </div>
                 </div>
               </div>
+
+              {todayWorkout.sessionType === 'caco' && !todayWorkout.completed && (
+                <div className="row-wrap" style={{ gap: '0.4rem' }}>
+                  <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                    Proporción CaCo:
+                  </span>
+                  {[
+                    [2, 6],
+                    [3, 5],
+                    [4, 4],
+                    [5, 2],
+                  ].map(([r, w]) => (
+                    <button
+                      key={`${r}-${w}`}
+                      type="button"
+                      className={`btn btn-sm ${todayWorkout.strategyTag.includes(`${r}'/${w}'`) ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => onChangeCaCoRatio(todayWorkout.id, r, w)}
+                    >
+                      {r}&apos; / {w}&apos;
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="stack-sm">
                 {todayWorkout.blocks.map((block, idx) => (
@@ -156,14 +231,26 @@ export function DashboardView({
                 <span className="muted" style={{ fontSize: '0.8rem' }}>
                   Modalidad: <strong>{getModalityLabel(todayWorkout.modality)}</strong>
                 </span>
-                <button
-                  type="button"
-                  className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
-                  onClick={() => onCompleteWorkout(todayWorkout)}
-                >
-                  <CheckCircle2 size={16} aria-hidden="true" />
-                  {todayWorkout.completed ? 'Editar registro' : 'Marcar como completado'}
-                </button>
+                <div className="row-wrap">
+                  {!todayWorkout.completed && todayWorkout.blocks.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => onStartTimer(todayWorkout)}
+                    >
+                      <Play size={14} aria-hidden="true" />
+                      Cronómetro guiado
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
+                    onClick={() => onCompleteWorkout(todayWorkout)}
+                  >
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    {todayWorkout.completed ? 'Editar registro' : 'Completar sesión'}
+                  </button>
+                </div>
               </div>
             </>
           ) : (
@@ -211,6 +298,34 @@ export function DashboardView({
             ) : null}
           </article>
 
+          {/* Balance 80/20 semanal + actividad libre */}
+          <article className="card stack-sm" aria-label="Balance semanal 80/20">
+            <div className="row-between">
+              <div className="row-wrap">
+                <Activity size={17} color="#186a4b" aria-hidden="true" />
+                <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Balance semanal 80/20</h2>
+              </div>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onLogExtraActivity}>
+                <Plus size={14} aria-hidden="true" />
+                Registrar actividad libre
+              </button>
+            </div>
+
+            <div className="row-between" style={{ fontSize: '0.8rem' }}>
+              <span className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>
+                Suave Z1-Z2: {balance8020.lowPct}% ({balance8020.lowMinutes} min)
+              </span>
+              <span className="mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                Intenso Z3-Z5: {balance8020.highPct}% ({balance8020.highMinutes} min)
+              </span>
+            </div>
+
+            <div className="split-8020-track" aria-label="Proporción semanal baja vs alta intensidad">
+              <div className="split-8020-low" style={{ inlineSize: `${balance8020.lowPct}%` }} />
+              <div className="split-8020-high" style={{ inlineSize: `${balance8020.highPct}%` }} />
+            </div>
+          </article>
+
           <article className="card stack-md" aria-label="Integración Google Fit">
             <div className="row-between">
               <div className="row-wrap">
@@ -256,7 +371,7 @@ export function DashboardView({
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 gap: '0.4rem',
                 alignItems: 'end',
-                blockSize: '64px',
+                blockSize: '60px',
                 paddingBlockStart: '0.35rem',
               }}
               aria-label="Pasos de los últimos 7 días"
@@ -282,7 +397,7 @@ export function DashboardView({
                         blockSize: `${hPct}%`,
                         borderRadius: '4px 4px 2px 2px',
                         background:
-                          day.steps >= profile.dailyStepsTarget ? 'var(--pine)' : '#cbd5e1',
+                          day.steps >= profile.dailyStepsTarget ? 'var(--pine)' : 'var(--border-strong)',
                       }}
                     />
                     <span className="muted mono" style={{ fontSize: '0.66rem' }}>{day.date.slice(8)}</span>
@@ -326,7 +441,7 @@ export function DashboardView({
               <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición recomendada hoy (macros)</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('nutrition')}>
-              Ver desglose
+              Ver reparto por comidas
             </button>
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
@@ -364,7 +479,7 @@ export function DashboardView({
               <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Progreso y constancia</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('stats')}>
-              Datos y examen físico
+              Marcas, zonas y examen
             </button>
           </div>
           <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
@@ -376,7 +491,7 @@ export function DashboardView({
             </div>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Logros</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: '#b45309' }}>
+              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--amber-zone)' }}>
                 {profile.unlockedBadges.length} / 8
               </div>
             </div>

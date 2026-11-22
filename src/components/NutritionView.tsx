@@ -11,9 +11,11 @@ interface NutritionViewProps {
 }
 
 type SimulationDayMode = 'today' | 'rest' | 'easy' | 'long' | 'intense';
+type CalorieAdjustment = 'deficit' | 'maintenance' | 'performance';
 
 export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros }: NutritionViewProps) {
   const [mode, setMode] = useState<SimulationDayMode>('today');
+  const [calorieMode, setCalorieMode] = useState<CalorieAdjustment>('maintenance');
 
   const simulatedWorkout: WorkoutSession | undefined =
     mode === 'today'
@@ -26,7 +28,44 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
       ? { ...(todayWorkout ?? ({} as WorkoutSession)), sessionType: 'long_run', durationMinutes: 65, estimatedCalories: 640 }
       : { ...(todayWorkout ?? ({} as WorkoutSession)), sessionType: 'intervals_z4', durationMinutes: 45, estimatedCalories: 520 };
 
-  const macros = calculateDailyMacros(profile, simulatedWorkout, fitToday);
+  const baseMacros = calculateDailyMacros(profile, simulatedWorkout, fitToday);
+  const multiplier = calorieMode === 'deficit' ? 0.9 : calorieMode === 'performance' ? 1.08 : 1;
+
+  const carbsGrams = Math.round(baseMacros.carbsGrams * multiplier);
+  const proteinGrams = baseMacros.proteinGrams; // Proteína se mantiene estable para proteger músculo
+  const fatsGrams = Math.round(baseMacros.fatsGrams * (calorieMode === 'deficit' ? 0.92 : multiplier));
+  const totalKcal = carbsGrams * 4 + proteinGrams * 4 + fatsGrams * 9;
+
+  const meals = [
+    {
+      name: 'Desayuno',
+      carbsPct: 0.25,
+      protPct: 0.22,
+      fatPct: 0.25,
+      example: 'Avena o pan integral con huevo/yogur griego, fruta y café o té.',
+    },
+    {
+      name: 'Comida principal',
+      carbsPct: 0.35,
+      protPct: 0.34,
+      fatPct: 0.35,
+      example: 'Arroz, pasta o patata + pollo, salmón o legumbres + verduras con AOVE.',
+    },
+    {
+      name: 'Merienda / Pre-Post entreno',
+      carbsPct: 0.22,
+      protPct: 0.16,
+      fatPct: 0.12,
+      example: 'Plátano o tostada antes de salir + yogur proteico o queso fresco al volver.',
+    },
+    {
+      name: 'Cena',
+      carbsPct: 0.18,
+      protPct: 0.28,
+      fatPct: 0.28,
+      example: 'Pescado blanco o tortilla + guarnición ligera y aguacate o frutos secos.',
+    },
+  ];
 
   return (
     <div className="stack-lg">
@@ -41,45 +80,64 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
               Recomendación diaria de macros
             </h1>
             <p className="secondary" style={{ margin: '0.22rem 0 0', fontSize: '0.87rem' }}>
-              Estimada a partir de tu gasto basal Mifflin-St Jeor ({macros.bmr} kcal), tus pasos diarios y la exigencia de la sesión.
+              Estimada con Mifflin-St Jeor ({baseMacros.bmr} kcal basales), tus pasos diarios y la exigencia de la sesión.
             </p>
           </div>
-          <span className="pill pill-amber mono">{macros.calories} kcal/día</span>
+          <span className="pill pill-amber mono">{totalKcal} kcal/día</span>
         </div>
 
-        <div className="row-wrap" role="group" aria-label="Simular macros según tipo de día">
-          {[
-            { id: 'today', label: 'Sesión de hoy' },
-            { id: 'rest', label: 'Día de descanso' },
-            { id: 'easy', label: 'Rodaje suave / CaCo' },
-            { id: 'long', label: 'Tirada larga' },
-            { id: 'intense', label: 'Series o fútbol' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`btn btn-sm ${mode === item.id ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => {
-                setMode(item.id as SimulationDayMode);
-                onViewedMacros();
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="row-between">
+          <div className="row-wrap" role="group" aria-label="Simular macros según tipo de día">
+            {[
+              { id: 'today', label: 'Sesión de hoy' },
+              { id: 'rest', label: 'Día de descanso' },
+              { id: 'easy', label: 'Rodaje suave / CaCo' },
+              { id: 'long', label: 'Tirada larga' },
+              { id: 'intense', label: 'Series o fútbol' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`btn btn-sm ${mode === item.id ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => {
+                  setMode(item.id as SimulationDayMode);
+                  onViewedMacros();
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="row-wrap" role="group" aria-label="Ajuste de objetivo energético">
+            {[
+              { id: 'deficit', label: 'Déficit ligero (-10%)' },
+              { id: 'maintenance', label: 'Mantenimiento' },
+              { id: 'performance', label: 'Rendimiento (+8%)' },
+            ].map((adj) => (
+              <button
+                key={adj.id}
+                type="button"
+                className={`btn btn-sm ${calorieMode === adj.id ? 'btn-emerald' : 'btn-ghost'}`}
+                onClick={() => setCalorieMode(adj.id as CalorieAdjustment)}
+              >
+                {adj.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="muted" style={{ fontSize: '0.82rem' }}>
-          Escenario seleccionado: <strong>{macros.dayTypeLabel}</strong>
+          Escenario seleccionado: <strong>{baseMacros.dayTypeLabel}</strong>
         </div>
       </section>
 
       <section className="grid-4" aria-label="Desglose diario de macronutrientes">
         <article className="card stack-sm">
           <span className="muted" style={{ fontSize: '0.8rem' }}>Carbohidratos (combustible)</span>
-          <div className="kpi-value" style={{ color: 'var(--accent)' }}>{macros.carbsGrams} g</div>
+          <div className="kpi-value" style={{ color: 'var(--accent)' }}>{carbsGrams} g</div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>
-            {macros.carbsPerKg} g/kg · {macros.carbsPct}%
+            {(carbsGrams / profile.weightKg).toFixed(1)} g/kg
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Avena, arroz, patata, pasta, pan integral o fruta.
@@ -88,9 +146,9 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
 
         <article className="card stack-sm">
           <span className="muted" style={{ fontSize: '0.8rem' }}>Proteínas (reparación muscular)</span>
-          <div className="kpi-value" style={{ color: 'var(--pine)' }}>{macros.proteinGrams} g</div>
+          <div className="kpi-value" style={{ color: 'var(--pine)' }}>{proteinGrams} g</div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>
-            {macros.proteinPerKg} g/kg · {macros.proteinPct}%
+            {(proteinGrams / profile.weightKg).toFixed(1)} g/kg
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Pescado, huevo, carne magra, lácteos proteicos, legumbres o tofu.
@@ -99,9 +157,9 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
 
         <article className="card stack-sm">
           <span className="muted" style={{ fontSize: '0.8rem' }}>Grasas saludables (recuperación)</span>
-          <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>{macros.fatsGrams} g</div>
+          <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>{fatsGrams} g</div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>
-            {macros.fatsPerKg} g/kg · {macros.fatsPct}%
+            {(fatsGrams / profile.weightKg).toFixed(1)} g/kg
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Aceite de oliva virgen extra, aguacate, frutos secos y pescado azul.
@@ -113,7 +171,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
             <Droplets size={15} color="#2563eb" aria-hidden="true" />
             <span className="muted" style={{ fontSize: '0.8rem' }}>Hidratación</span>
           </div>
-          <div className="kpi-value">{macros.hydrationLiters} L</div>
+          <div className="kpi-value">{baseMacros.hydrationLiters} L</div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>Agua + sales si sudas mucho</div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Mantener hidratación estable evita subidas prematuras de pulso.
@@ -121,19 +179,43 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
         </article>
       </section>
 
+      {/* Reparto práctico en 4 comidas */}
+      <section className="card stack-md" aria-label="Reparto orientativo en 4 comidas">
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.12rem' }}>Cómo repartir estos macros en 4 tomas prácticas</h2>
+          <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.82rem' }}>
+            No es un menú obligatorio, sino una referencia orientativa para alcanzar tus gramos diarios con comodidad.
+          </p>
+        </div>
+
+        <div className="grid-2">
+          {meals.map((meal) => (
+            <article key={meal.name} className="inset-panel stack-sm">
+              <div className="row-between">
+                <strong style={{ fontSize: '0.94rem' }}>{meal.name}</strong>
+                <span className="mono" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                  {Math.round(carbsGrams * meal.carbsPct)}g C · {Math.round(proteinGrams * meal.protPct)}g P · {Math.round(fatsGrams * meal.fatPct)}g G
+                </span>
+              </div>
+              <p className="muted" style={{ margin: 0, fontSize: '0.81rem' }}>{meal.example}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="grid-2">
         <article className="card stack-sm">
           <strong style={{ color: 'var(--accent)' }}>Antes de entrenar</strong>
-          <p className="secondary" style={{ margin: 0, fontSize: '0.87rem' }}>{macros.preWorkoutTip}</p>
+          <p className="secondary" style={{ margin: 0, fontSize: '0.87rem' }}>{baseMacros.preWorkoutTip}</p>
         </article>
         <article className="card stack-sm">
           <strong style={{ color: 'var(--pine)' }}>Después de entrenar</strong>
-          <p className="secondary" style={{ margin: 0, fontSize: '0.87rem' }}>{macros.postWorkoutTip}</p>
+          <p className="secondary" style={{ margin: 0, fontSize: '0.87rem' }}>{baseMacros.postWorkoutTip}</p>
         </article>
       </section>
 
       <div className="inset-panel" style={{ fontSize: '0.86rem' }}>
-        <strong>Criterio del día:</strong> <span className="secondary">{macros.dailyNote}</span>
+        <strong>Criterio del día:</strong> <span className="secondary">{baseMacros.dailyNote}</span>
       </div>
     </div>
   );

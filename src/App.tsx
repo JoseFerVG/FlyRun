@@ -5,8 +5,11 @@ import {
   Calendar,
   Compass,
   LogOut,
+  Moon,
   ShieldCheck,
+  Sun,
   UserCheck,
+  Users,
   Utensils,
 } from 'lucide-react';
 import type {
@@ -28,11 +31,15 @@ import {
   subscribeFirebaseAuth,
 } from './services/firebase';
 import {
+  applyDailyReadinessAdjustment,
   applyPhysicalExamResult,
+  calculateCardioEquivalence,
+  changeCaCoRatio,
   evaluateProgressiveLevelUpdate,
   generateWeeklyPlan,
   getLynxLevel,
   swapWorkoutModality,
+  type DailyReadiness,
 } from './services/scienceEngine';
 import { calculateDailyMacros } from './services/nutritionEngine';
 import {
@@ -40,6 +47,7 @@ import {
   createManualGoogleFitUpdate,
   fetchGoogleFitLast7Days,
 } from './services/googleFit';
+import type { SimulatedUserPersona } from './data/userPersonas';
 import { ScientificLoader } from './components/ScientificLoader';
 import { AuthLanding } from './components/AuthLanding';
 import { OnboardingModal } from './components/OnboardingModal';
@@ -50,6 +58,8 @@ import { StatsAndExamView } from './components/StatsAndExamView';
 import { StrategiesAndCardioView } from './components/StrategiesAndCardioView';
 import { NutritionView } from './components/NutritionView';
 import { WorkoutLogDialog } from './components/WorkoutLogDialog';
+import { LiveWorkoutTimerDialog } from './components/LiveWorkoutTimerDialog';
+import { UserPersonasModal } from './components/UserPersonasModal';
 
 type NavTab = 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition';
 
@@ -63,6 +73,9 @@ interface AuthSessionInfo {
 }
 
 export function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return localStorage.getItem('flyrun_theme') === 'dark' ? 'dark' : 'light';
+  });
   const [booting, setBooting] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -76,9 +89,17 @@ export function App() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [loggingWorkout, setLoggingWorkout] = useState<WorkoutSession | null>(null);
+  const [timerWorkout, setTimerWorkout] = useState<WorkoutSession | null>(null);
+  const [personasOpen, setPersonasOpen] = useState(false);
+  const [readiness, setReadiness] = useState<DailyReadiness>('normal');
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('flyrun_theme', theme);
+  }, [theme]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -114,7 +135,7 @@ export function App() {
     const minTimer = window.setTimeout(() => {
       timerDone = true;
       setBooting(false);
-    }, 1250);
+    }, 1150);
 
     if (demo) {
       const s: AuthSessionInfo = { ...demo, isDemoMode: true };
@@ -164,6 +185,23 @@ export function App() {
       exams: nextExams,
       fitDays: nextFitDays,
     });
+  };
+
+  const handleSelectPersona = (persona: SimulatedUserPersona) => {
+    const demoSession = {
+      uid: persona.profile.uid,
+      displayName: persona.profile.displayName,
+      email: persona.profile.email,
+      photoURL: '',
+    };
+    saveDemoGoogleSession(demoSession);
+    setSession({ ...demoSession, isDemoMode: true });
+    setReadiness('normal');
+    const generatedWorkouts = persona.buildWorkouts();
+    saveAll(persona.profile, generatedWorkouts, persona.exams, persona.fitDays);
+    setIsEditingProfile(false);
+    setActiveTab('dashboard');
+    showToast(`Cargado el perfil de ${persona.name} (Nivel ${persona.profile.level}, VDOT ${persona.profile.vdot}).`);
   };
 
   const handleGoogleLogin = async () => {
@@ -223,7 +261,25 @@ export function App() {
   ) => {
     if (!profile) return;
     const target = workouts.find((w) => w.id === workoutId);
-    if (!target) return;
+
+    if (!target) {
+      // Registro de actividad libre fuera del plan del día
+      const eq = calculateCardioEquivalence(modality, actualDurationMinutes, rpe, profile.weightKg, profile.sex, profile.vdot);
+      const extraXp = Math.round(eq.cardioPoints * 1.2);
+      const nextProfile: UserProfile = {
+        ...profile,
+        xp: profile.xp + extraXp,
+        totalCardioPoints: profile.totalCardioPoints + eq.cardioPoints,
+        level: getLynxLevel(profile.vdot, profile.xp + extraXp).level,
+        unlockedBadges: profile.unlockedBadges.includes('multi_cardio') || modality === 'running'
+          ? profile.unlockedBadges
+          : [...profile.unlockedBadges, 'multi_cardio'],
+        updatedAt: new Date().toISOString(),
+      };
+      saveAll(nextProfile, workouts, exams, fitDays);
+      showToast(`Actividad libre registrada (+${eq.cardioPoints} Puntos Cardio, +${extraXp} XP).`);
+      return;
+    }
 
     const updatedWorkout: WorkoutSession = {
       ...target,
@@ -251,6 +307,53 @@ export function App() {
     );
   };
 
+  const handleLogExtraActivity = () => {
+    if (!profile) return;
+    const eq = calculateCardioEquivalence('cycling', 40, 5, profile.weightKg, profile.sex, profile.vdot);
+    setLoggingWorkout({
+      id: `extra_${Date.now()}`,
+      date: new Date().toISOString().slice(0, 10),
+      dayIndex: -1,
+      title: 'Actividad libre / Extra',
+      subtitle: 'Registro manual fuera de calendario',
+      modality: 'cycling',
+      sessionType: 'cycling',
+      strategyTag: 'Actividad libre',
+      durationMinutes: 40,
+      targetDistanceKm: 12,
+      targetZone: 'Z2',
+      targetPace: 'Libre',
+      cardioPoints: eq.cardioPoints,
+      metMinutes: eq.metMinutes,
+      trimp: eq.trimp,
+      estimatedCalories: eq.calories,
+      blocks: [],
+      coachTip: '',
+      completed: false,
+    });
+  };
+
+  const handleReadinessChange = (nextReadiness: DailyReadiness) => {
+    if (!profile || !workouts[0]) return;
+    setReadiness(nextReadiness);
+    if (nextReadiness === 'normal') {
+      const freshPlan = generateWeeklyPlan(profile);
+      const restored = workouts.map((w, idx) => (idx === 0 && !w.completed ? freshPlan[0] : w));
+      saveAll(profile, restored, exams, fitDays);
+      showToast('Sesión de hoy restablecida a tu planificación estándar.');
+      return;
+    }
+    const basePlan = generateWeeklyPlan(profile);
+    const adjusted = applyDailyReadinessAdjustment(basePlan[0], nextReadiness, profile);
+    const nextWorkouts = workouts.map((w, idx) => (idx === 0 && !w.completed ? adjusted : w));
+    saveAll(profile, nextWorkouts, exams, fitDays);
+    showToast(
+      nextReadiness === 'tired'
+        ? 'Sesión de hoy suavizada a Zona 1 para recuperar piernas.'
+        : 'Sesión de hoy ampliada ligeramente por buenas sensaciones.'
+    );
+  };
+
   const handleSwapModality = (workoutId: string, modality: CardioModality) => {
     if (!profile) return;
     const nextWorkouts = workouts.map((w) =>
@@ -258,6 +361,31 @@ export function App() {
     );
     saveAll(profile, nextWorkouts, exams, fitDays);
     showToast('Sesión adaptada manteniendo la equivalencia de Puntos Cardio.');
+  };
+
+  const handleChangeCaCoRatio = (workoutId: string, runMin: number, walkMin: number) => {
+    if (!profile) return;
+    const nextWorkouts = workouts.map((w) =>
+      w.id === workoutId ? changeCaCoRatio(w, runMin, walkMin, profile) : w
+    );
+    saveAll(profile, nextWorkouts, exams, fitDays);
+    showToast(`Bloque CaCo actualizado a ${runMin} min correr / ${walkMin} min andar.`);
+  };
+
+  const handleSwapWorkoutDays = (sourceId: string, targetId: string) => {
+    if (!profile) return;
+    const srcIdx = workouts.findIndex((w) => w.id === sourceId);
+    const tgtIdx = workouts.findIndex((w) => w.id === targetId);
+    if (srcIdx === -1 || tgtIdx === -1) return;
+
+    const src = workouts[srcIdx];
+    const tgt = workouts[tgtIdx];
+    const nextWorkouts = [...workouts];
+    nextWorkouts[srcIdx] = { ...tgt, id: src.id, date: src.date, dayIndex: src.dayIndex };
+    nextWorkouts[tgtIdx] = { ...src, id: tgt.id, date: tgt.date, dayIndex: tgt.dayIndex };
+
+    saveAll(profile, nextWorkouts, exams, fitDays);
+    showToast('Días intercambiados en tu calendario.');
   };
 
   const handleSelectStrategy = (strategyId: string) => {
@@ -349,12 +477,22 @@ export function App() {
 
   if (!session) {
     return (
-      <AuthLanding
-        onGoogleLogin={handleGoogleLogin}
-        onDemoLogin={() => void handleDemoLogin()}
-        authLoading={authLoading}
-        authError={authError}
-      />
+      <>
+        <AuthLanding
+          onGoogleLogin={handleGoogleLogin}
+          onDemoLogin={() => void handleDemoLogin()}
+          onOpenPersonas={() => setPersonasOpen(true)}
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+          authLoading={authLoading}
+          authError={authError}
+        />
+        <UserPersonasModal
+          open={personasOpen}
+          onClose={() => setPersonasOpen(false)}
+          onSelectPersona={handleSelectPersona}
+        />
+      </>
     );
   }
 
@@ -398,7 +536,7 @@ export function App() {
                 FlyRun <span className="brand-badge">Nivel {levelInfo.level}</span>
               </div>
               <div className="muted" style={{ fontSize: '0.72rem' }}>
-                {session.isDemoMode ? 'Perfil de ejemplo' : 'Google + Firebase'}
+                {profile.displayName}
               </div>
             </div>
           </div>
@@ -422,8 +560,26 @@ export function App() {
           </nav>
 
           <div className="header-actions">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setPersonasOpen(true)}
+              title="Ver opiniones de los 7 usuarios simulados y cambiar de perfil"
+            >
+              <Users size={14} aria-hidden="true" />
+              7 Usuarios
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+              aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
+              title={theme === 'light' ? 'Modo oscuro mate' : 'Modo claro'}
+            >
+              {theme === 'light' ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+            </button>
             <span className="xp-chip mono">
-              <Activity size={13} color="#186a4b" aria-hidden="true" />
+              <Activity size={13} color="var(--pine)" aria-hidden="true" />
               {profile.xp} XP
             </span>
             <button
@@ -464,14 +620,20 @@ export function App() {
               />
               <DashboardView
                 profile={profile}
+                workouts={workouts}
                 todayWorkout={todayWorkout}
                 tomorrowWorkout={tomorrowWorkout}
                 fitDays={fitDays}
                 todayMacros={todayMacros}
                 fitSyncLoading={fitSyncLoading}
                 fitNotice={fitNotice}
+                readiness={readiness}
+                onReadinessChange={handleReadinessChange}
+                onStartTimer={(w) => setTimerWorkout(w)}
                 onCompleteWorkout={(w) => setLoggingWorkout(w)}
+                onLogExtraActivity={handleLogExtraActivity}
                 onSwapTodayModality={handleSwapModality}
+                onChangeCaCoRatio={handleChangeCaCoRatio}
                 onSyncGoogleFit={() => void handleSyncGoogleFit()}
                 onManualStepsUpdate={handleManualStepsUpdate}
                 onNavigate={setActiveTab}
@@ -482,8 +644,10 @@ export function App() {
           {activeTab === 'calendar' && (
             <CalendarView
               workouts={workouts}
+              onStartTimer={(w) => setTimerWorkout(w)}
               onSelectComplete={(w) => setLoggingWorkout(w)}
               onSwapModality={handleSwapModality}
+              onSwapWorkoutDays={handleSwapWorkoutDays}
               onOpenExam={() => setActiveTab('stats')}
             />
           )}
@@ -537,6 +701,21 @@ export function App() {
         workout={loggingWorkout}
         onClose={() => setLoggingWorkout(null)}
         onConfirmComplete={handleCompleteWorkout}
+      />
+
+      <LiveWorkoutTimerDialog
+        workout={timerWorkout}
+        onClose={() => setTimerWorkout(null)}
+        onFinishToLog={(w, elapsedMin) => {
+          setLoggingWorkout({ ...w, durationMinutes: elapsedMin });
+        }}
+      />
+
+      <UserPersonasModal
+        open={personasOpen}
+        activeUid={profile.uid}
+        onClose={() => setPersonasOpen(false)}
+        onSelectPersona={handleSelectPersona}
       />
     </div>
   );
