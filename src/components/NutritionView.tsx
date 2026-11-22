@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Droplets, Utensils } from 'lucide-react';
+import { CookingPot, Drop, Flame } from '@phosphor-icons/react';
 import type { GoogleFitDay, UserProfile, WorkoutSession } from '../types/fitness';
 import { calculateDailyMacros } from '../services/nutritionEngine';
+import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 
 interface NutritionViewProps {
   profile: UserProfile;
@@ -72,11 +73,11 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
 
   return (
     <div className="stack-lg">
-      <section className="card stack-md" aria-label="Recomendador de Nutrición Macro">
+      <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Recomendador de Nutrición Macro">
         <div className="row-between">
           <div>
             <span className="pill pill-emerald">
-              <Utensils size={13} aria-hidden="true" />
+              <CookingPot size={14} weight="duotone" aria-hidden="true" />
               Orientación en macronutrientes (sin dieta cerrada)
             </span>
             <h1 style={{ margin: '0.38rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
@@ -86,7 +87,10 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
               Estimada con Mifflin-St Jeor ({baseMacros.bmr} kcal basales), tus pasos diarios y la exigencia de la sesión.
             </p>
           </div>
-          <span className="pill pill-amber mono">{totalKcal} kcal/día</span>
+          <span className="pill pill-amber mono">
+            <Flame size={14} weight="duotone" aria-hidden="true" />
+            <AnimatedNumber value={totalKcal} locale suffix=" kcal/día" />
+          </span>
         </div>
 
         <div className="row-between">
@@ -147,57 +151,65 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
             <div style={{ inlineSize: `${fatsPct}%`, backgroundColor: 'var(--cobalt)' }} />
           </div>
         </div>
-      </section>
+      </SpotlightCard>
 
       <section className="grid-4" aria-label="Desglose diario de macronutrientes">
-        <article className="card stack-sm">
+        <SpotlightCard staggerIndex={1} className="stack-sm">
           <span className="muted" style={{ fontSize: '0.8rem' }}>Carbohidratos (combustible)</span>
-          <div className="kpi-value" style={{ color: 'var(--accent)' }}>{carbsGrams} g</div>
+          <div className="kpi-value" style={{ color: 'var(--accent)' }}>
+            <AnimatedNumber value={carbsGrams} suffix=" g" />
+          </div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>
             {(carbsGrams / profile.weightKg).toFixed(1)} g/kg
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Avena, arroz, patata, pasta, pan integral o fruta.
           </p>
-        </article>
+        </SpotlightCard>
 
-        <article className="card stack-sm">
+        <SpotlightCard staggerIndex={2} className="stack-sm">
           <span className="muted" style={{ fontSize: '0.8rem' }}>Proteínas (reparación muscular)</span>
-          <div className="kpi-value" style={{ color: 'var(--pine)' }}>{proteinGrams} g</div>
+          <div className="kpi-value" style={{ color: 'var(--pine)' }}>
+            <AnimatedNumber value={proteinGrams} suffix=" g" />
+          </div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>
             {(proteinGrams / profile.weightKg).toFixed(1)} g/kg
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Pescado, huevo, carne magra, lácteos proteicos, legumbres o tofu.
           </p>
-        </article>
+        </SpotlightCard>
 
-        <article className="card stack-sm">
+        <SpotlightCard staggerIndex={3} className="stack-sm">
           <span className="muted" style={{ fontSize: '0.8rem' }}>Grasas saludables (recuperación)</span>
-          <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>{fatsGrams} g</div>
+          <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>
+            <AnimatedNumber value={fatsGrams} suffix=" g" />
+          </div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>
             {(fatsGrams / profile.weightKg).toFixed(1)} g/kg
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Aceite de oliva virgen extra, aguacate, frutos secos y pescado azul.
           </p>
-        </article>
+        </SpotlightCard>
 
-        <article className="card stack-sm">
+        <SpotlightCard staggerIndex={4} className="stack-sm">
           <div className="row-wrap">
-            <Droplets size={15} color="#2563eb" aria-hidden="true" />
+            <Drop size={16} weight="duotone" color="var(--cobalt)" aria-hidden="true" />
             <span className="muted" style={{ fontSize: '0.8rem' }}>Hidratación</span>
           </div>
-          <div className="kpi-value">{baseMacros.hydrationLiters} L</div>
+          <div className="kpi-value">
+            <AnimatedNumber value={baseMacros.hydrationLiters} decimals={1} suffix=" L" />
+          </div>
           <div className="mono" style={{ fontSize: '0.82rem' }}>Agua + sales si sudas mucho</div>
           <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
             Mantener hidratación estable evita subidas prematuras de pulso.
           </p>
-        </article>
+        </SpotlightCard>
       </section>
 
       {/* Reparto práctico en 4 comidas */}
-      <section className="card stack-md" aria-label="Reparto orientativo en 4 comidas">
+      <SpotlightCard as="section" staggerIndex={5} className="stack-md" aria-label="Reparto orientativo en 4 comidas">
         <div>
           <h2 style={{ margin: 0, fontSize: '1.12rem' }}>Cómo repartir estos macros en 4 tomas prácticas</h2>
           <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.82rem' }}>
@@ -218,7 +230,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
             </article>
           ))}
         </div>
-      </section>
+      </SpotlightCard>
 
       <section className="grid-2">
         <article className="card stack-sm">

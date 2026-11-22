@@ -1,8 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeftRight, Bike, Calendar, CheckCircle2, ClipboardCheck, Play } from 'lucide-react';
+import {
+  ArrowsLeftRight,
+  Bicycle,
+  CalendarBlank,
+  CheckCircle,
+  ClipboardText,
+  Footprints,
+  PersonSimpleRun,
+  SoccerBall,
+  Timer,
+} from '@phosphor-icons/react';
 import type { CardioModality, WorkoutSession } from '../types/fitness';
 import { getModalityLabel } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
+import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 
 interface CalendarViewProps {
   workouts: WorkoutSession[];
@@ -44,10 +55,12 @@ export function CalendarView({
 
   return (
     <div className="stack-lg">
-      <section className="card stack-md">
+      <SpotlightCard as="section" staggerIndex={0} className="stack-md">
         <div className="row-between">
           <div className="row-wrap">
-            <Calendar size={19} color="#d94814" aria-hidden="true" />
+            <span className="duotone-icon-box">
+              <CalendarBlank size={18} weight="duotone" aria-hidden="true" />
+            </span>
             <div>
               <h1 style={{ margin: 0, fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
                 Calendario de 4 semanas
@@ -107,7 +120,7 @@ export function CalendarView({
                   </span>
                   {isToday && <span className="pill pill-amber">Hoy</span>}
                   {isTomorrow && <span className="pill pill-cyan">Mañana</span>}
-                  {w.completed && <CheckCircle2 size={15} color="#186a4b" aria-hidden="true" />}
+                  {w.completed && <CheckCircle size={16} weight="duotone" color="var(--pine)" aria-hidden="true" />}
                 </div>
 
                 <div style={{ fontWeight: 600, fontSize: '0.88rem', lineHeight: 1.35 }}>{w.title}</div>
@@ -124,10 +137,10 @@ export function CalendarView({
             );
           })}
         </div>
-      </section>
+      </SpotlightCard>
 
       {selected && (
-        <section className="card stack-md" aria-label="Detalle del día seleccionado">
+        <SpotlightCard as="section" staggerIndex={1} className="stack-md" aria-label="Detalle del día seleccionado">
           <div className="row-between">
             <div>
               <div className="row-wrap">
@@ -148,13 +161,13 @@ export function CalendarView({
                   className="btn btn-secondary btn-sm"
                   onClick={() => onStartTimer(selected)}
                 >
-                  <Play size={14} aria-hidden="true" />
+                  <Timer size={15} weight="duotone" aria-hidden="true" />
                   Cronómetro guiado
                 </button>
               )}
               {selected.isExamDay && (
                 <button type="button" className="btn btn-primary btn-sm" onClick={onOpenExam}>
-                  <ClipboardCheck size={15} aria-hidden="true" />
+                  <ClipboardText size={15} weight="duotone" aria-hidden="true" />
                   Ir a examen físico
                 </button>
               )}
@@ -163,7 +176,7 @@ export function CalendarView({
                 className={`btn ${selected.completed ? 'btn-secondary' : 'btn-emerald'}`}
                 onClick={() => onSelectComplete(selected)}
               >
-                <CheckCircle2 size={16} aria-hidden="true" />
+                <CheckCircle size={17} weight="duotone" aria-hidden="true" />
                 {selected.completed ? 'Editar registro' : 'Marcar como completado'}
               </button>
             </div>
@@ -175,7 +188,7 @@ export function CalendarView({
             <div className="inset-panel">
               <div className="muted" style={{ fontSize: '0.74rem' }}>Duración / Distancia</div>
               <div className="mono" style={{ fontWeight: 700 }}>
-                {selected.durationMinutes} min · {selected.targetDistanceKm} km
+                <AnimatedNumber value={selected.durationMinutes} suffix=" min" /> · {selected.targetDistanceKm} km
               </div>
             </div>
             <div className="inset-panel">
@@ -185,13 +198,13 @@ export function CalendarView({
             <div className="inset-panel">
               <div className="muted" style={{ fontSize: '0.74rem' }}>Puntos Cardio / MET-m</div>
               <div className="mono" style={{ fontWeight: 700 }}>
-                {selected.cardioPoints} PC · {selected.metMinutes} MET
+                <AnimatedNumber value={selected.cardioPoints} suffix=" PC" /> · {selected.metMinutes} MET
               </div>
             </div>
             <div className="inset-panel">
               <div className="muted" style={{ fontSize: '0.74rem' }}>TRIMP / Calorías</div>
               <div className="mono" style={{ fontWeight: 700 }}>
-                {selected.trimp} TRIMP · {selected.estimatedCalories} kcal
+                {selected.trimp} TRIMP · <AnimatedNumber value={selected.estimatedCalories} suffix=" kcal" />
               </div>
             </div>
           </div>
@@ -226,6 +239,7 @@ export function CalendarView({
                       className="btn btn-secondary btn-sm"
                       onClick={() => onSwapModality(selected.id, 'running')}
                     >
+                      <PersonSimpleRun size={14} weight="duotone" aria-hidden="true" />
                       Running
                     </button>
                     <button
@@ -233,7 +247,7 @@ export function CalendarView({
                       className="btn btn-secondary btn-sm"
                       onClick={() => onSwapModality(selected.id, 'cycling')}
                     >
-                      <Bike size={14} aria-hidden="true" />
+                      <Bicycle size={14} weight="duotone" aria-hidden="true" />
                       Bicicleta
                     </button>
                     <button
@@ -241,6 +255,7 @@ export function CalendarView({
                       className="btn btn-secondary btn-sm"
                       onClick={() => onSwapModality(selected.id, 'soccer')}
                     >
+                      <SoccerBall size={14} weight="duotone" aria-hidden="true" />
                       Partido de fútbol
                     </button>
                     <button
@@ -248,6 +263,7 @@ export function CalendarView({
                       className="btn btn-secondary btn-sm"
                       onClick={() => onSwapModality(selected.id, 'walking')}
                     >
+                      <Footprints size={14} weight="duotone" aria-hidden="true" />
                       Caminata rápida
                     </button>
                   </div>
@@ -285,7 +301,7 @@ export function CalendarView({
                         setSwapTargetId('');
                       }}
                     >
-                      <ArrowLeftRight size={14} aria-hidden="true" />
+                      <ArrowsLeftRight size={14} weight="duotone" aria-hidden="true" />
                       Intercambiar
                     </button>
                   </div>
@@ -293,7 +309,7 @@ export function CalendarView({
               )}
             </div>
           </div>
-        </section>
+        </SpotlightCard>
       )}
     </div>
   );

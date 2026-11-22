@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ArrowRightLeft, BookOpen, Check, Info } from 'lucide-react';
+import { ArrowsLeftRight, BookOpen, CheckCircle, Lightning } from '@phosphor-icons/react';
 import type { CardioModality, UserProfile } from '../types/fitness';
 import { RUNNING_STRATEGIES } from '../data/runningKnowledge';
 import { calculateCardioEquivalence } from '../services/scienceEngine';
+import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 
 interface StrategiesAndCardioViewProps {
   profile: UserProfile;
@@ -38,9 +39,11 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
 
   return (
     <div className="stack-lg">
-      <section className="card stack-md" aria-label="Calculadora de Equivalencia Cardio">
+      <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Calculadora de Equivalencia Cardio">
         <div className="row-wrap">
-          <ArrowRightLeft size={19} color="#d94814" aria-hidden="true" />
+          <span className="duotone-icon-box">
+            <ArrowsLeftRight size={18} weight="duotone" aria-hidden="true" />
+          </span>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
               Equivalencia multi-cardio (Running · Bici · Fútbol)
@@ -100,19 +103,28 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
         <div className="grid-4">
           <div className="inset-panel">
             <div className="muted" style={{ fontSize: '0.75rem' }}>Puntos Cardio</div>
-            <div className="kpi-value" style={{ color: 'var(--accent)' }}>{selectedMetrics.cardioPoints} PC</div>
+            <div className="kpi-value" style={{ color: 'var(--accent)' }}>
+              <AnimatedNumber value={selectedMetrics.cardioPoints} suffix=" PC" />
+            </div>
           </div>
           <div className="inset-panel">
             <div className="muted" style={{ fontSize: '0.75rem' }}>Volumen metabólico</div>
-            <div className="kpi-value">{selectedMetrics.metMinutes} <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>MET-m</span></div>
+            <div className="kpi-value">
+              <AnimatedNumber value={selectedMetrics.metMinutes} />{' '}
+              <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>MET-m</span>
+            </div>
           </div>
           <div className="inset-panel">
             <div className="muted" style={{ fontSize: '0.75rem' }}>Carga TRIMP</div>
-            <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>{selectedMetrics.trimp}</div>
+            <div className="kpi-value" style={{ color: 'var(--cobalt)' }}>
+              <AnimatedNumber value={selectedMetrics.trimp} />
+            </div>
           </div>
           <div className="inset-panel">
             <div className="muted" style={{ fontSize: '0.75rem' }}>Equivalente en carrera</div>
-            <div className="kpi-value" style={{ color: 'var(--pine)' }}>{selectedMetrics.equivalentRunningKm} km</div>
+            <div className="kpi-value" style={{ color: 'var(--pine)' }}>
+              <AnimatedNumber value={selectedMetrics.equivalentRunningKm} decimals={1} suffix=" km" />
+            </div>
           </div>
         </div>
 
@@ -143,12 +155,14 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
             </tbody>
           </table>
         </div>
-      </section>
+      </SpotlightCard>
 
       <section className="stack-md" aria-label="Guía de estrategias de running">
         <div className="row-between">
           <div className="row-wrap">
-            <BookOpen size={19} color="#2563eb" aria-hidden="true" />
+            <span className="duotone-icon-box is-cobalt">
+              <BookOpen size={18} weight="duotone" aria-hidden="true" />
+            </span>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '-0.015em' }}>
                 Estrategias principales de entrenamiento en carrera
@@ -162,10 +176,10 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
         </div>
 
         <div className="grid-2">
-          {RUNNING_STRATEGIES.map((strategy) => {
+          {RUNNING_STRATEGIES.map((strategy, sIdx) => {
             const isActive = profile.preferredStrategyId === strategy.id;
             return (
-              <article key={strategy.id} className="card stack-md">
+              <SpotlightCard key={strategy.id} staggerIndex={sIdx + 1} className="stack-md">
                 <div className="row-between">
                   <span className="pill pill-cyan">{strategy.shortTag}</span>
                   <span className="pill">{strategy.intensitySplit}</span>
@@ -207,17 +221,17 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
                       setAppliedNotice(`Estrategia "${strategy.name}" aplicada al calendario.`);
                     }}
                   >
-                    {isActive && <Check size={14} aria-hidden="true" />}
+                    {isActive && <CheckCircle size={15} weight="duotone" aria-hidden="true" />}
                     {isActive ? 'Estrategia activa' : 'Aplicar al plan'}
                   </button>
                 </div>
-              </article>
+              </SpotlightCard>
             );
           })}
         </div>
 
-        <div className="inset-panel row-wrap" style={{ fontSize: '0.84rem' }}>
-          <Info size={16} color="#2563eb" aria-hidden="true" />
+        <div className="inset-panel accent-rail-cobalt row-wrap" style={{ fontSize: '0.84rem' }}>
+          <Lightning size={16} weight="duotone" color="var(--cobalt)" aria-hidden="true" />
           <span className="secondary">
             Para principiantes, empezar con bloques <strong>CaCo (2 min corriendo / 6 min caminando)</strong> reduce drásticamente la sobrecarga en periostio y tendones mientras construyes base aeróbica.
           </span>

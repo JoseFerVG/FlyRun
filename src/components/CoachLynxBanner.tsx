@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Lightbulb } from 'lucide-react';
+import { ClipboardText, Flame, Heartbeat, Lightbulb } from '@phosphor-icons/react';
 import type { LynxLevelInfo, UserProfile, WorkoutSession } from '../types/fitness';
 import { SCIENTIFIC_LOADING_TIPS } from '../data/runningKnowledge';
+import { HaikeiTopoOverlay } from './AmbientBackdrop';
+import { AnimatedNumber } from './MotionPrimitives';
 
 interface CoachLynxBannerProps {
   profile: UserProfile;
@@ -23,25 +25,35 @@ export function CoachLynxBanner({
   const firstName = profile.displayName.split(' ')[0];
 
   return (
-    <section className="card stack-md" aria-label="Resumen diario del entrenador">
+    <section
+      className="card haikei-card-surface spotlight-card stack-md stagger-item"
+      aria-label="Resumen diario del entrenador"
+    >
+      <HaikeiTopoOverlay />
+
       <div className="row-between">
         <div className="row-wrap">
           <span className="pill pill-amber">
             Nivel {levelInfo.level} · {levelInfo.spanishTitle}
           </span>
           <span className="pill pill-emerald">
+            <Flame size={13} weight="duotone" aria-hidden="true" />
             Racha: {profile.streakDays} {profile.streakDays === 1 ? 'día' : 'días'}
           </span>
-          <span className="pill pill-cyan mono">VDOT {profile.vdot}</span>
+          <span className="pill pill-cyan mono">
+            <Heartbeat size={13} weight="duotone" aria-hidden="true" />
+            VDOT <AnimatedNumber value={profile.vdot} decimals={1} />
+          </span>
         </div>
 
         <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenExam}>
+          <ClipboardText size={15} weight="duotone" aria-hidden="true" />
           Registrar examen físico
         </button>
       </div>
 
       <div>
-        <h1 style={{ margin: 0, fontSize: 'clamp(1.3rem, 2.6vw, 1.7rem)', fontWeight: 700, letterSpacing: '-0.025em' }}>
+        <h1 style={{ margin: 0, fontSize: 'clamp(1.32rem, 2.6vw, 1.74rem)', fontWeight: 800, letterSpacing: '-0.025em' }}>
           Plan de hoy para {firstName}
         </h1>
         <p className="secondary" style={{ margin: '0.28rem 0 0', fontSize: '0.94rem' }}>
@@ -84,7 +96,7 @@ export function CoachLynxBanner({
           <div className="row-between" style={{ fontSize: '0.78rem', marginBlockEnd: '0.3rem' }}>
             <span className="muted">Progreso hacia el Nivel {Math.min(10, levelInfo.level + 1)}</span>
             <span className="mono secondary" style={{ fontWeight: 600 }}>
-              {profile.xp} / {levelInfo.nextLevelXp} XP ({levelInfo.progressPct}%)
+              <AnimatedNumber value={profile.xp} locale /> / {levelInfo.nextLevelXp.toLocaleString('es-ES')} XP ({levelInfo.progressPct}%)
             </span>
           </div>
           <div className="progress-track">
@@ -97,12 +109,12 @@ export function CoachLynxBanner({
           className="btn btn-ghost btn-sm"
           onClick={() => setTipIndex((i) => (i + 1) % SCIENTIFIC_LOADING_TIPS.length)}
         >
-          <Lightbulb size={14} aria-hidden="true" />
+          <Lightbulb size={15} weight="duotone" aria-hidden="true" />
           Siguiente apunte técnico
         </button>
       </div>
 
-      <div className="inset-panel" style={{ fontSize: '0.84rem', padding: '0.65rem 0.9rem' }}>
+      <div className="inset-panel" style={{ fontSize: '0.84rem', padding: '0.68rem 0.92rem' }}>
         <strong style={{ color: 'var(--text-primary)' }}>{currentTip.title}:</strong>{' '}
         <span className="secondary">{currentTip.fact}</span>
       </div>

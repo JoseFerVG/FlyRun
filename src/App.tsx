@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
-  Activity,
-  BookOpen,
-  Calendar,
+  CalendarBlank,
+  ChartLineUp,
   Compass,
-  LogOut,
-  Moon,
+  CookingPot,
+  Lightning,
+  MoonStars,
+  PersonSimpleRun,
   ShieldCheck,
-  Sun,
-  UserCheck,
-  Users,
-  Utensils,
-} from 'lucide-react';
+  SignOut,
+  SunDim,
+  UsersThree,
+} from '@phosphor-icons/react';
+import { AmbientBackdrop } from './components/AmbientBackdrop';
+import { AnimatedNumber } from './components/MotionPrimitives';
 import type {
   CardioModality,
   GoogleFitDay,
@@ -606,14 +608,15 @@ export function App() {
 
   const navItems: Array<{ id: NavTab; label: string; shortLabel: string; icon: typeof Compass }> = [
     { id: 'dashboard', label: 'Hoy', shortLabel: 'Hoy', icon: Compass },
-    { id: 'calendar', label: 'Calendario', shortLabel: 'Calendario', icon: Calendar },
-    { id: 'stats', label: 'Datos y Examen', shortLabel: 'Examen', icon: UserCheck },
-    { id: 'strategies', label: 'Estrategias y Cardio', shortLabel: 'Cardio', icon: BookOpen },
-    { id: 'nutrition', label: 'Macros', shortLabel: 'Macros', icon: Utensils },
+    { id: 'calendar', label: 'Calendario', shortLabel: 'Calendario', icon: CalendarBlank },
+    { id: 'stats', label: 'Datos y Examen', shortLabel: 'Examen', icon: ChartLineUp },
+    { id: 'strategies', label: 'Estrategias y Cardio', shortLabel: 'Cardio', icon: PersonSimpleRun },
+    { id: 'nutrition', label: 'Macros', shortLabel: 'Macros', icon: CookingPot },
   ];
 
   return (
     <div className="app-shell">
+      <AmbientBackdrop />
       <a href="#main-content" className="skip-link">
         Saltar al contenido principal
       </a>
@@ -643,7 +646,7 @@ export function App() {
                   aria-current={isActive ? 'page' : undefined}
                   onClick={() => handleSelectTab(item.id)}
                 >
-                  <Icon size={15} aria-hidden="true" />
+                  <Icon size={16} weight="duotone" aria-hidden="true" />
                   {item.label}
                   {isActive && (
                     <span
@@ -664,7 +667,7 @@ export function App() {
               onClick={() => setPersonasOpen(true)}
               title="Ver opiniones de los 7 usuarios simulados y cambiar de perfil"
             >
-              <Users size={14} aria-hidden="true" />
+              <UsersThree size={15} weight="duotone" aria-hidden="true" />
               7 Usuarios
             </button>
             <button
@@ -674,11 +677,15 @@ export function App() {
               aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
               title={theme === 'light' ? 'Modo oscuro mate' : 'Modo claro'}
             >
-              {theme === 'light' ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+              {theme === 'light' ? (
+                <MoonStars size={16} weight="duotone" aria-hidden="true" />
+              ) : (
+                <SunDim size={16} weight="duotone" aria-hidden="true" />
+              )}
             </button>
             <span className="xp-chip mono">
-              <Activity size={13} color="var(--pine)" aria-hidden="true" />
-              {profile.xp} XP
+              <Lightning size={14} weight="duotone" color="var(--pine)" aria-hidden="true" />
+              <AnimatedNumber value={profile.xp} locale suffix=" XP" />
             </span>
             <button
               type="button"
@@ -692,7 +699,7 @@ export function App() {
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
             >
-              <LogOut size={15} aria-hidden="true" />
+              <SignOut size={16} weight="duotone" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -702,7 +709,7 @@ export function App() {
         <div className="stack-lg">
           {toastMessage && (
             <div role="status" aria-live="polite" className="notice-banner">
-              <ShieldCheck size={17} aria-hidden="true" />
+              <ShieldCheck size={18} weight="duotone" aria-hidden="true" />
               {toastMessage}
             </div>
           )}
@@ -789,7 +796,7 @@ export function App() {
               aria-current={activeTab === item.id ? 'page' : undefined}
               onClick={() => handleSelectTab(item.id)}
             >
-              <Icon size={18} aria-hidden="true" />
+              <Icon size={19} weight="duotone" aria-hidden="true" />
               <span>{item.shortLabel}</span>
             </button>
           );

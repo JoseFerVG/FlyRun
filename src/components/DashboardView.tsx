@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
-  Activity,
-  Bike,
-  CalendarClock,
-  CheckCircle2,
+  ArrowsClockwise,
+  Bicycle,
+  CalendarBlank,
+  CheckCircle,
+  CookingPot,
   Footprints,
-  Play,
-  Plus,
-  RefreshCw,
+  Heartbeat,
+  PersonSimpleRun,
+  PlusCircle,
+  SoccerBall,
+  Timer,
   Trophy,
-  Utensils,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import type {
   CardioModality,
   GoogleFitDay,
@@ -24,6 +26,7 @@ import {
   type DailyReadiness,
 } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
+import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -77,16 +80,18 @@ export function DashboardView({
   return (
     <div className="stack-lg">
       <div className="grid-2">
-        <article className="card stack-md" aria-label="Rutina de Hoy">
+        <SpotlightCard staggerIndex={1} className="stack-md" aria-label="Rutina de Hoy">
           <div className="row-between">
             <span className="pill pill-amber">Hoy · {todayWorkout?.strategyTag ?? 'Descanso'}</span>
             {todayWorkout?.completed ? (
               <span className="pill pill-emerald">
-                <CheckCircle2 size={13} aria-hidden="true" />
+                <CheckCircle size={14} weight="duotone" aria-hidden="true" />
                 Completada
               </span>
             ) : (
-              <span className="pill mono">{todayWorkout?.cardioPoints ?? 0} Puntos Cardio</span>
+              <span className="pill mono">
+                <AnimatedNumber value={todayWorkout?.cardioPoints ?? 0} suffix=" Puntos Cardio" />
+              </span>
             )}
           </div>
 
@@ -135,7 +140,7 @@ export function DashboardView({
                 <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
                   <div className="muted" style={{ fontSize: '0.72rem' }}>Duración</div>
                   <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
-                    {todayWorkout.durationMinutes} min
+                    <AnimatedNumber value={todayWorkout.durationMinutes} suffix=" min" />
                   </div>
                 </div>
                 <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
@@ -147,7 +152,7 @@ export function DashboardView({
                 <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
                   <div className="muted" style={{ fontSize: '0.72rem' }}>Carga metabólica</div>
                   <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
-                    {todayWorkout.metMinutes} MET-m
+                    <AnimatedNumber value={todayWorkout.metMinutes} suffix=" MET-m" />
                   </div>
                 </div>
               </div>
@@ -214,6 +219,7 @@ export function DashboardView({
                       className="segmented-btn is-accent"
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'running')}
                     >
+                      <PersonSimpleRun size={14} weight="duotone" aria-hidden="true" />
                       Running
                     </button>
                     <button
@@ -222,7 +228,7 @@ export function DashboardView({
                       className="segmented-btn is-accent"
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'cycling')}
                     >
-                      <Bike size={14} aria-hidden="true" />
+                      <Bicycle size={14} weight="duotone" aria-hidden="true" />
                       Bicicleta
                     </button>
                     <button
@@ -231,6 +237,7 @@ export function DashboardView({
                       className="segmented-btn is-accent"
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'soccer')}
                     >
+                      <SoccerBall size={14} weight="duotone" aria-hidden="true" />
                       Partido de fútbol
                     </button>
                   </div>
@@ -248,7 +255,7 @@ export function DashboardView({
                       className="btn btn-secondary btn-sm"
                       onClick={() => onStartTimer(todayWorkout)}
                     >
-                      <Play size={14} aria-hidden="true" />
+                      <Timer size={15} weight="duotone" aria-hidden="true" />
                       Cronómetro guiado
                     </button>
                   )}
@@ -257,7 +264,7 @@ export function DashboardView({
                     className={`btn ${todayWorkout.completed ? 'btn-secondary' : 'btn-emerald'}`}
                     onClick={() => onCompleteWorkout(todayWorkout)}
                   >
-                    <CheckCircle2 size={16} aria-hidden="true" />
+                    <CheckCircle size={17} weight="duotone" aria-hidden="true" />
                     {todayWorkout.completed ? 'Editar registro' : 'Completar sesión'}
                   </button>
                 </div>
@@ -266,13 +273,13 @@ export function DashboardView({
           ) : (
             <p className="muted">No hay sesión registrada para hoy.</p>
           )}
-        </article>
+        </SpotlightCard>
 
         <div className="stack-md">
-          <article className="card stack-md" aria-label="Rutina de Mañana">
+          <SpotlightCard staggerIndex={2} className="stack-md" aria-label="Rutina de Mañana">
             <div className="row-between">
               <span className="pill pill-cyan">
-                <CalendarClock size={13} aria-hidden="true" />
+                <CalendarBlank size={14} weight="duotone" aria-hidden="true" />
                 Mañana
               </span>
               <button
@@ -306,17 +313,19 @@ export function DashboardView({
                 </p>
               </>
             ) : null}
-          </article>
+          </SpotlightCard>
 
           {/* Balance 80/20 semanal + actividad libre */}
-          <article className="card stack-sm" aria-label="Balance semanal 80/20">
+          <SpotlightCard staggerIndex={3} className="stack-sm" aria-label="Balance semanal 80/20">
             <div className="row-between">
               <div className="row-wrap">
-                <Activity size={17} color="#186a4b" aria-hidden="true" />
+                <span className="duotone-icon-box is-pine" style={{ inlineSize: '30px', blockSize: '30px' }}>
+                  <Heartbeat size={16} weight="duotone" aria-hidden="true" />
+                </span>
                 <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Balance semanal 80/20</h2>
               </div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={onLogExtraActivity}>
-                <Plus size={14} aria-hidden="true" />
+                <PlusCircle size={15} weight="duotone" aria-hidden="true" />
                 Registrar actividad libre
               </button>
             </div>
@@ -334,12 +343,14 @@ export function DashboardView({
               <div className="split-8020-low" style={{ inlineSize: `${balance8020.lowPct}%` }} />
               <div className="split-8020-high" style={{ inlineSize: `${balance8020.highPct}%` }} />
             </div>
-          </article>
+          </SpotlightCard>
 
-          <article className="card stack-md" aria-label="Integración Google Fit">
+          <SpotlightCard staggerIndex={4} className="stack-md" aria-label="Integración Google Fit">
             <div className="row-between">
               <div className="row-wrap">
-                <Footprints size={18} color="#186a4b" aria-hidden="true" />
+                <span className="duotone-icon-box is-pine">
+                  <Footprints size={18} weight="duotone" aria-hidden="true" />
+                </span>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Google Fit · Pasos diarios</h2>
                   <div className="muted" style={{ fontSize: '0.78rem' }}>
@@ -354,7 +365,7 @@ export function DashboardView({
                 onClick={onSyncGoogleFit}
                 disabled={fitSyncLoading}
               >
-                <RefreshCw size={14} aria-hidden="true" />
+                <ArrowsClockwise size={15} weight="duotone" aria-hidden="true" />
                 {fitSyncLoading ? 'Sincronizando…' : 'Sincronizar Google Fit'}
               </button>
             </div>
@@ -362,7 +373,8 @@ export function DashboardView({
             <div className="row-between">
               <div>
                 <div className="kpi-value" style={{ color: 'var(--pine)' }}>
-                  {(fitToday?.steps ?? 0).toLocaleString('es-ES')} <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>pasos</span>
+                  <AnimatedNumber value={fitToday?.steps ?? 0} locale />{' '}
+                  <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>pasos</span>
                 </div>
                 <div className="muted" style={{ fontSize: '0.8rem' }}>
                   {((fitToday?.distanceMeters ?? 0) / 1000).toFixed(2)} km caminados · {fitToday?.calories ?? 0} kcal activas
@@ -442,15 +454,17 @@ export function DashboardView({
               </button>
               {fitNotice && <span className="muted" style={{ fontSize: '0.76rem' }}>{fitNotice}</span>}
             </div>
-          </article>
+          </SpotlightCard>
         </div>
       </div>
 
       <div className="grid-2">
-        <article className="card stack-sm">
+        <SpotlightCard staggerIndex={5} className="stack-sm">
           <div className="row-between">
             <div className="row-wrap">
-              <Utensils size={17} color="#d94814" aria-hidden="true" />
+              <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
+                <CookingPot size={16} weight="duotone" aria-hidden="true" />
+              </span>
               <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición recomendada hoy (macros)</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('nutrition')}>
@@ -458,37 +472,42 @@ export function DashboardView({
             </button>
           </div>
           <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-            {todayMacros.dayTypeLabel} · Estimación diaria: <strong className="mono">{todayMacros.calories} kcal</strong>
+            {todayMacros.dayTypeLabel} · Estimación diaria:{' '}
+            <strong className="mono">
+              <AnimatedNumber value={todayMacros.calories} locale suffix=" kcal" />
+            </strong>
           </p>
           <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Carbohidratos</div>
               <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
-                {todayMacros.carbsGrams} g
+                <AnimatedNumber value={todayMacros.carbsGrams} suffix=" g" />
               </div>
               <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.carbsPerKg} g/kg</div>
             </div>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Proteínas</div>
               <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--pine)' }}>
-                {todayMacros.proteinGrams} g
+                <AnimatedNumber value={todayMacros.proteinGrams} suffix=" g" />
               </div>
               <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.proteinPerKg} g/kg</div>
             </div>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Grasas</div>
               <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--cobalt)' }}>
-                {todayMacros.fatsGrams} g
+                <AnimatedNumber value={todayMacros.fatsGrams} suffix=" g" />
               </div>
               <div className="muted mono" style={{ fontSize: '0.72rem' }}>Agua: {todayMacros.hydrationLiters} L</div>
             </div>
           </div>
-        </article>
+        </SpotlightCard>
 
-        <article className="card stack-sm">
+        <SpotlightCard staggerIndex={6} className="stack-sm">
           <div className="row-between">
             <div className="row-wrap">
-              <Trophy size={17} color="#b45309" aria-hidden="true" />
+              <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
+                <Trophy size={16} weight="duotone" aria-hidden="true" />
+              </span>
               <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Progreso y constancia</h2>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('stats')}>
@@ -499,7 +518,7 @@ export function DashboardView({
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
               <div className="muted" style={{ fontSize: '0.72rem' }}>Puntos Cardio</div>
               <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                {profile.totalCardioPoints}
+                <AnimatedNumber value={profile.totalCardioPoints} locale />
               </div>
             </div>
             <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
@@ -518,7 +537,7 @@ export function DashboardView({
           <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>
             Cada sesión registrada ajusta progresivamente tu VDOT según la sensación de esfuerzo (RPE).
           </p>
-        </article>
+        </SpotlightCard>
       </div>
     </div>
   );

@@ -1,6 +1,16 @@
-import { Activity, ArrowRight, Footprints } from 'lucide-react';
-import { WorkoutVisualBar } from './WorkoutVisualBar';
-import type { WorkoutBlock } from '../types/fitness';
+import {
+  ArrowRight,
+  Bicycle,
+  ClipboardText,
+  CookingPot,
+  Footprints,
+  MoonStars,
+  PersonSimpleRun,
+  SunDim,
+  UsersThree,
+} from '@phosphor-icons/react';
+import { AmbientBackdrop } from './AmbientBackdrop';
+import { SpotlightCard, TelemetryMockupCard } from './MotionPrimitives';
 
 interface AuthLandingProps {
   onGoogleLogin: () => Promise<void>;
@@ -11,16 +21,6 @@ interface AuthLandingProps {
   authLoading: boolean;
   authError: string | null;
 }
-
-const SAMPLE_BLOCKS: WorkoutBlock[] = [
-  { label: 'Calentamiento', durationMinutes: 10, intensity: 'Z1', description: '', zone: 'Z1' },
-  { label: 'Umbral 1', durationMinutes: 6, intensity: 'Z3', description: '', zone: 'Z3' },
-  { label: 'Recup.', durationMinutes: 2, intensity: 'Z1', description: '', zone: 'Z1' },
-  { label: 'Umbral 2', durationMinutes: 6, intensity: 'Z3', description: '', zone: 'Z3' },
-  { label: 'Recup.', durationMinutes: 2, intensity: 'Z1', description: '', zone: 'Z1' },
-  { label: 'Umbral 3', durationMinutes: 6, intensity: 'Z3', description: '', zone: 'Z3' },
-  { label: 'Enfriamiento', durationMinutes: 8, intensity: 'Z1', description: '', zone: 'Z1' },
-];
 
 function GoogleLogoMark() {
   return (
@@ -55,174 +55,172 @@ export function AuthLanding({
   authError,
 }: AuthLandingProps) {
   return (
-    <main id="main-content" className="main-container" style={{ paddingBlock: 'clamp(1.5rem, 4vw, 3rem)' }}>
-      <div className="stack-lg">
-        <header className="row-between">
-          <div className="brand-mark">
-            <span className="brand-monogram" aria-hidden="true">FR</span>
-            <div>
-              <div className="brand-title">
-                <span translate="no">FlyRun</span> <span className="brand-badge">Entrenamiento</span>
-              </div>
-              <div className="muted" style={{ fontSize: '0.78rem' }}>
-                Planificación de carrera, cardio diario y nutrición macro
-              </div>
-            </div>
-          </div>
-
-          <div className="row-wrap">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPersonas}>
-              7 Perfiles de Prueba
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onToggleTheme}>
-              {theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
-            </button>
-          </div>
-        </header>
-
-        <section
-          className="card"
-          style={{
-            display: 'grid',
-            gap: '2.1rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            alignItems: 'center',
-          }}
-        >
-          <div className="stack-md">
-            <div className="row-wrap">
-              <span className="pill pill-amber">VDOT · Método 80/20 · CaCo</span>
-              <span className="pill pill-emerald">
-                <Footprints size={13} aria-hidden="true" />
-                Compatible con Google Fit
-              </span>
-            </div>
-
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 'clamp(1.75rem, 3.6vw, 2.55rem)',
-                lineHeight: 1.14,
-                letterSpacing: '-0.03em',
-                fontWeight: 800,
-              }}
-            >
-              Entrena con la estructura de un preparador físico real, sin complicaciones.
-            </h1>
-
-            <p className="secondary" style={{ margin: 0, fontSize: '0.98rem' }}>
-              Al crear tu cuenta medimos tu punto de partida con una prueba sencilla, calculamos tus ritmos y pulsaciones por zonas
-              y organizamos cada semana combinando carrera, bicicleta, fútbol o caminata diaria con tus objetivos de macros.
-            </p>
-
-            {authError && (
-              <div role="alert" className="error-banner">
-                {authError}
-              </div>
-            )}
-
-            <div className="row-wrap">
-              <button
-                type="button"
-                className="btn btn-google"
-                onClick={() => void onGoogleLogin()}
-                disabled={authLoading}
-              >
-                <GoogleLogoMark />
-                {authLoading ? 'Conectando con Google…' : 'Continuar con Google'}
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => void onDemoLogin()}
-                disabled={authLoading}
-              >
-                <ArrowRight size={17} aria-hidden="true" />
-                Ver demo interactiva
-              </button>
-            </div>
-
-            <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>
-              Acceso directo con tu cuenta de Google. Al entrar por primera vez completarás tu perfil y prueba inicial de nivel.
-            </p>
-          </div>
-
-          <article className="inset-panel accent-rail stack-md" aria-label="Ficha técnica de sesión de ejemplo">
-            <div className="row-between">
+    <>
+      <AmbientBackdrop />
+      <main id="main-content" className="main-container" style={{ paddingBlock: 'clamp(1.5rem, 4vw, 3rem)' }}>
+        <div className="stack-lg">
+          <header className="row-between">
+            <div className="brand-mark">
+              <span className="brand-monogram" aria-hidden="true">FR</span>
               <div>
-                <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Ficha de sesión · Semana tipo
+                <div className="brand-title">
+                  <span translate="no">FlyRun</span> <span className="brand-badge">Entrenamiento</span>
                 </div>
-                <strong style={{ fontSize: '1.04rem' }}>Bloques de Umbral · 40 min</strong>
-              </div>
-              <span className="pill pill-amber mono">VDOT 38.5</span>
-            </div>
-
-            <WorkoutVisualBar blocks={SAMPLE_BLOCKS} />
-
-            <div className="grid-3" style={{ gap: '0.55rem' }}>
-              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '0.58rem 0.72rem' }}>
-                <div className="muted" style={{ fontSize: '0.72rem' }}>Zona 1 Suave</div>
-                <div className="mono" style={{ fontWeight: 700, fontSize: '0.87rem', color: 'var(--pine)' }}>6:12 – 6:58 /km</div>
-              </div>
-              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '0.58rem 0.72rem' }}>
-                <div className="muted" style={{ fontSize: '0.72rem' }}>Zona 3 Umbral</div>
-                <div className="mono" style={{ fontWeight: 700, fontSize: '0.87rem', color: 'var(--accent)' }}>5:14 – 5:30 /km</div>
-              </div>
-              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', borderRadius: '8px', padding: '0.58rem 0.72rem' }}>
-                <div className="muted" style={{ fontSize: '0.72rem' }}>Equivalencia bici</div>
-                <div className="mono" style={{ fontWeight: 700, fontSize: '0.87rem', color: 'var(--cobalt)' }}>50 min Z2</div>
+                <div className="muted" style={{ fontSize: '0.78rem' }}>
+                  Planificación de carrera, cardio diario y nutrición macro
+                </div>
               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '0.68rem', fontSize: '0.82rem' }} className="secondary stack-sm">
-              <div className="row-between">
-                <span>Pasos objetivo Google Fit</span>
-                <strong className="mono">8.500 pasos/día</strong>
-              </div>
-              <div className="row-between">
-                <span>Macros recomendados hoy</span>
-                <strong className="mono">310g C · 132g P · 70g G</strong>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section className="grid-4" aria-label="Pilares del sistema de entrenamiento">
-          <article className="card stack-sm">
-            <span className="bento-index">01 · MÉTODO</span>
-            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Progresión CaCo y 80/20</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
-              Desde bloques de 2 min corriendo y 6 andando hasta sesiones polarizadas con ritmos exactos por zona.
-            </p>
-          </article>
-          <article className="card stack-sm">
-            <span className="bento-index">02 · ADAPTACIÓN</span>
-            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Equivalencia multi-cardio</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
-              Sustituye días de carrera por bicicleta o partido de fútbol manteniendo la carga en Puntos Cardio y TRIMP.
-            </p>
-          </article>
-          <article className="card stack-sm">
-            <span className="bento-index">03 · EVALUACIÓN</span>
-            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Google Fit y exámenes físicos</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
-              Registra pasos diarios y supera test de Cooper, 5K o Rockport para recalibrar tu nivel automáticamente.
-            </p>
-          </article>
-          <article className="card stack-sm">
             <div className="row-wrap">
-              <Activity size={15} color="var(--accent)" aria-hidden="true" />
-              <span className="bento-index">04 · COMBUSTIBLE</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPersonas}>
+                <UsersThree size={15} weight="duotone" aria-hidden="true" />
+                7 Perfiles de Prueba
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={onToggleTheme}
+                aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
+              >
+                {theme === 'light' ? (
+                  <MoonStars size={15} weight="duotone" aria-hidden="true" />
+                ) : (
+                  <SunDim size={15} weight="duotone" aria-hidden="true" />
+                )}
+                {theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+              </button>
             </div>
-            <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Macros diarios prácticos</h2>
-            <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
-              Orientación diaria en gramos de carbohidratos, proteína y grasa adaptada al desgaste de cada jornada.
-            </p>
-          </article>
-        </section>
-      </div>
-    </main>
+          </header>
+
+          <SpotlightCard
+            as="section"
+            staggerIndex={0}
+            className="haikei-card-surface"
+            style={{
+              display: 'grid',
+              gap: '2.2rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              alignItems: 'center',
+            }}
+          >
+            <div className="stack-md">
+              <div className="row-wrap">
+                <span className="pill pill-amber">VDOT · Método 80/20 · CaCo</span>
+                <span className="pill pill-emerald">
+                  <Footprints size={14} weight="duotone" aria-hidden="true" />
+                  Compatible con Google Fit
+                </span>
+              </div>
+
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: 'clamp(1.78rem, 3.6vw, 2.6rem)',
+                  lineHeight: 1.13,
+                  letterSpacing: '-0.03em',
+                  fontWeight: 800,
+                }}
+              >
+                Entrena con la estructura de un preparador físico real, sin complicaciones.
+              </h1>
+
+              <p className="secondary" style={{ margin: 0, fontSize: '0.98rem' }}>
+                Al crear tu cuenta medimos tu punto de partida con una prueba sencilla, calculamos tus ritmos y pulsaciones por zonas
+                y organizamos cada semana combinando carrera, bicicleta, fútbol o caminata diaria con tus objetivos de macros.
+              </p>
+
+              {authError && (
+                <div role="alert" className="error-banner">
+                  {authError}
+                </div>
+              )}
+
+              <div className="row-wrap">
+                <button
+                  type="button"
+                  className="btn btn-google"
+                  onClick={() => void onGoogleLogin()}
+                  disabled={authLoading}
+                >
+                  <GoogleLogoMark />
+                  {authLoading ? 'Conectando con Google…' : 'Continuar con Google'}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => void onDemoLogin()}
+                  disabled={authLoading}
+                >
+                  <ArrowRight size={17} weight="bold" aria-hidden="true" />
+                  Ver demo interactiva
+                </button>
+              </div>
+
+              <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>
+                Acceso directo con tu cuenta de Google. Al entrar por primera vez completarás tu perfil y prueba inicial de nivel.
+              </p>
+            </div>
+
+            <TelemetryMockupCard />
+          </SpotlightCard>
+
+          <section className="grid-4" aria-label="Pilares del sistema de entrenamiento">
+            <SpotlightCard staggerIndex={1} className="stack-sm">
+              <div className="row-between">
+                <span className="duotone-icon-box">
+                  <PersonSimpleRun size={18} weight="duotone" aria-hidden="true" />
+                </span>
+                <span className="bento-index">01 · MÉTODO</span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Progresión CaCo y 80/20</h2>
+              <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+                Desde bloques de 2 min corriendo y 6 andando hasta sesiones polarizadas con ritmos exactos por zona.
+              </p>
+            </SpotlightCard>
+
+            <SpotlightCard staggerIndex={2} className="stack-sm">
+              <div className="row-between">
+                <span className="duotone-icon-box is-pine">
+                  <Bicycle size={18} weight="duotone" aria-hidden="true" />
+                </span>
+                <span className="bento-index">02 · ADAPTACIÓN</span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Equivalencia multi-cardio</h2>
+              <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+                Sustituye días de carrera por bicicleta o partido de fútbol manteniendo la carga en Puntos Cardio y TRIMP.
+              </p>
+            </SpotlightCard>
+
+            <SpotlightCard staggerIndex={3} className="stack-sm">
+              <div className="row-between">
+                <span className="duotone-icon-box is-cobalt">
+                  <ClipboardText size={18} weight="duotone" aria-hidden="true" />
+                </span>
+                <span className="bento-index">03 · EVALUACIÓN</span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Google Fit y exámenes físicos</h2>
+              <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+                Registra pasos diarios y supera test de Cooper, 5K o Rockport para recalibrar tu nivel automáticamente.
+              </p>
+            </SpotlightCard>
+
+            <SpotlightCard staggerIndex={4} className="stack-sm">
+              <div className="row-between">
+                <span className="duotone-icon-box">
+                  <CookingPot size={18} weight="duotone" aria-hidden="true" />
+                </span>
+                <span className="bento-index">04 · COMBUSTIBLE</span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '0.96rem' }}>Macros diarios prácticos</h2>
+              <p className="muted" style={{ margin: 0, fontSize: '0.83rem' }}>
+                Orientación diaria en gramos de carbohidratos, proteína y grasa adaptada al desgaste de cada jornada.
+              </p>
+            </SpotlightCard>
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

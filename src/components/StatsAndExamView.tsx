@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Award, Check, CheckCircle2, ClipboardCheck, Copy, Edit3, Lock, Medal, Timer, TrendingUp } from 'lucide-react';
+import { Award, Check, Copy, Edit3, Lock } from 'lucide-react';
+import { CheckCircle, ClipboardText, Medal, Timer, Trophy } from '@phosphor-icons/react';
 import type { PhysicalExamResult, PhysicalExamType, UserProfile, WorkoutSession } from '../types/fitness';
 import {
   calculateRacePredictions,
@@ -9,6 +10,7 @@ import {
   getModalityLabel,
 } from '../services/scienceEngine';
 import { BADGES_CATALOG } from '../data/runningKnowledge';
+import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 
 interface StatsAndExamViewProps {
   profile: UserProfile;
@@ -105,7 +107,7 @@ export function StatsAndExamView({
 
   return (
     <div className="stack-lg">
-      <section className="card stack-md" aria-label="Mis Datos Biométricos">
+      <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Mis Datos Biométricos">
         <div className="row-between">
           <div>
             <span className="pill pill-amber">Perfil fisiológico</span>
@@ -139,7 +141,7 @@ export function StatsAndExamView({
           <div className="inset-panel">
             <div className="muted" style={{ fontSize: '0.75rem' }}>VDOT / VO2max efectivo</div>
             <div className="mono" style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--cobalt)' }}>
-              {profile.vdot}
+              <AnimatedNumber value={profile.vdot} decimals={1} />
             </div>
             <div className="muted mono" style={{ fontSize: '0.75rem' }}>
               FC reposo {profile.restHR} / máx {profile.maxHR} ppm
@@ -152,7 +154,7 @@ export function StatsAndExamView({
               Nivel {levelInfo.level} · {levelInfo.spanishTitle}
             </div>
             <div className="muted mono" style={{ fontSize: '0.75rem' }}>
-              {profile.xp} XP · {profile.totalCardioPoints} PC
+              <AnimatedNumber value={profile.xp} locale suffix=" XP" /> · <AnimatedNumber value={profile.totalCardioPoints} suffix=" PC" />
             </div>
           </div>
 
@@ -195,12 +197,14 @@ export function StatsAndExamView({
             </tbody>
           </table>
         </div>
-      </section>
+      </SpotlightCard>
 
       {/* Tabla de predicción de marcas y ritmos por vuelta de 400m */}
-      <section className="card stack-md" aria-label="Predicción de marcas y paso por 400 m">
+      <SpotlightCard as="section" staggerIndex={1} className="stack-md" aria-label="Predicción de marcas y paso por 400 m">
         <div className="row-wrap">
-          <Timer size={18} color="#2563eb" aria-hidden="true" />
+          <span className="duotone-icon-box is-cobalt">
+            <Timer size={18} weight="duotone" aria-hidden="true" />
+          </span>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.14rem' }}>Marcas equivalentes estimadas (VDOT {profile.vdot})</h2>
             <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
@@ -231,14 +235,14 @@ export function StatsAndExamView({
             </tbody>
           </table>
         </div>
-      </section>
+      </SpotlightCard>
 
       {/* DÍA DE EXAMEN FÍSICO */}
-      <section className="card stack-md" aria-label="Día de Examen Físico">
+      <SpotlightCard as="section" staggerIndex={2} className="stack-md" aria-label="Día de Examen Físico">
         <div className="row-between">
           <div>
             <span className="pill pill-cyan">
-              <ClipboardCheck size={13} aria-hidden="true" />
+              <ClipboardText size={14} weight="duotone" aria-hidden="true" />
               Día de examen físico
             </span>
             <h2 style={{ margin: '0.35rem 0 0', fontSize: '1.22rem', letterSpacing: '-0.015em' }}>
@@ -346,7 +350,7 @@ export function StatsAndExamView({
 
           <div className="row-wrap" style={{ gridColumn: '1 / -1' }}>
             <button type="submit" className="btn btn-primary">
-              <TrendingUp size={16} aria-hidden="true" />
+              <Trophy size={16} weight="duotone" aria-hidden="true" />
               Evaluar examen y recalcular plan (+220 XP)
             </button>
             {examSubmittedMsg && (
@@ -414,10 +418,10 @@ export function StatsAndExamView({
             )}
           </div>
         </div>
-      </section>
+      </SpotlightCard>
 
       <div className="grid-2">
-        <section className="card stack-md">
+        <SpotlightCard as="section" staggerIndex={3} className="stack-md">
           <div className="row-wrap">
             <Award size={18} color="#d94814" aria-hidden="true" />
             <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Progresión de niveles (1 a 10)</h2>
@@ -455,7 +459,7 @@ export function StatsAndExamView({
                       VDOT {lvl.minVdot}+ · {lvl.minXp} XP
                     </span>
                     {reached ? (
-                      <CheckCircle2 size={15} color="#186a4b" aria-hidden="true" />
+                      <CheckCircle size={16} weight="duotone" color="var(--pine)" aria-hidden="true" />
                     ) : (
                       <Lock size={14} color="#767c87" aria-hidden="true" />
                     )}
@@ -464,11 +468,11 @@ export function StatsAndExamView({
               );
             })}
           </div>
-        </section>
+        </SpotlightCard>
 
-        <section className="card stack-md">
+        <SpotlightCard as="section" staggerIndex={4} className="stack-md">
           <div className="row-wrap">
-            <Medal size={18} color="#b45309" aria-hidden="true" />
+            <Medal size={19} weight="duotone" color="#b45309" aria-hidden="true" />
             <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Insignias de entrenamiento</h2>
           </div>
 
@@ -510,11 +514,11 @@ export function StatsAndExamView({
               );
             })}
           </div>
-        </section>
+        </SpotlightCard>
       </div>
 
       {/* Historial de entrenamientos y actividades libres completadas */}
-      <section className="card stack-md" aria-label="Historial de entrenamientos completados">
+      <SpotlightCard as="section" staggerIndex={5} className="stack-md" aria-label="Historial de entrenamientos completados">
         <div className="row-between">
           <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Historial de entrenamientos completados</h2>
           <span className="pill mono">{completedSessions.length} sesiones</span>
@@ -554,7 +558,7 @@ export function StatsAndExamView({
             </table>
           </div>
         )}
-      </section>
+      </SpotlightCard>
     </div>
   );
 }
