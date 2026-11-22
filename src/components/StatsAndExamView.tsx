@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Award, CheckCircle2, ClipboardCheck, Edit3, Lock, Medal, Timer, TrendingUp } from 'lucide-react';
-import type { PhysicalExamResult, PhysicalExamType, UserProfile } from '../types/fitness';
+import { Award, Check, CheckCircle2, ClipboardCheck, Copy, Edit3, Lock, Medal, Timer, TrendingUp } from 'lucide-react';
+import type { PhysicalExamResult, PhysicalExamType, UserProfile, WorkoutSession } from '../types/fitness';
 import {
   calculateRacePredictions,
   calculateTrainingZones,
   getAllLevelDefinitions,
   getLynxLevel,
+  getModalityLabel,
 } from '../services/scienceEngine';
 import { BADGES_CATALOG } from '../data/runningKnowledge';
 
 interface StatsAndExamViewProps {
   profile: UserProfile;
+  workouts: WorkoutSession[];
   exams: PhysicalExamResult[];
   onSubmitExam: (
     examType: PhysicalExamType,
@@ -23,6 +25,7 @@ interface StatsAndExamViewProps {
 
 export function StatsAndExamView({
   profile,
+  workouts,
   exams,
   onSubmitExam,
   onEditProfile,
@@ -33,14 +36,38 @@ export function StatsAndExamView({
   const [timeSecs, setTimeSecs] = useState<number>(30);
   const [heartRate, setHeartRate] = useState<number>(152);
   const [examSubmittedMsg, setExamSubmittedMsg] = useState<string | null>(null);
+  const [copiedSummary, setCopiedSummary] = useState(false);
 
   const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
   const predictions = calculateRacePredictions(profile.vdot);
   const levelInfo = getLynxLevel(profile.vdot, profile.xp);
   const allLevels = getAllLevelDefinitions();
   const bmi = (profile.weightKg / Math.pow(profile.heightCm / 100, 2)).toFixed(1);
+  const completedSessions = workouts.filter((w) => w.completed);
 
   const isSplitTimeExam = examType === 'time_trial_5k' || examType === 'rockport_walk_1600m';
+
+  const handleCopySummary = async () => {
+    const lines = [
+      `FlyRun — Resumen fisiológico de ${profile.displayName}`,
+      `Nivel ${levelInfo.level} (${levelInfo.spanishTitle}) | VDOT ${profile.vdot} | ${profile.xp} XP`,
+      `Frecuencia: ${profile.trainingDaysPerWeek} días/sem | Meta pasos: ${profile.dailyStepsTarget}/día`,
+      '',
+      'Zonas de entrenamiento:',
+      ...zones.map((z) => `- ${z.id} (${z.danielsCode}): ${z.paceFormatted} | ${z.hrMin}-${z.hrMax} ppm`),
+      '',
+      'Marcas equivalentes estimadas:',
+      ...predictions.map((p) => `- ${p.distanceLabel}: ${p.timeFormatted} (${p.pacePerKm})`),
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(lines);
+      setCopiedSummary(true);
+      window.setTimeout(() => setCopiedSummary(false), 2500);
+    } catch {
+      setCopiedSummary(false);
+    }
+  };
 
   const handleExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,10 +92,14 @@ export function StatsAndExamView({
 
   const getBadgeProgress = (id: string): { current: number; target: number; label: string } => {
     const unlocked = profile.unlockedBadges.includes(id);
-    if (unlocked) return { current: 1, target: 1, label: 'Completado' };
+    if (unlocked) return { current: 1, target: 1, label: 'Completado (100%)' };
+    if (id === 'first_workout') return { current: Math.min(1, completedSessions.length), target: 1, label: `${completedSessions.length}/1 sesión` };
     if (id === 'streak_3') return { current: Math.min(3, profile.streakDays), target: 3, label: `${profile.streakDays}/3 días` };
     if (id === 'level_5') return { current: Math.min(5, profile.level), target: 5, label: `Nivel ${profile.level}/5` };
     if (id === 'exam_completed') return { current: Math.min(1, exams.length), target: 1, label: `${exams.length}/1 test` };
+    if (id === 'multi_cardio') return { current: 0, target: 1, label: '0/1 bici o fútbol' };
+    if (id === 'google_fit_sync') return { current: 0, target: 1, label: 'Pendiente de sincronizar' };
+    if (id === 'macro_smart') return { current: 0, target: 1, label: 'Abre la pestaña Macros' };
     return { current: 0, target: 1, label: 'Pendiente' };
   };
 
@@ -82,10 +113,16 @@ export function StatsAndExamView({
               Tus datos, zonas de ritmo y predicciones
             </h1>
           </div>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onEditProfile}>
-            <Edit3 size={15} aria-hidden="true" />
-            Editar datos / días / objetivo
-          </button>
+          <div className="row-wrap">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => void handleCopySummary()}>
+              {copiedSummary ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+              {copiedSummary ? 'Resumen copiado' : 'Copiar resumen'}
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onEditProfile}>
+              <Edit3 size={15} aria-hidden="true" />
+              Editar datos / días / objetivo
+            </button>
+          </div>
         </div>
 
         <div className="grid-4">
@@ -475,6 +512,49 @@ export function StatsAndExamView({
           </div>
         </section>
       </div>
+
+      {/* Historial de entrenamientos y actividades libres completadas */}
+      <section className="card stack-md" aria-label="Historial de entrenamientos completados">
+        <div className="row-between">
+          <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Historial de entrenamientos completados</h2>
+          <span className="pill mono">{completedSessions.length} sesiones</span>
+        </div>
+        {completedSessions.length === 0 ? (
+          <div className="inset-panel muted" style={{ fontSize: '0.84rem' }}>
+            Todavía no has marcado entrenamientos completados. Registra tu sesión de hoy o una actividad libre para verla aquí.
+          </div>
+        ) : (
+          <div className="scroll-table-wrap">
+            <table className="zone-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Sesión</th>
+                  <th>Modalidad</th>
+                  <th>Duración real</th>
+                  <th>RPE</th>
+                  <th>Puntos Cardio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedSessions.slice(0, 12).map((s) => (
+                  <tr key={s.id}>
+                    <td className="mono">{s.date}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{s.title}</div>
+                      {s.notes && <div className="muted" style={{ fontSize: '0.76rem' }}>{s.notes}</div>}
+                    </td>
+                    <td>{getModalityLabel(s.completedModality ?? s.modality)}</td>
+                    <td className="mono">{s.actualDurationMinutes ?? s.durationMinutes} min</td>
+                    <td className="mono">{s.rpe ?? '-'}/10</td>
+                    <td className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>+{s.cardioPoints} PC</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

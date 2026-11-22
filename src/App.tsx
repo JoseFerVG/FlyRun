@@ -92,9 +92,19 @@ export function App() {
   const [timerWorkout, setTimerWorkout] = useState<WorkoutSession | null>(null);
   const [personasOpen, setPersonasOpen] = useState(false);
   const [readiness, setReadiness] = useState<DailyReadiness>('normal');
+  const [todayBaselineWorkout, setTodayBaselineWorkout] = useState<WorkoutSession | null>(null);
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const mergePreservingCompleted = (existingWorkouts: WorkoutSession[], newPlan: WorkoutSession[]) => {
+    const extraCompleted = existingWorkouts.filter((w) => w.completed && w.id.startsWith('extra_'));
+    const merged = newPlan.map((nw) => {
+      const done = existingWorkouts.find((ew) => ew.date === nw.date && ew.completed && !ew.id.startsWith('extra_'));
+      return done ?? nw;
+    });
+    return [...merged, ...extraCompleted];
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -197,6 +207,7 @@ export function App() {
     saveDemoGoogleSession(demoSession);
     setSession({ ...demoSession, isDemoMode: true });
     setReadiness('normal');
+    setTodayBaselineWorkout(null);
     const generatedWorkouts = persona.buildWorkouts();
     saveAll(persona.profile, generatedWorkouts, persona.exams, persona.fitDays);
     setIsEditingProfile(false);
@@ -242,9 +253,11 @@ export function App() {
   };
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
-    const generated = generateWeeklyPlan(newProfile);
+    const generated = mergePreservingCompleted(workouts, generateWeeklyPlan(newProfile));
     const initialSteps =
       fitDays.length > 0 ? fitDays : buildInitialWeekSteps(newProfile.dailyStepsTarget);
+    setTodayBaselineWorkout(null);
+    setReadiness('normal');
     saveAll(newProfile, generated, exams, initialSteps);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
@@ -263,21 +276,36 @@ export function App() {
     const target = workouts.find((w) => w.id === workoutId);
 
     if (!target) {
-      // Registro de actividad libre fuera del plan del día
       const eq = calculateCardioEquivalence(modality, actualDurationMinutes, rpe, profile.weightKg, profile.sex, profile.vdot);
-      const extraXp = Math.round(eq.cardioPoints * 1.2);
-      const nextProfile: UserProfile = {
-        ...profile,
-        xp: profile.xp + extraXp,
-        totalCardioPoints: profile.totalCardioPoints + eq.cardioPoints,
-        level: getLynxLevel(profile.vdot, profile.xp + extraXp).level,
-        unlockedBadges: profile.unlockedBadges.includes('multi_cardio') || modality === 'running'
-          ? profile.unlockedBadges
-          : [...profile.unlockedBadges, 'multi_cardio'],
-        updatedAt: new Date().toISOString(),
+      const extraSession: WorkoutSession = {
+        id: workoutId,
+        date: new Date().toISOString().slice(0, 10),
+        dayIndex: -1,
+        title: `Actividad libre: ${modality === 'cycling' ? 'Bicicleta' : modality === 'soccer' ? 'Partido de fútbol' : modality === 'walking' ? 'Caminata' : modality === 'swimming' ? 'Natación' : 'Running'}`,
+        subtitle: 'Sesión registrada fuera del calendario base',
+        modality,
+        sessionType: modality === 'cycling' ? 'cycling' : modality === 'soccer' ? 'soccer' : modality === 'walking' ? 'active_walk' : 'easy_z1',
+        strategyTag: 'Actividad libre',
+        durationMinutes: actualDurationMinutes,
+        targetDistanceKm: actualDistanceKm,
+        targetZone: rpe >= 7 ? 'Z4' : 'Z2',
+        targetPace: 'Libre',
+        cardioPoints: eq.cardioPoints,
+        metMinutes: eq.metMinutes,
+        trimp: eq.trimp,
+        estimatedCalories: eq.calories,
+        blocks: [{ label: 'Actividad libre', durationMinutes: actualDurationMinutes, intensity: `RPE ${rpe}/10`, description: notes || 'Sesión adicional registrada', zone: rpe >= 7 ? 'Z4' : 'Z2' }],
+        coachTip: '',
+        completed: true,
+        rpe,
+        actualDurationMinutes,
+        actualDistanceKm,
+        completedModality: modality,
+        notes,
       };
-      saveAll(nextProfile, workouts, exams, fitDays);
-      showToast(`Actividad libre registrada (+${eq.cardioPoints} Puntos Cardio, +${extraXp} XP).`);
+      const evalResult = evaluateProgressiveLevelUpdate(profile, extraSession, rpe, actualDurationMinutes);
+      saveAll(evalResult.updatedProfile, [...workouts, extraSession], exams, fitDays);
+      showToast(`Actividad libre guardada (+${eq.cardioPoints} Puntos Cardio, +${evalResult.xpEarned} XP).`);
       return;
     }
 
@@ -335,16 +363,18 @@ export function App() {
 
   const handleReadinessChange = (nextReadiness: DailyReadiness) => {
     if (!profile || !workouts[0]) return;
+    const base = todayBaselineWorkout ?? workouts[0];
+    if (!todayBaselineWorkout) {
+      setTodayBaselineWorkout(workouts[0]);
+    }
     setReadiness(nextReadiness);
     if (nextReadiness === 'normal') {
-      const freshPlan = generateWeeklyPlan(profile);
-      const restored = workouts.map((w, idx) => (idx === 0 && !w.completed ? freshPlan[0] : w));
+      const restored = workouts.map((w, idx) => (idx === 0 && !w.completed ? base : w));
       saveAll(profile, restored, exams, fitDays);
-      showToast('Sesión de hoy restablecida a tu planificación estándar.');
+      showToast('Sesión de hoy restablecida.');
       return;
     }
-    const basePlan = generateWeeklyPlan(profile);
-    const adjusted = applyDailyReadinessAdjustment(basePlan[0], nextReadiness, profile);
+    const adjusted = applyDailyReadinessAdjustment(base, nextReadiness, profile);
     const nextWorkouts = workouts.map((w, idx) => (idx === 0 && !w.completed ? adjusted : w));
     saveAll(profile, nextWorkouts, exams, fitDays);
     showToast(
@@ -359,6 +389,10 @@ export function App() {
     const nextWorkouts = workouts.map((w) =>
       w.id === workoutId ? swapWorkoutModality(w, modality, profile) : w
     );
+    if (workouts[0]?.id === workoutId) {
+      setTodayBaselineWorkout(nextWorkouts[0]);
+      setReadiness('normal');
+    }
     saveAll(profile, nextWorkouts, exams, fitDays);
     showToast('Sesión adaptada manteniendo la equivalencia de Puntos Cardio.');
   };
@@ -368,6 +402,10 @@ export function App() {
     const nextWorkouts = workouts.map((w) =>
       w.id === workoutId ? changeCaCoRatio(w, runMin, walkMin, profile) : w
     );
+    if (workouts[0]?.id === workoutId) {
+      setTodayBaselineWorkout(nextWorkouts[0]);
+      setReadiness('normal');
+    }
     saveAll(profile, nextWorkouts, exams, fitDays);
     showToast(`Bloque CaCo actualizado a ${runMin} min correr / ${walkMin} min andar.`);
   };
@@ -395,9 +433,11 @@ export function App() {
       preferredStrategyId: strategyId,
       updatedAt: new Date().toISOString(),
     };
-    const nextWorkouts = generateWeeklyPlan(updatedProfile);
+    const nextWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(updatedProfile));
+    setTodayBaselineWorkout(null);
+    setReadiness('normal');
     saveAll(updatedProfile, nextWorkouts, exams, fitDays);
-    showToast('Estrategia aplicada y calendario actualizado.');
+    showToast('Estrategia aplicada conservando tus entrenamientos ya completados.');
   };
 
   const handleSubmitExam = (
@@ -408,12 +448,10 @@ export function App() {
   ) => {
     if (!profile) return;
     const result = applyPhysicalExamResult(profile, examType, rawValue, secondaryValue, heartRateBpm);
-    const regenerated = generateWeeklyPlan(result.updatedProfile);
-    const mergedWorkouts = regenerated.map((rw) => {
-      const existing = workouts.find((w) => w.date === rw.date && w.completed);
-      return existing ?? rw;
-    });
+    const mergedWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(result.updatedProfile));
     const nextExams = [result.examResult, ...exams];
+    setTodayBaselineWorkout(null);
+    setReadiness('normal');
     saveAll(result.updatedProfile, mergedWorkouts, nextExams, fitDays);
     showToast(
       result.leveledUp
@@ -655,6 +693,7 @@ export function App() {
           {activeTab === 'stats' && (
             <StatsAndExamView
               profile={profile}
+              workouts={workouts}
               exams={exams}
               onSubmitExam={handleSubmitExam}
               onEditProfile={() => setIsEditingProfile(true)}

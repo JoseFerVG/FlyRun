@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeftRight, Bike, Calendar, CheckCircle2, ClipboardCheck, Play } from 'lucide-react';
 import type { CardioModality, WorkoutSession } from '../types/fitness';
 import { getModalityLabel } from '../services/scienceEngine';
@@ -25,8 +25,15 @@ export function CalendarView({
   const [activeWeek, setActiveWeek] = useState<number>(1);
   const [swapTargetId, setSwapTargetId] = useState<string>('');
 
-  const selected = workouts.find((w) => w.id === selectedId) ?? workouts[0];
   const weekWorkouts = workouts.slice((activeWeek - 1) * 7, activeWeek * 7);
+  const selected = weekWorkouts.find((w) => w.id === selectedId) ?? weekWorkouts[0] ?? workouts[0];
+
+  useEffect(() => {
+    const inWeek = weekWorkouts.some((w) => w.id === selectedId);
+    if (!inWeek && weekWorkouts[0]) {
+      setSelectedId(weekWorkouts[0].id);
+    }
+  }, [activeWeek, workouts, selectedId, weekWorkouts]);
 
   const formatShortDate = (iso: string) => {
     const d = new Date(`${iso}T12:00:00`);

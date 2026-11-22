@@ -69,10 +69,11 @@ export function OnboardingModal({
     }
 
     const maxHR = estimateMaxHR(age);
+    const safeRestHR = Math.max(35, Math.min(restHR, maxHR - 15));
     const vdot = previewVdot;
     const baseXp = existingProfile?.xp ?? 100;
     const lvl = getLynxLevel(vdot, baseXp);
-    const strategyId = lvl.level <= 2 ? 'caco_progressive' : 'polarized_80_20';
+    const strategyId = existingProfile?.preferredStrategyId ?? (lvl.level <= 2 ? 'caco_progressive' : 'polarized_80_20');
 
     const profile: UserProfile = {
       uid,
@@ -87,7 +88,7 @@ export function OnboardingModal({
       trainingDaysPerWeek,
       weeklyWalkGoalSessions,
       dailyStepsTarget,
-      restHR,
+      restHR: safeRestHR,
       maxHR,
       vdot,
       level: lvl.level,

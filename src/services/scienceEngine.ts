@@ -1202,26 +1202,28 @@ export function applyDailyReadinessAdjustment(
   const z1 = zones[0];
 
   if (readiness === 'tired') {
+    const mod = workout.modality === 'soccer' ? 'walking' : workout.modality;
     const reducedDuration = Math.max(20, Math.round(workout.durationMinutes * 0.75));
-    const eq = calculateCardioEquivalence('running', reducedDuration, 3, profile.weightKg, profile.sex, profile.vdot);
+    const eq = calculateCardioEquivalence(mod, reducedDuration, 3, profile.weightKg, profile.sex, profile.vdot);
     return {
       ...workout,
-      title: `Sesión adaptada por fatiga: Rodaje regenerativo`,
+      modality: mod,
+      title: `Sesión adaptada por fatiga (${mod === 'cycling' ? 'Bici suave' : mod === 'walking' ? 'Caminata' : 'Rodaje Z1'})`,
       subtitle: 'Intensidad reducida para favorecer recuperación muscular y evitar sobrecarga',
-      sessionType: 'easy_z1',
+      sessionType: mod === 'walking' ? 'active_walk' : mod === 'cycling' ? 'cycling' : 'easy_z1',
       strategyTag: 'Ajuste fatiga · Z1',
       durationMinutes: reducedDuration,
       targetZone: 'Z1',
-      targetPace: z1.paceFormatted,
+      targetPace: mod === 'cycling' ? '80–90 rpm · Z1 suave' : z1.paceFormatted,
       cardioPoints: eq.cardioPoints,
       metMinutes: eq.metMinutes,
       trimp: eq.trimp,
       estimatedCalories: eq.calories,
       blocks: [
         {
-          label: 'Trote muy suave o caminata rápida',
+          label: mod === 'cycling' ? 'Pedaleo suave regenerativo' : 'Trote muy suave o caminata rápida',
           durationMinutes: reducedDuration,
-          intensity: `${z1.paceFormatted} · ${z1.hrMin}–${z1.hrMax} ppm`,
+          intensity: `${mod === 'cycling' ? 'Z1 suave' : z1.paceFormatted} · ${z1.hrMin}–${z1.hrMax} ppm`,
           description: 'Hoy priorizamos descargar piernas (RPE 3-4/10). Si notas pesadez, camina tramos de 2 min.',
           zone: 'Z1',
         },
@@ -1233,14 +1235,18 @@ export function applyDailyReadinessAdjustment(
   // readiness === 'fresh'
   const boostedDuration = Math.min(80, workout.durationMinutes + 6);
   const eq = calculateCardioEquivalence(workout.modality, boostedDuration, 6, profile.weightKg, profile.sex, profile.vdot);
+  const updatedBlocks = workout.blocks.map((b, idx) =>
+    idx === workout.blocks.length - 1 ? { ...b, durationMinutes: b.durationMinutes + 6 } : b
+  );
   return {
     ...workout,
-    subtitle: `${workout.subtitle} · Ampliada ligeramente por buenas sensaciones`,
+    subtitle: `${workout.subtitle} · Ampliada +6 min por buenas sensaciones`,
     durationMinutes: boostedDuration,
     cardioPoints: eq.cardioPoints,
     metMinutes: eq.metMinutes,
     trimp: eq.trimp,
     estimatedCalories: eq.calories,
+    blocks: updatedBlocks,
     coachTip: 'Te notas fresco hoy: añadimos 6 minutos aeróbicos suaves manteniendo el control del pulso.',
   };
 }
