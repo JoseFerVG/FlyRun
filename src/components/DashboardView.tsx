@@ -26,7 +26,7 @@ import {
   type DailyReadiness,
 } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
-import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
+import { AnimatedNumber, BiometricRing, SpotlightCard } from './MotionPrimitives';
 import { assetUrl } from '../services/assets';
 
 function getSessionBannerPhoto(workout?: WorkoutSession): { src: string; alt: string; badge: string } {
@@ -127,9 +127,44 @@ export function DashboardView({
   }, [fitToday?.steps, profile.dailyStepsTarget]);
   const stepsPct = Math.min(100, Math.round(((fitToday?.steps ?? 0) / Math.max(1000, profile.dailyStepsTarget)) * 100));
   const balance8020 = calculateWeekly8020Balance(workouts);
+  const todayChargePct = todayWorkout?.completed
+    ? 100
+    : Math.min(100, Math.max(12, Math.round(((todayWorkout?.cardioPoints ?? 0) / 110) * 100)));
 
   return (
     <div className="stack-lg">
+      <SpotlightCard as="section" staggerIndex={0} className="stack-sm" aria-label="Telemetría biométrica diaria">
+        <div className="row-between">
+          <span className="pill pill-cyan">Instrumentación biométrica</span>
+          <span className="muted mono" style={{ fontSize: '0.75rem' }}>
+            Nivel {profile.level} · VDOT {profile.vdot}
+          </span>
+        </div>
+        <div className="biometric-rings-grid">
+          <BiometricRing
+            percent={todayChargePct}
+            label="Carga de hoy"
+            valueText={`${todayWorkout?.cardioPoints ?? 0} PC`}
+            subText={todayWorkout?.completed ? 'Sesión completada' : `${todayWorkout?.durationMinutes ?? 0} min planificados`}
+            color="var(--accent)"
+          />
+          <BiometricRing
+            percent={balance8020.lowPct}
+            label="Equilibrio 80/20"
+            valueText={`${balance8020.lowPct}%`}
+            subText={`${balance8020.lowMinutes} min suave · ${balance8020.highMinutes} int.`}
+            color="var(--pine)"
+          />
+          <BiometricRing
+            percent={stepsPct}
+            label="Pasos Google Fit"
+            valueText={`${stepsPct}%`}
+            subText={`${(fitToday?.steps ?? 0).toLocaleString('es-ES')} / ${profile.dailyStepsTarget.toLocaleString('es-ES')}`}
+            color="var(--cobalt)"
+          />
+        </div>
+      </SpotlightCard>
+
       <div className="grid-2">
         <SpotlightCard staggerIndex={1} className="stack-md" aria-label="Rutina de Hoy">
           <div className="row-between">

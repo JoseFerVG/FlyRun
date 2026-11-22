@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CookingPot, Drop, Flame } from '@phosphor-icons/react';
+import { Minus, Plus } from 'lucide-react';
 import type { GoogleFitDay, UserProfile, WorkoutSession } from '../types/fitness';
 import { calculateDailyMacros } from '../services/nutritionEngine';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
@@ -18,6 +19,17 @@ type CalorieAdjustment = 'deficit' | 'maintenance' | 'performance';
 export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros }: NutritionViewProps) {
   const [mode, setMode] = useState<SimulationDayMode>('today');
   const [calorieMode, setCalorieMode] = useState<CalorieAdjustment>('maintenance');
+  const todayKey = `flyrun_water_${new Date().toISOString().slice(0, 10)}`;
+  const [waterMl, setWaterMl] = useState<number>(() => {
+    const saved = Number(localStorage.getItem(todayKey));
+    return Number.isFinite(saved) && saved >= 0 ? saved : 750;
+  });
+
+  const updateWater = (nextMl: number) => {
+    const clamped = Math.max(0, Math.min(6000, nextMl));
+    setWaterMl(clamped);
+    localStorage.setItem(todayKey, String(clamped));
+  };
 
   const simulatedWorkout: WorkoutSession | undefined =
     mode === 'today'
@@ -210,17 +222,54 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
         </SpotlightCard>
 
         <SpotlightCard staggerIndex={4} className="stack-sm">
-          <div className="row-wrap">
-            <Drop size={16} weight="duotone" color="var(--cobalt)" aria-hidden="true" />
-            <span className="muted" style={{ fontSize: '0.8rem' }}>Hidratación</span>
+          <div className="row-between">
+            <div className="row-wrap">
+              <Drop size={16} weight="duotone" color="var(--cobalt)" aria-hidden="true" />
+              <span className="muted" style={{ fontSize: '0.8rem' }}>Hidratación</span>
+            </div>
+            <span className="mono muted" style={{ fontSize: '0.75rem' }}>
+              {(waterMl / 1000).toFixed(2)} / {baseMacros.hydrationLiters} L
+            </span>
           </div>
           <div className="kpi-value">
             <AnimatedNumber value={baseMacros.hydrationLiters} decimals={1} suffix=" L" />
           </div>
-          <div className="mono" style={{ fontSize: '0.82rem' }}>Agua + sales si sudas mucho</div>
-          <p className="muted" style={{ margin: 0, fontSize: '0.78rem' }}>
-            Mantener hidratación estable evita subidas prematuras de pulso.
-          </p>
+          <div className="row-wrap" style={{ gap: '0.3rem' }} role="group" aria-label="Registro de vasos de 250 ml">
+            {Array.from({ length: Math.max(6, Math.round((baseMacros.hydrationLiters * 1000) / 250)) }).map((_, i) => {
+              const targetGlassMl = (i + 1) * 250;
+              const filled = waterMl >= targetGlassMl;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Marcar hasta ${targetGlassMl} ml de agua`}
+                  aria-pressed={filled}
+                  className={`hydration-pill-btn ${filled ? 'is-filled' : ''}`}
+                  onClick={() => updateWater(waterMl === targetGlassMl ? targetGlassMl - 250 : targetGlassMl)}
+                />
+              );
+            })}
+          </div>
+          <div className="row-wrap" style={{ gap: '0.35rem' }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              aria-label="Restar 250 mililitros de agua"
+              onClick={() => updateWater(waterMl - 250)}
+            >
+              <Minus size={13} aria-hidden="true" />
+              250 ml
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              aria-label="Sumar 250 mililitros de agua"
+              onClick={() => updateWater(waterMl + 250)}
+            >
+              <Plus size={13} aria-hidden="true" />
+              250 ml
+            </button>
+          </div>
         </SpotlightCard>
       </section>
 

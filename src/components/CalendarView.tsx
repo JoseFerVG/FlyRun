@@ -38,6 +38,10 @@ export function CalendarView({
 
   const weekWorkouts = workouts.slice((activeWeek - 1) * 7, activeWeek * 7);
   const selected = weekWorkouts.find((w) => w.id === selectedId) ?? weekWorkouts[0] ?? workouts[0];
+  const weekTotalMinutes = weekWorkouts.reduce((acc, w) => acc + w.durationMinutes, 0);
+  const weekTotalCP = weekWorkouts.reduce((acc, w) => acc + w.cardioPoints, 0);
+  const weekTotalTrimp = weekWorkouts.reduce((acc, w) => acc + w.trimp, 0);
+  const weekCompleted = weekWorkouts.filter((w) => w.completed).length;
 
   useEffect(() => {
     const inWeek = weekWorkouts.some((w) => w.id === selectedId);
@@ -88,6 +92,33 @@ export function CalendarView({
                 Semana {wk}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="grid-4" style={{ gap: '0.65rem' }}>
+          <div className="inset-panel" style={{ padding: '0.55rem 0.75rem' }}>
+            <div className="muted" style={{ fontSize: '0.72rem' }}>Volumen Semana {activeWeek}</div>
+            <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem' }}>
+              <AnimatedNumber value={weekTotalMinutes} suffix=" min" />
+            </div>
+          </div>
+          <div className="inset-panel" style={{ padding: '0.55rem 0.75rem' }}>
+            <div className="muted" style={{ fontSize: '0.72rem' }}>Puntos Cardio</div>
+            <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem', color: 'var(--accent)' }}>
+              <AnimatedNumber value={weekTotalCP} suffix=" PC" />
+            </div>
+          </div>
+          <div className="inset-panel" style={{ padding: '0.55rem 0.75rem' }}>
+            <div className="muted" style={{ fontSize: '0.72rem' }}>Carga TRIMP semanal</div>
+            <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem', color: 'var(--cobalt)' }}>
+              <AnimatedNumber value={weekTotalTrimp} />
+            </div>
+          </div>
+          <div className="inset-panel" style={{ padding: '0.55rem 0.75rem' }}>
+            <div className="muted" style={{ fontSize: '0.72rem' }}>Sesiones completadas</div>
+            <div className="mono" style={{ fontWeight: 700, fontSize: '1.02rem', color: 'var(--pine)' }}>
+              {weekCompleted} / {weekWorkouts.length}
+            </div>
           </div>
         </div>
 

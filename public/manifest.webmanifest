@@ -1,0 +1,21 @@
+{
+  "name": "FlyRun — Planificación de Running y Cardio",
+  "short_name": "FlyRun",
+  "description": "Entrenamiento inteligente de running y cardio multi-deporte basado en VDOT, método 80/20, CaCo, Google Fit y nutrición macro.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0d0f12",
+  "background_color": "#f5f3ed",
+  "lang": "es",
+  "categories": ["fitness", "health", "sports"],
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

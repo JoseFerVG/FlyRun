@@ -78,10 +78,21 @@ interface AuthSessionInfo {
   googleFitAccessToken?: string;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 export function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return localStorage.getItem('flyrun_theme') === 'dark' ? 'dark' : 'light';
+    const saved = localStorage.getItem('flyrun_theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    return typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
   });
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [booting, setBooting] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -114,12 +125,35 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('flyrun_theme', theme);
     const meta = document.getElementById('theme-color-meta');
     if (meta) {
       meta.setAttribute('content', theme === 'dark' ? '#0d0f12' : '#f5f3ed');
     }
   }, [theme]);
+
+  useEffect(() => {
+    const onBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const res = await installPrompt.userChoice;
+    if (res.outcome === 'accepted') {
+      setInstallPrompt(null);
+    }
+  };
 
   const runViewTransition = (updateFn: () => void) => {
     const prefersReduced =
@@ -141,7 +175,9 @@ export function App() {
   };
 
   const handleToggleTheme = () => {
-    runViewTransition(() => setTheme((t) => (t === 'light' ? 'dark' : 'light')));
+    const next = theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('flyrun_theme', next);
+    runViewTransition(() => setTheme(next));
   };
 
   const showToast = (msg: string) => {
@@ -573,6 +609,8 @@ export function App() {
           onGoogleLogin={handleGoogleLogin}
           onDemoLogin={() => void handleDemoLogin()}
           onOpenPersonas={() => setPersonasOpen(true)}
+          onSelectPersona={(p) => void handleSelectPersona(p)}
+          onInstallApp={installPrompt ? () => void handleInstallApp() : undefined}
           theme={theme}
           onToggleTheme={handleToggleTheme}
           authLoading={authLoading}
@@ -653,6 +691,15 @@ export function App() {
           </nav>
 
           <div className="header-actions">
+            {installPrompt && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => void handleInstallApp()}
+              >
+                Instalar App
+              </button>
+            )}
             {(() => {
               const matchedPersona = SIMULATED_USER_PERSONAS.find(
                 (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)

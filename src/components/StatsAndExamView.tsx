@@ -10,7 +10,7 @@ import {
   getModalityLabel,
 } from '../services/scienceEngine';
 import { BADGES_CATALOG } from '../data/runningKnowledge';
-import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
+import { AnimatedNumber, BiometricRing, SpotlightCard } from './MotionPrimitives';
 import { assetUrl } from '../services/assets';
 import { SIMULATED_USER_PERSONAS } from '../data/userPersonas';
 
@@ -145,6 +145,29 @@ export function StatsAndExamView({
               Editar datos / días / objetivo
             </button>
           </div>
+        </div>
+
+        <div className="inset-panel row-between" style={{ padding: '0.85rem 1rem' }}>
+          <div className="row-wrap" style={{ gap: '0.95rem' }}>
+            <BiometricRing
+              percent={Math.min(100, Math.round((profile.vdot / 72) * 100))}
+              label={`Nivel ${levelInfo.level}`}
+              valueText={`${profile.vdot}`}
+              subText="VDOT actual"
+              color="var(--cobalt)"
+              size={84}
+            />
+            <div className="stack-sm" style={{ gap: '0.2rem' }}>
+              <strong style={{ fontSize: '0.96rem' }}>{levelInfo.spanishTitle}</strong>
+              <span className="secondary" style={{ fontSize: '0.83rem' }}>
+                Siguiente hito: {levelInfo.nextLevelXp.toLocaleString('es-ES')} XP ({levelInfo.progressPct}% completado)
+              </span>
+              <div className="progress-track" style={{ inlineSize: 'min(260px, 60vw)', marginTop: '0.25rem' }}>
+                <div className="progress-fill" style={{ inlineSize: `${levelInfo.progressPct}%` }} />
+              </div>
+            </div>
+          </div>
+          <span className="pill pill-emerald mono">{profile.streakDays} días de racha</span>
         </div>
 
         <div className="grid-4">
@@ -396,41 +419,69 @@ export function StatsAndExamView({
           </div>
         </form>
 
-        {/* Evolución visual de VDOT */}
+        {/* Evolución visual SVG Área + Línea de VDOT */}
         <div className="grid-2">
           <div className="inset-panel stack-sm">
-            <strong style={{ fontSize: '0.86rem' }}>Evolución de VDOT</strong>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.75rem', blockSize: '110px', paddingTop: '0.75rem' }}>
-              {chartPoints.map((pt, i) => {
-                const heightPct = Math.max(20, Math.min(100, Math.round(((pt.vdot - 15) / 55) * 100)));
-                return (
-                  <div
-                    key={`${pt.label}-${i}`}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'flex-end',
-                      blockSize: '100%',
-                      gap: '0.25rem',
-                    }}
-                  >
-                    <span className="mono" style={{ fontSize: '0.72rem', fontWeight: 700 }}>{pt.vdot}</span>
-                    <div
-                      style={{
-                        inlineSize: '100%',
-                        maxInlineSize: '42px',
-                        blockSize: `${heightPct}%`,
-                        borderRadius: '6px 6px 2px 2px',
-                        background: 'var(--cobalt)',
-                      }}
-                    />
-                    <span className="muted mono" style={{ fontSize: '0.68rem' }}>{pt.label}</span>
-                  </div>
-                );
-              })}
+            <div className="row-between">
+              <strong style={{ fontSize: '0.86rem' }}>Evolución de VDOT</strong>
+              <span className="mono muted" style={{ fontSize: '0.73rem' }}>
+                Último: {chartPoints[chartPoints.length - 1]?.vdot}
+              </span>
             </div>
+            {(() => {
+              const pts =
+                chartPoints.length === 1
+                  ? [
+                      { ...chartPoints[0], label: 'Inicio' },
+                      { ...chartPoints[0], label: 'Hoy' },
+                    ]
+                  : chartPoints;
+              const minV = Math.max(15, Math.min(...pts.map((p) => p.vdot)) - 4);
+              const maxV = Math.min(80, Math.max(...pts.map((p) => p.vdot)) + 4);
+              const w = 380;
+              const h = 112;
+              const padX = 24;
+              const padY = 18;
+              const coords = pts.map((pt, idx) => {
+                const x = padX + (idx / Math.max(1, pts.length - 1)) * (w - padX * 2);
+                const norm = (pt.vdot - minV) / Math.max(1, maxV - minV);
+                const y = h - padY - norm * (h - padY * 2);
+                return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)), ...pt };
+              });
+              const lineStr = coords.map((c) => `${c.x},${c.y}`).join(' ');
+              const areaStr = `${coords[0].x},${h - padY} ${lineStr} ${coords[coords.length - 1].x},${h - padY}`;
+              return (
+                <svg
+                  viewBox={`0 0 ${w} ${h + 18}`}
+                  style={{ inlineSize: '100%', blockSize: 'auto' }}
+                  role="img"
+                  aria-label="Gráfica lineal de evolución de VDOT"
+                >
+                  <defs>
+                    <linearGradient id="vdot-area-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--cobalt)" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="var(--cobalt)" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <line x1={padX} y1={padY} x2={w - padX} y2={padY} stroke="var(--border-hairline)" strokeDasharray="3 3" />
+                  <line x1={padX} y1={h / 2} x2={w - padX} y2={h / 2} stroke="var(--border-hairline)" strokeDasharray="3 3" />
+                  <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="var(--border-strong)" />
+                  <polygon points={areaStr} fill="url(#vdot-area-fill)" />
+                  <polyline fill="none" stroke="var(--cobalt)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={lineStr} />
+                  {coords.map((c, idx) => (
+                    <g key={`${c.label}-${idx}`}>
+                      <circle cx={c.x} cy={c.y} r="4.5" fill="var(--bg-surface)" stroke="var(--cobalt)" strokeWidth="2.5" />
+                      <text x={c.x} y={c.y - 9} textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--text-primary)" fontFamily="var(--font-mono)">
+                        {c.vdot}
+                      </text>
+                      <text x={c.x} y={h + 10} textAnchor="middle" fontSize="9.5" fill="var(--text-muted)" fontFamily="var(--font-mono)">
+                        {c.label}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              );
+            })()}
           </div>
 
           <div className="stack-sm">

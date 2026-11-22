@@ -443,19 +443,21 @@ dialog::backdrop {
   }
 }
 
-/* Mobile bottom navigation */
+/* Mobile floating glassmorphic pill navigation */
 .mobile-nav {
   position: fixed;
-  inset-block-end: 0;
-  inset-inline: 0;
+  inset-block-end: max(0.6rem, env(safe-area-inset-bottom, 0px));
+  inset-inline: 0.75rem;
   z-index: 45;
-  background: color-mix(in srgb, var(--bg-surface) 95%, transparent);
-  backdrop-filter: blur(10px);
-  border-block-start: 1px solid var(--border-hairline);
+  background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow-modal);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  padding-block: 0.38rem max(0.38rem, env(safe-area-inset-bottom, 0px));
-  padding-inline: max(0.3rem, env(safe-area-inset-left, 0px));
+  padding: 0.32rem 0.36rem;
+  gap: 0.15rem;
 }
 
 @media (min-width: 960px) {
@@ -469,14 +471,14 @@ dialog::backdrop {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.18rem;
+  gap: 0.14rem;
   min-block-size: 44px;
   background: transparent;
   border: 0;
-  padding-block: 0.32rem;
-  border-radius: 8px;
+  padding-block: 0.25rem;
+  border-radius: 999px;
   color: var(--text-muted);
-  font-size: 0.69rem;
+  font-size: 0.67rem;
   font-weight: 600;
   cursor: pointer;
   transition: color 0.14s ease, background-color 0.14s ease;
@@ -1290,6 +1292,146 @@ dialog::backdrop {
 
 .avatar-stack img:first-child {
   margin-inline-start: 0;
+}
+
+/* Performance Tech Biometric Rings (Whoop/Oura style) */
+.biometric-rings-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: center;
+}
+
+.biometric-ring-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-hairline);
+}
+
+.biometric-ring-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.biometric-ring-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Landing SaaS Commercial Sections */
+.landing-nav-links {
+  display: none;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+@media (min-width: 880px) {
+  .landing-nav-links {
+    display: flex;
+  }
+}
+
+.landing-nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: color 0.14s ease;
+}
+
+.landing-nav-link:hover {
+  color: var(--text-primary);
+}
+
+.pricing-card-featured {
+  border-color: var(--accent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.pricing-card-upcoming {
+  background: linear-gradient(155deg, var(--bg-inset), var(--bg-surface));
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+.faq-details {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  padding: 0.9rem 1.1rem;
+  transition: border-color 0.15s ease;
+}
+
+.faq-details[open] {
+  border-color: var(--border-strong);
+}
+
+.faq-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.94rem;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.faq-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-details summary::after {
+  content: '+';
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.faq-details[open] summary::after {
+  content: '−';
+}
+
+.faq-details p {
+  margin: 0.65rem 0 0;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.hydration-pill-btn {
+  inline-size: 28px;
+  block-size: 22px;
+  border-radius: 5px;
+  border: 1px solid var(--cobalt-border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: background-color 0.14s ease, transform 0.1s ease;
+}
+
+.hydration-pill-btn.is-filled {
+  background: var(--cobalt);
+  border-color: var(--cobalt);
+}
+
+.landing-footer {
+  border-block-start: 1px solid var(--border-hairline);
+  padding-block-start: 1.5rem;
+  margin-block-start: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 /* Native View Transitions (progressive enhancement) */

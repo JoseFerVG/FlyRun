@@ -9,9 +9,18 @@ interface LiveWorkoutTimerDialogProps {
 }
 
 function playSoftCue(soundEnabled: boolean) {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try {
+      navigator.vibrate([160, 70, 160]);
+    } catch {
+      // Ignorar si el navegador restringe vibración
+    }
+  }
   if (!soundEnabled) return;
   try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     const osc = ctx.createOscillator();
@@ -42,11 +51,13 @@ export function LiveWorkoutTimerDialog({
   onFinishToLog,
 }: LiveWorkoutTimerDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const [blockIndex, setBlockIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(300);
   const [totalElapsedSec, setTotalElapsedSec] = useState(0);
   const [running, setRunning] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -62,6 +73,48 @@ export function LiveWorkoutTimerDialog({
       dialog.close();
     }
   }, [workout]);
+
+  // Screen Wake Lock while running so phone screen stays awake during street workout
+  useEffect(() => {
+    let cancelled = false;
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+    };
+
+    const manageWakeLock = async () => {
+      if (running && nav.wakeLock) {
+        try {
+          const sentinel = await nav.wakeLock.request('screen');
+          if (cancelled) {
+            await sentinel.release();
+          } else {
+            wakeLockRef.current = sentinel;
+            setWakeLockActive(true);
+          }
+        } catch {
+          setWakeLockActive(false);
+        }
+      } else if (wakeLockRef.current) {
+        try {
+          await wakeLockRef.current.release();
+        } catch {
+          // Ignore release errors
+        }
+        wakeLockRef.current = null;
+        setWakeLockActive(false);
+      }
+    };
+
+    void manageWakeLock();
+
+    return () => {
+      cancelled = true;
+      if (wakeLockRef.current) {
+        void wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+  }, [running]);
 
   useEffect(() => {
     if (!running || !workout) return;
@@ -86,6 +139,11 @@ export function LiveWorkoutTimerDialog({
 
   const handleClose = () => {
     setRunning(false);
+    if (wakeLockRef.current) {
+      void wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+      setWakeLockActive(false);
+    }
     if (dialogRef.current?.open) dialogRef.current.close();
     onClose();
   };
@@ -97,6 +155,12 @@ export function LiveWorkoutTimerDialog({
   const currentBlock = workout.blocks[blockIndex] ?? workout.blocks[0];
   const blockTotalSec = Math.max(60, (currentBlock?.durationMinutes ?? 5) * 60);
   const blockProgressPct = Math.min(100, Math.round(((blockTotalSec - secondsLeft) / blockTotalSec) * 100));
+
+  const ringSize = 184;
+  const ringStroke = 9;
+  const ringRadius = (ringSize - ringStroke) / 2;
+  const ringCirc = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCirc - (blockProgressPct / 100) * ringCirc;
 
   return (
     <dialog
@@ -110,7 +174,14 @@ export function LiveWorkoutTimerDialog({
       <div className="stack-md" style={{ padding: '1.4rem' }}>
         <div className="row-between">
           <div>
-            <span className="pill pill-amber">Cronómetro guiado · Bloque {blockIndex + 1} de {workout.blocks.length}</span>
+            <div className="row-wrap">
+              <span className="pill pill-amber">
+                Bloque {blockIndex + 1} de {workout.blocks.length}
+              </span>
+              {wakeLockActive && (
+                <span className="pill pill-emerald mono">Pantalla activa · Wake Lock</span>
+              )}
+            </div>
             <h2 id="live-timer-title" style={{ margin: '0.35rem 0 0', fontSize: '1.15rem' }}>
               {workout.title}
             </h2>
@@ -131,13 +202,42 @@ export function LiveWorkoutTimerDialog({
           </div>
         </div>
 
-        <div className="inset-panel stack-md" style={{ textAlign: 'center', padding: '1.35rem 1rem' }}>
+        <div className="inset-panel stack-md" style={{ alignItems: 'center', textAlign: 'center', padding: '1.35rem 1rem' }}>
           <div className="row-between" style={{ justifyContent: 'center', gap: '0.5rem' }}>
             <span className="pill pill-cyan">{currentBlock.zone}</span>
             <strong style={{ fontSize: '1rem' }}>{currentBlock.label}</strong>
           </div>
 
-          <div className="timer-clock">{formatClock(secondsLeft)}</div>
+          <div className="biometric-ring-wrap" style={{ inlineSize: ringSize, blockSize: ringSize }}>
+            <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`} aria-hidden="true">
+              <circle
+                cx={ringSize / 2}
+                cy={ringSize / 2}
+                r={ringRadius}
+                fill="none"
+                stroke="var(--border-hairline)"
+                strokeWidth={ringStroke}
+              />
+              <circle
+                cx={ringSize / 2}
+                cy={ringSize / 2}
+                r={ringRadius}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={ringStroke}
+                strokeLinecap="round"
+                strokeDasharray={ringCirc}
+                strokeDashoffset={ringOffset}
+                transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+                style={{ transition: 'stroke-dashoffset 0.35s linear' }}
+              />
+            </svg>
+            <div className="biometric-ring-center">
+              <div className="timer-clock" style={{ fontSize: '2.35rem' }}>
+                {formatClock(secondsLeft)}
+              </div>
+            </div>
+          </div>
 
           <div style={{ fontSize: '0.86rem', color: 'var(--accent)', fontWeight: 600 }}>
             {currentBlock.intensity}
@@ -145,10 +245,6 @@ export function LiveWorkoutTimerDialog({
           <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
             {currentBlock.description}
           </p>
-
-          <div className="progress-track">
-            <div className="progress-fill" style={{ inlineSize: `${blockProgressPct}%` }} />
-          </div>
         </div>
 
         <div className="row-between">
@@ -179,6 +275,7 @@ export function LiveWorkoutTimerDialog({
               onClick={() => {
                 const next = blockIndex + 1;
                 if (next < workout.blocks.length) {
+                  playSoftCue(soundEnabled);
                   setBlockIndex(next);
                   setSecondsLeft(workout.blocks[next].durationMinutes * 60);
                 }

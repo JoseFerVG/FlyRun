@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { CardioModality, FitnessGoal, PhysicalExamType, SexType, UserProfile } from '../types/fitness';
-import { calculateVDOTFromExam, estimateMaxHR, getLynxLevel } from '../services/scienceEngine';
+import {
+  calculateTrainingZones,
+  calculateVDOTFromExam,
+  estimateMaxHR,
+  getLynxLevel,
+} from '../services/scienceEngine';
+import { BiometricRing } from './MotionPrimitives';
+import { FlyRunLogo } from './FlyRunLogo';
 
 interface OnboardingModalProps {
   uid: string;
@@ -60,6 +67,9 @@ export function OnboardingModal({
     sex,
   });
   const previewLevel = getLynxLevel(previewVdot, existingProfile?.xp ?? 100);
+  const previewMaxHR = estimateMaxHR(age);
+  const previewRestHR = Math.max(35, Math.min(restHR, previewMaxHR - 15));
+  const previewZones = calculateTrainingZones(previewVdot, previewMaxHR, previewRestHR);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,9 +122,9 @@ export function OnboardingModal({
     <main id="main-content" className="main-container" style={{ maxInlineSize: '780px' }}>
       <form onSubmit={handleSubmit} className="card stack-lg">
         <div className="row-between">
-          <div>
-            <span className="pill pill-amber">Paso {step} de 3 · Configuración inicial</span>
-            <h1 style={{ margin: '0.4rem 0 0', fontSize: 'clamp(1.25rem, 3vw, 1.55rem)', letterSpacing: '-0.02em' }}>
+          <div className="stack-sm">
+            <FlyRunLogo size="sm" badgeText={`Paso ${step} de 3`} />
+            <h1 style={{ margin: '0.25rem 0 0', fontSize: 'clamp(1.25rem, 3vw, 1.55rem)', letterSpacing: '-0.02em' }}>
               {step === 1 && 'Datos personales y objetivo'}
               {step === 2 && 'Días de entreno, caminata y deportes'}
               {step === 3 && 'Medición inicial de tu nivel'}
@@ -393,14 +403,52 @@ export function OnboardingModal({
               </div>
 
               <div className="inset-panel stack-sm">
-                <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Evaluación resultante
+                <span className="muted" style={{ fontSize: '0.74rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Evaluación resultante en vivo
                 </span>
-                <div style={{ fontSize: '1.08rem', fontWeight: 700 }}>
-                  Nivel {previewLevel.level}: {previewLevel.spanishTitle}
+                <div className="row-wrap" style={{ gap: '0.9rem', flexWrap: 'nowrap' }}>
+                  <BiometricRing
+                    percent={Math.min(100, Math.round((previewVdot / 72) * 100))}
+                    label={`Nivel ${previewLevel.level}`}
+                    valueText={`${previewVdot}`}
+                    color="var(--pine)"
+                    size={76}
+                  />
+                  <div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                      {previewLevel.spanishTitle}
+                    </div>
+                    <div className="mono" style={{ fontSize: '0.82rem', color: 'var(--pine)' }}>
+                      FCmáx {previewMaxHR} ppm · Reposo {previewRestHR} ppm
+                    </div>
+                  </div>
                 </div>
-                <div className="mono" style={{ fontSize: '0.84rem', color: 'var(--pine)' }}>
-                  VDOT {previewVdot} · FCmáx estimada {estimateMaxHR(age)} ppm
+              </div>
+
+              <div className="inset-panel stack-sm" style={{ gridColumn: '1 / -1' }}>
+                <span className="muted" style={{ fontSize: '0.74rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Vista previa de tus 5 zonas de ritmo y pulso
+                </span>
+                <div className="grid-3" style={{ gap: '0.5rem' }}>
+                  {previewZones.map((z) => (
+                    <div
+                      key={z.id}
+                      style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-hairline)',
+                        borderRadius: '8px',
+                        padding: '0.48rem 0.65rem',
+                      }}
+                    >
+                      <div className="row-between">
+                        <strong className="mono" style={{ fontSize: '0.78rem', color: z.color }}>{z.id}</strong>
+                        <span className="muted mono" style={{ fontSize: '0.72rem' }}>{z.hrMin}–{z.hrMax} ppm</span>
+                      </div>
+                      <div className="mono" style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: '0.15rem' }}>
+                        {z.paceFormatted}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

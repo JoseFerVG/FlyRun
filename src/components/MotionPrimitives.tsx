@@ -5,6 +5,7 @@ import { WorkoutVisualBar } from './WorkoutVisualBar';
 
 interface SpotlightCardProps {
   children: ReactNode;
+  id?: string;
   className?: string;
   style?: CSSProperties;
   as?: 'article' | 'section' | 'div';
@@ -18,6 +19,7 @@ interface SpotlightCardProps {
  */
 export function SpotlightCard({
   children,
+  id,
   className = '',
   style,
   as = 'article',
@@ -42,6 +44,7 @@ export function SpotlightCard({
   const Tag = as;
   return (
     <Tag
+      id={id}
       className={mergedClass}
       style={mergedStyle}
       aria-label={ariaLabel}
@@ -125,6 +128,76 @@ export function AnimatedNumber({
       {formatted}
       {suffix}
     </span>
+  );
+}
+
+interface BiometricRingProps {
+  percent: number;
+  label: string;
+  valueText: string;
+  subText?: string;
+  color?: string;
+  size?: number;
+}
+
+/**
+ * Whoop / Oura inspired SVG radial gauge for physiological telemetry.
+ */
+export function BiometricRing({
+  percent,
+  label,
+  valueText,
+  subText,
+  color = 'var(--accent)',
+  size = 92,
+}: BiometricRingProps) {
+  const clamped = Math.max(0, Math.min(100, percent));
+  const strokeWidth = 7;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (clamped / 100) * circumference;
+
+  return (
+    <div className="biometric-ring-item">
+      <div className="biometric-ring-wrap" style={{ inlineSize: size, blockSize: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="var(--border-hairline)"
+            strokeWidth={strokeWidth}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            style={{ transition: 'stroke-dashoffset 0.55s cubic-bezier(0.22, 1, 0.36, 1)' }}
+          />
+        </svg>
+        <div className="biometric-ring-center">
+          <strong className="mono" style={{ fontSize: size >= 100 ? '1.1rem' : '0.94rem', lineHeight: 1.05 }}>
+            {valueText}
+          </strong>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>{label}</div>
+        {subText && (
+          <div className="muted mono" style={{ fontSize: '0.7rem' }}>
+            {subText}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
