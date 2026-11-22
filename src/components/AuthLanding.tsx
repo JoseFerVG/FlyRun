@@ -1,18 +1,9 @@
-import { useState } from 'react';
-import { Activity, ArrowRight, CheckCircle2, Footprints, Mail, Settings2, ShieldCheck } from 'lucide-react';
-import {
-  clearFirebaseConfig,
-  getSavedFirebaseConfig,
-  isUsingCustomFirebaseConfig,
-  saveFirebaseConfig,
-  type FirebaseConfigValues,
-} from '../services/firebase';
+import { Activity, ArrowRight, Footprints, ShieldCheck } from 'lucide-react';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
 import type { WorkoutBlock } from '../types/fitness';
 
 interface AuthLandingProps {
   onGoogleLogin: () => Promise<void>;
-  onEmailLogin: (email: string, password: string, displayName: string, isRegister: boolean) => Promise<void>;
   onDemoLogin: () => Promise<void> | void;
   onOpenPersonas: () => void;
   theme: 'light' | 'dark';
@@ -33,7 +24,6 @@ const SAMPLE_BLOCKS: WorkoutBlock[] = [
 
 export function AuthLanding({
   onGoogleLogin,
-  onEmailLogin,
   onDemoLogin,
   onOpenPersonas,
   theme,
@@ -41,39 +31,6 @@ export function AuthLanding({
   authLoading,
   authError,
 }: AuthLandingProps) {
-  const existingCfg = getSavedFirebaseConfig();
-  const hasCustomOverride = isUsingCustomFirebaseConfig();
-
-  const [showConfigPanel, setShowConfigPanel] = useState(false);
-  const [showEmailPanel, setShowEmailPanel] = useState(false);
-  const [emailMode, setEmailMode] = useState<'login' | 'register'>('register');
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
-
-  const [apiKey, setApiKey] = useState(existingCfg.apiKey);
-  const [authDomain, setAuthDomain] = useState(existingCfg.authDomain);
-  const [projectId, setProjectId] = useState(existingCfg.projectId);
-  const [appId, setAppId] = useState(existingCfg.appId);
-  const [savedNotice, setSavedNotice] = useState<string | null>(null);
-
-  const handleSaveConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cfg: FirebaseConfigValues = {
-      apiKey: apiKey.trim(),
-      authDomain: authDomain.trim(),
-      projectId: projectId.trim(),
-      appId: appId.trim(),
-    };
-    saveFirebaseConfig(cfg);
-    setSavedNotice('Configuración personalizada guardada. Recarga la página si cambiaste de proyecto Firebase.');
-  };
-
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void onEmailLogin(emailInput, passwordInput, nameInput, emailMode === 'register');
-  };
-
   return (
     <main className="main-container" style={{ paddingBlock: 'clamp(1.5rem, 4vw, 3rem)' }}>
       <div className="stack-lg">
@@ -97,16 +54,6 @@ export function AuthLanding({
             <button type="button" className="btn btn-ghost btn-sm" onClick={onToggleTheme}>
               {theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
             </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setShowConfigPanel((prev) => !prev)}
-              title="Ver o personalizar proyecto Firebase conectado"
-            >
-              <CheckCircle2 size={14} color="var(--pine)" aria-hidden="true" />
-              Firebase Cloud ({existingCfg.projectId})
-              <Settings2 size={14} aria-hidden="true" />
-            </button>
           </div>
         </header>
 
@@ -124,7 +71,7 @@ export function AuthLanding({
               <span className="pill pill-amber">VDOT · Método 80/20 · CaCo</span>
               <span className="pill pill-emerald">
                 <Footprints size={13} aria-hidden="true" />
-                Firebase Cloud + Google Fit
+                Compatible con Google Fit
               </span>
             </div>
 
@@ -159,17 +106,7 @@ export function AuthLanding({
                 disabled={authLoading}
               >
                 <ShieldCheck size={17} aria-hidden="true" />
-                {authLoading ? 'Conectando con Google...' : 'Entrar con Google'}
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowEmailPanel((prev) => !prev)}
-                disabled={authLoading}
-              >
-                <Mail size={16} aria-hidden="true" />
-                Cuenta con Email
+                {authLoading ? 'Conectando con Google...' : 'Continuar con Google'}
               </button>
 
               <button
@@ -179,83 +116,12 @@ export function AuthLanding({
                 disabled={authLoading}
               >
                 <ArrowRight size={17} aria-hidden="true" />
-                Entrar ahora (Cloud Invitado)
+                Ver demo interactiva
               </button>
             </div>
 
-            {showEmailPanel && (
-              <form onSubmit={handleEmailSubmit} className="inset-panel stack-sm" aria-label="Acceso con correo electrónico">
-                <div className="row-between">
-                  <strong style={{ fontSize: '0.9rem' }}>
-                    {emailMode === 'register' ? 'Crear cuenta personal en Firebase' : 'Iniciar sesión con correo'}
-                  </strong>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setEmailMode((m) => (m === 'register' ? 'login' : 'register'))}
-                  >
-                    {emailMode === 'register' ? 'Ya tengo cuenta' : 'Crear nueva cuenta'}
-                  </button>
-                </div>
-
-                <div className="grid-2" style={{ gap: '0.65rem' }}>
-                  {emailMode === 'register' && (
-                    <div className="field" style={{ gridColumn: '1 / -1' }}>
-                      <label htmlFor="auth-email-name">Tu nombre</label>
-                      <input
-                        id="auth-email-name"
-                        name="emailDisplayName"
-                        className="input"
-                        placeholder="Ej. Álvaro Sánchez"
-                        value={nameInput}
-                        onChange={(e) => setNameInput(e.target.value)}
-                        required
-                      />
-                    </div>
-                  )}
-                  <div className="field">
-                    <label htmlFor="auth-email">Correo electrónico</label>
-                    <input
-                      id="auth-email"
-                      name="email"
-                      type="email"
-                      className="input"
-                      placeholder="tu@correo.com"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="auth-password">Contraseña (mín. 6 caracteres)</label>
-                    <input
-                      id="auth-password"
-                      name="password"
-                      type="password"
-                      minLength={6}
-                      className="input"
-                      placeholder="••••••"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <button type="submit" className="btn btn-emerald btn-sm" disabled={authLoading}>
-                    {authLoading
-                      ? 'Conectando...'
-                      : emailMode === 'register'
-                      ? 'Crear cuenta y empezar'
-                      : 'Entrar en mi cuenta'}
-                  </button>
-                </div>
-              </form>
-            )}
-
             <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>
-              Al entrar por primera vez completarás un breve cuestionario con tu peso, edad, días disponibles y nivel actual. Todos tus datos se sincronizan con Cloud Firestore.
+              Acceso directo con tu cuenta de Google. Al entrar por primera vez completarás tu perfil y prueba inicial de nivel.
             </p>
           </div>
 
@@ -299,91 +165,6 @@ export function AuthLanding({
             </div>
           </div>
         </section>
-
-        {showConfigPanel && (
-          <section className="card stack-md" aria-label="Configuración de proyecto Firebase">
-            <div className="row-between">
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Proyecto Firebase conectado: {existingCfg.projectId}</h2>
-                <p className="muted" style={{ margin: '0.15rem 0 0', fontSize: '0.83rem' }}>
-                  FlyRun ya viene conectado de fábrica al backend real de Firebase Auth y Cloud Firestore. Solo edita estos campos si deseas apuntar a otro proyecto propio.
-                </p>
-              </div>
-              {hasCustomOverride && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    clearFirebaseConfig();
-                    const def = getSavedFirebaseConfig();
-                    setApiKey(def.apiKey);
-                    setAuthDomain(def.authDomain);
-                    setProjectId(def.projectId);
-                    setAppId(def.appId);
-                    setSavedNotice('Restablecido el proyecto Firebase integrado de FlyRun.');
-                  }}
-                >
-                  Restablecer por defecto
-                </button>
-              )}
-            </div>
-
-            <form onSubmit={handleSaveConfig} className="grid-2">
-              <div className="field">
-                <label htmlFor="fb-api-key">API Key</label>
-                <input
-                  id="fb-api-key"
-                  name="firebaseApiKey"
-                  className="input"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="fb-auth-domain">Auth Domain</label>
-                <input
-                  id="fb-auth-domain"
-                  name="firebaseAuthDomain"
-                  className="input"
-                  value={authDomain}
-                  onChange={(e) => setAuthDomain(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="fb-project-id">Project ID</label>
-                <input
-                  id="fb-project-id"
-                  name="firebaseProjectId"
-                  className="input"
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="fb-app-id">App ID</label>
-                <input
-                  id="fb-app-id"
-                  name="firebaseAppId"
-                  className="input"
-                  value={appId}
-                  onChange={(e) => setAppId(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="row-wrap" style={{ gridColumn: '1 / -1' }}>
-                <button type="submit" className="btn btn-emerald">
-                  Guardar proyecto personalizado
-                </button>
-                {savedNotice && (
-                  <span style={{ color: 'var(--pine)', fontSize: '0.84rem', fontWeight: 600 }}>{savedNotice}</span>
-                )}
-              </div>
-            </form>
-          </section>
-        )}
 
         <section className="grid-4" aria-label="Pilares del sistema de entrenamiento">
           <article className="card stack-sm">

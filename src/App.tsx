@@ -3,7 +3,6 @@ import {
   Activity,
   BookOpen,
   Calendar,
-  Cloud,
   Compass,
   LogOut,
   Moon,
@@ -29,7 +28,6 @@ import {
   persistUserState,
   requestGoogleFitOAuthToken,
   saveDemoGoogleSession,
-  signInWithEmailFirebase,
   signInWithGoogleFirebase,
   signOutFirebase,
   subscribeFirebaseAuth,
@@ -100,7 +98,6 @@ export function App() {
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [cloudSyncState, setCloudSyncState] = useState<'synced' | 'syncing' | 'local'>('local');
 
   const mergePreservingCompleted = (existingWorkouts: WorkoutSession[], newPlan: WorkoutSession[]) => {
     const extraCompleted = existingWorkouts.filter((w) => w.completed && w.id.startsWith('extra_'));
@@ -123,8 +120,6 @@ export function App() {
 
   const hydrateUserData = async (authInfo: AuthSessionInfo) => {
     const cloud = await loadUserStateFromCloud(authInfo.uid);
-    const hasCloudUser = Boolean(getFirebaseClients()?.auth.currentUser);
-    setCloudSyncState(hasCloudUser && cloud.profile ? 'synced' : 'local');
     if (cloud.profile) {
       setProfile(cloud.profile);
       setWorkouts(
@@ -196,14 +191,11 @@ export function App() {
     setWorkouts(nextWorkouts);
     setExams(nextExams);
     setFitDays(nextFitDays);
-    setCloudSyncState('syncing');
     void persistUserState(nextProfile.uid, {
       profile: nextProfile,
       workouts: nextWorkouts,
       exams: nextExams,
       fitDays: nextFitDays,
-    }).then((ok) => {
-      setCloudSyncState(ok ? 'synced' : 'local');
     });
   };
 
@@ -230,7 +222,7 @@ export function App() {
     setIsEditingProfile(false);
     setActiveTab('dashboard');
     showToast(
-      `Perfil de ${persona.name} cargado${cloudUid ? ' y sincronizado en Firebase Cloud' : ''} (Nivel ${personaProfile.level}, VDOT ${personaProfile.vdot}).`
+      `Perfil de ${persona.name} cargado (Nivel ${personaProfile.level}, VDOT ${personaProfile.vdot}).`
     );
   };
 
@@ -245,29 +237,8 @@ export function App() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error de autenticación';
       setAuthError(
-        `No se pudo completar el inicio con Google (${msg}). También puedes entrar con Email o con Acceso Rápido Cloud.`
+        `No se pudo completar el inicio con Google (${msg}). Inténtalo de nuevo o explora la demo interactiva.`
       );
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleEmailLogin = async (
-    email: string,
-    password: string,
-    displayName: string,
-    isRegister: boolean
-  ) => {
-    setAuthError(null);
-    setAuthLoading(true);
-    try {
-      const res = await signInWithEmailFirebase(email, password, displayName, isRegister);
-      const s: AuthSessionInfo = { ...res, isDemoMode: false };
-      setSession(s);
-      await hydrateUserData(s);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error de acceso con correo';
-      setAuthError(`Error de acceso con correo: ${msg}`);
     } finally {
       setAuthLoading(false);
     }
@@ -566,7 +537,6 @@ export function App() {
       <>
         <AuthLanding
           onGoogleLogin={handleGoogleLogin}
-          onEmailLogin={handleEmailLogin}
           onDemoLogin={() => void handleDemoLogin()}
           onOpenPersonas={() => setPersonasOpen(true)}
           theme={theme}
@@ -647,23 +617,6 @@ export function App() {
           </nav>
 
           <div className="header-actions">
-            <span
-              className={`pill mono ${cloudSyncState === 'synced' ? 'pill-emerald' : ''}`}
-              title={
-                cloudSyncState === 'synced'
-                  ? 'Datos sincronizados con Cloud Firestore'
-                  : cloudSyncState === 'syncing'
-                  ? 'Guardando en Cloud Firestore...'
-                  : 'Respaldo local activo'
-              }
-            >
-              <Cloud size={12} aria-hidden="true" />
-              {cloudSyncState === 'synced'
-                ? 'Cloud OK'
-                : cloudSyncState === 'syncing'
-                ? 'Sincronizando...'
-                : 'Local'}
-            </span>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
