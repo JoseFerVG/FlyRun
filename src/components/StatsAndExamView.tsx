@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { Award, Check, Copy, Lock } from 'lucide-react';
-import { CheckCircle, ClipboardText, Medal, SlidersHorizontal, Timer, Trophy } from '@phosphor-icons/react';
+import {
+  CheckCircle,
+  ClipboardText,
+  Medal,
+  SlidersHorizontal,
+  Timer,
+  Trophy,
+} from '@phosphor-icons/react';
 import type { PhysicalExamResult, PhysicalExamType, UserProfile, WorkoutSession } from '../types/fitness';
 import {
   calculateRacePredictions,
@@ -8,7 +14,7 @@ import {
   calculateVDOTFromExam,
   calculateVDOTFromSpeed,
   convertSpeedValue,
-  getAllLevelDefinitions,
+  formatShortUserName,
   getLynxLevel,
   getModalityLabel,
   paceMinSecToSecPerKm,
@@ -16,7 +22,7 @@ import {
   type SpeedUnit,
 } from '../services/scienceEngine';
 import { BADGES_CATALOG } from '../data/runningKnowledge';
-import { AnimatedNumber, BiometricRing, SpotlightCard } from './MotionPrimitives';
+import { BiometricRing, SpotlightCard } from './MotionPrimitives';
 import { assetUrl } from '../services/assets';
 import { SIMULATED_USER_PERSONAS } from '../data/userPersonas';
 
@@ -35,6 +41,25 @@ interface StatsAndExamViewProps {
   ) => void;
   onEditProfile: () => void;
 }
+
+const FRIENDLY_ZONE_META: Record<string, { title: string; feel: string }> = {
+  Z1: {
+    title: 'Ritmo Suave / Calentamiento',
+    feel: 'Puedes hablar frases largas sin que te falte el aire.',
+  },
+  Z2: {
+    title: 'Ritmo Cómodo de Rodaje',
+    feel: 'Paso estable y agradable para acumular minutos.',
+  },
+  Z3: {
+    title: 'Ritmo Alegre Controlado',
+    feel: 'Exigente pero sostenible; solo frases cortas al hablar.',
+  },
+  Z4: {
+    title: 'Ritmo Rápido / Series',
+    feel: 'Esfuerzo alto ideal para bloques cortos y rápidos.',
+  },
+};
 
 export function StatsAndExamView({
   profile,
@@ -55,14 +80,13 @@ export function StatsAndExamView({
   const [heartRate, setHeartRate] = useState<number>(152);
   const [examRpe, setExamRpe] = useState<number>(7);
   const [examSubmittedMsg, setExamSubmittedMsg] = useState<string | null>(null);
-  const [copiedSummary, setCopiedSummary] = useState(false);
 
-  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR).slice(0, 4);
   const predictions = calculateRacePredictions(profile.vdot);
   const levelInfo = getLynxLevel(profile.vdot, profile.xp);
-  const allLevels = getAllLevelDefinitions();
   const bmi = (profile.weightKg / Math.pow(profile.heightCm / 100, 2)).toFixed(1);
   const completedSessions = workouts.filter((w) => w.completed);
+  const shortName = formatShortUserName(profile.displayName, profile.email);
 
   const isSplitTimeExam = examType === 'time_trial_5k' || examType === 'rockport_walk_1600m';
 
@@ -94,31 +118,6 @@ export function StatsAndExamView({
       ? convertSpeedValue(1.6 / (Math.max(6, timeMins + timeSecs / 60) / 60), 'kmh')
       : null;
 
-  const handleCopySummary = async () => {
-    const lines = [
-      `FlyRun — Resumen fisiológico de ${profile.displayName}`,
-      `Nivel ${levelInfo.level} (${levelInfo.spanishTitle}) | VDOT ${profile.vdot} | ${profile.xp} XP`,
-      `Frecuencia: ${profile.trainingDaysPerWeek} días/sem | Meta pasos: ${profile.dailyStepsTarget}/día`,
-      '',
-      'Zonas de entrenamiento:',
-      ...zones.map(
-        (z) =>
-          `- ${z.id} (${z.danielsCode}): ${z.paceFormatted} | ${z.speedKmhFormatted} | ${z.speedKmMinFormatted} | ${z.hrMin}-${z.hrMax} ppm`
-      ),
-      '',
-      'Marcas equivalentes estimadas:',
-      ...predictions.map((p) => `- ${p.distanceLabel}: ${p.timeFormatted} (${p.pacePerKm} · ${p.speedKmh} · ${p.speedKmMin})`),
-    ].join('\n');
-
-    try {
-      await navigator.clipboard.writeText(lines);
-      setCopiedSummary(true);
-      window.setTimeout(() => setCopiedSummary(false), 2500);
-    } catch {
-      setCopiedSummary(false);
-    }
-  };
-
   const handleExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (examUnitMode !== 'standard') {
@@ -130,15 +129,15 @@ export function StatsAndExamView({
 
       if (examType === 'cooper_12min') {
         const distMeters = Math.max(400, Math.round(conv.kmPerMin * 12 * 1000));
-        const customLabel = `Test Cooper (${conv.kmh.toFixed(1).replace('.', ',')} km/h · ${conv.kmPerMin.toFixed(3).replace('.', ',')} km/min · ${conv.paceFormatted} /km)`;
+        const customLabel = `Test 12 min (${conv.kmh.toFixed(1).replace('.', ',')} km/h · ${conv.paceFormatted} /km)`;
         onSubmitExam('cooper_12min', distMeters, examRpe, heartRate, customLabel);
       } else if (examType === 'time_trial_5k') {
         const timeMin = Number(((5 / Math.max(3, conv.kmh)) * 60).toFixed(2));
-        const customLabel = `Contrarreloj 5K (${conv.kmh.toFixed(1).replace('.', ',')} km/h · ${conv.kmPerMin.toFixed(3).replace('.', ',')} km/min · ${conv.paceFormatted} /km)`;
+        const customLabel = `Carrera 5 km (${conv.kmh.toFixed(1).replace('.', ',')} km/h · ${conv.paceFormatted} /km)`;
         onSubmitExam('time_trial_5k', timeMin, examRpe, heartRate, customLabel);
       } else if (examType === 'rockport_walk_1600m') {
         const timeMin = Number(((1.6 / Math.max(2.5, conv.kmh)) * 60).toFixed(2));
-        const customLabel = `Test Rockport (${conv.kmh.toFixed(1).replace('.', ',')} km/h · ${conv.kmPerMin.toFixed(3).replace('.', ',')} km/min · ${heartRate} ppm)`;
+        const customLabel = `Caminata rápida (${conv.kmh.toFixed(1).replace('.', ',')} km/h)`;
         onSubmitExam('rockport_walk_1600m', timeMin, examRpe, heartRate, customLabel);
       } else {
         const dur = Math.max(3, Math.min(60, speedDuration));
@@ -147,7 +146,7 @@ export function StatsAndExamView({
           800,
           Math.round(504.9 + 44.73 * Math.min(58, (calc.vdot * 0.55 + calculateVDOTFromExam('caco_continuous_test', dur, { secondaryValue: examRpe }) * 0.45)))
         );
-        const customLabel = `Test continuo (${dur} min a ${conv.kmh.toFixed(1).replace('.', ',')} km/h · ${conv.kmPerMin.toFixed(3).replace('.', ',')} km/min)`;
+        const customLabel = `Prueba continua (${dur} min a ${conv.kmh.toFixed(1).replace('.', ',')} km/h)`;
         onSubmitExam('cooper_12min', continuousEquivalentMeters, examRpe, heartRate, customLabel);
       }
     } else {
@@ -156,245 +155,142 @@ export function StatsAndExamView({
         : rawValue;
       onSubmitExam(examType, numericVal, examRpe, heartRate);
     }
-    setExamSubmittedMsg(
-      'Examen físico registrado. Tu VDOT, nivel, predicciones y zonas en km/h y km/min se han actualizado.'
-    );
+    setExamSubmittedMsg('¡Nivel actualizado! Tus ritmos diarios se han ajustado a tu estado de forma.');
   };
 
-  const chartPoints = [...exams].reverse().map((ex, i) => ({
-    label: ex.date.slice(5),
-    vdot: ex.calculatedVdot,
-    idx: i,
-  }));
-  if (chartPoints.length === 0) {
-    chartPoints.push({ label: 'Inicio', vdot: profile.vdot, idx: 0 });
-  }
-
-  const getBadgeProgress = (id: string): { current: number; target: number; label: string } => {
-    const unlocked = profile.unlockedBadges.includes(id);
-    if (unlocked) return { current: 1, target: 1, label: 'Completado (100%)' };
-    if (id === 'first_workout') return { current: Math.min(1, completedSessions.length), target: 1, label: `${completedSessions.length}/1 sesión` };
-    if (id === 'streak_3') return { current: Math.min(3, profile.streakDays), target: 3, label: `${profile.streakDays}/3 días` };
-    if (id === 'level_5') return { current: Math.min(5, profile.level), target: 5, label: `Nivel ${profile.level}/5` };
-    if (id === 'exam_completed') return { current: Math.min(1, exams.length), target: 1, label: `${exams.length}/1 test` };
-    if (id === 'multi_cardio') return { current: 0, target: 1, label: '0/1 bici o fútbol' };
-    if (id === 'google_fit_sync') return { current: 0, target: 1, label: 'Sincroniza tus pasos' };
-    if (id === 'macro_smart') return { current: 0, target: 1, label: 'Consulta tu plan nutricional' };
-    return { current: 0, target: 1, label: 'Pendiente' };
-  };
+  const matchedPersona = SIMULATED_USER_PERSONAS.find(
+    (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
+  );
+  const avatarSrc = profile.photoURL || (matchedPersona ? assetUrl(matchedPersona.avatarFile) : assetUrl('images/avatar-javier.jpg'));
 
   return (
     <div className="stack-lg">
-      <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Mis Datos Biométricos">
+      {/* 1. TU ESTADO DE FORMA ACTUAL (CLARO Y VISUAL) */}
+      <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Estado de forma actual">
         <div className="row-between">
-          <div className="row-wrap" style={{ gap: '0.8rem' }}>
-            {(() => {
-              const matched = SIMULATED_USER_PERSONAS.find(
-                (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
-              );
-              const avatarSrc = profile.photoURL || (matched ? assetUrl(matched.avatarFile) : '');
-              return avatarSrc ? (
-                <img
-                  src={avatarSrc}
-                  alt={profile.displayName}
-                  width={46}
-                  height={46}
-                  className="athlete-avatar"
-                  style={{ inlineSize: '46px', blockSize: '46px' }}
-                />
-              ) : null;
-            })()}
+          <div className="row-wrap" style={{ gap: '0.85rem' }}>
+            <img
+              src={avatarSrc}
+              alt={shortName}
+              width={54}
+              height={54}
+              className="athlete-avatar"
+              style={{ inlineSize: '54px', blockSize: '54px' }}
+            />
             <div>
-              <span className="pill pill-amber">Perfil fisiológico</span>
-              <h1 style={{ margin: '0.35rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
-                Tus datos, zonas de ritmo y predicciones
+              <span className="pill lovable-badge">Estado de forma de {shortName}</span>
+              <h1 style={{ margin: '0.3rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
+                Nivel {levelInfo.level} · {levelInfo.spanishTitle}
               </h1>
             </div>
           </div>
-          <div className="row-wrap">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => void handleCopySummary()}>
-              {copiedSummary ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-              {copiedSummary ? 'Resumen copiado' : 'Copiar resumen'}
-            </button>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onEditProfile}>
-              <SlidersHorizontal size={15} weight="duotone" aria-hidden="true" />
-              Configurar perfil y plan
-            </button>
-          </div>
+
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onEditProfile}>
+            <SlidersHorizontal size={15} weight="duotone" aria-hidden="true" />
+            Cambiar datos y objetivo
+          </button>
         </div>
 
-        <div className="inset-panel row-between" style={{ padding: '0.85rem 1rem' }}>
-          <div className="row-wrap" style={{ gap: '0.95rem' }}>
+        <div className="inset-panel row-between" style={{ padding: '0.9rem 1rem' }}>
+          <div className="row-wrap" style={{ gap: '1rem' }}>
             <BiometricRing
-              percent={Math.min(100, Math.round((profile.vdot / 72) * 100))}
-              label={`Nivel ${levelInfo.level}`}
-              valueText={`${profile.vdot}`}
-              subText="VDOT actual"
+              percent={Math.min(100, Math.round((profile.level / 10) * 100))}
+              label="Tu Nivel"
+              valueText={`${levelInfo.level}/10`}
+              subText={`Índice ${profile.vdot}`}
               color="var(--cobalt)"
-              size={84}
+              size={80}
             />
-            <div className="stack-sm" style={{ gap: '0.2rem' }}>
-              <strong style={{ fontSize: '0.96rem' }}>{levelInfo.spanishTitle}</strong>
-              <span className="secondary" style={{ fontSize: '0.83rem' }}>
-                Siguiente hito: {levelInfo.nextLevelXp.toLocaleString('es-ES')} XP ({levelInfo.progressPct}% completado)
+            <div className="stack-sm" style={{ gap: '0.25rem' }}>
+              <strong style={{ fontSize: '0.96rem' }}>Progreso hacia Nivel {Math.min(10, levelInfo.level + 1)}</strong>
+              <span className="muted" style={{ fontSize: '0.82rem' }}>
+                {profile.age} años · {profile.weightKg} kg · {profile.heightCm} cm (IMC {bmi}) · {profile.trainingDaysPerWeek} días/semana
               </span>
-              <div className="progress-track" style={{ inlineSize: 'min(260px, 60vw)', marginTop: '0.25rem' }}>
+              <div className="progress-track" style={{ inlineSize: 'min(260px, 60vw)', marginTop: '0.2rem' }}>
                 <div className="progress-fill" style={{ inlineSize: `${levelInfo.progressPct}%` }} />
               </div>
             </div>
           </div>
-          <span className="pill pill-emerald mono">{profile.streakDays} días de racha</span>
+          <span className="pill pill-emerald mono">{profile.streakDays} días seguidos</span>
         </div>
 
-        <div className="grid-4">
-          <div className="inset-panel">
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Biometría</div>
-            <div className="mono" style={{ fontWeight: 700, fontSize: '1.08rem' }}>
-              {profile.weightKg} kg · {profile.heightCm} cm
-            </div>
-            <div className="muted" style={{ fontSize: '0.75rem' }}>
-              {profile.age} años · IMC {bmi}
-            </div>
-          </div>
-
-          <div className="inset-panel">
-            <div className="muted" style={{ fontSize: '0.75rem' }}>VDOT / VO2max efectivo</div>
-            <div className="mono" style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--cobalt)' }}>
-              <AnimatedNumber value={profile.vdot} decimals={1} />
-            </div>
-            <div className="muted mono" style={{ fontSize: '0.75rem' }}>
-              FC reposo {profile.restHR} / máx {profile.maxHR} ppm
-            </div>
-          </div>
-
-          <div className="inset-panel">
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Nivel actual</div>
-            <div style={{ fontWeight: 700, fontSize: '1.06rem', color: 'var(--accent)' }}>
-              Nivel {levelInfo.level} · {levelInfo.spanishTitle}
-            </div>
-            <div className="muted mono" style={{ fontSize: '0.75rem' }}>
-              <AnimatedNumber value={profile.xp} locale suffix=" XP" /> · <AnimatedNumber value={profile.totalCardioPoints} suffix=" PC" />
-            </div>
-          </div>
-
-          <div className="inset-panel">
-            <div className="muted" style={{ fontSize: '0.75rem' }}>Compromiso semanal</div>
-            <div className="mono" style={{ fontWeight: 700, fontSize: '1.08rem' }}>
-              {profile.trainingDaysPerWeek} días entreno
-            </div>
-            <div className="muted" style={{ fontSize: '0.75rem' }}>
-              Andar {profile.weeklyWalkGoalSessions} días/sem · {profile.dailyStepsTarget.toLocaleString('es-ES')} pasos
-            </div>
-          </div>
-        </div>
-
-        <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Tabla de zonas de ritmo y frecuencia cardíaca">
-          <table className="zone-table">
-            <thead>
-              <tr>
-                <th>Zona</th>
-                <th>Referencia Daniels</th>
-                <th>Velocidad (km/h · km/min)</th>
-                <th>Ritmo (min/km)</th>
-                <th>Pulso (Karvonen)</th>
-                <th>Objetivo fisiológico</th>
-              </tr>
-            </thead>
-            <tbody>
-              {zones.map((z) => (
-                <tr key={z.id}>
-                  <td>
-                    <span className="pill mono" style={{ borderColor: z.color, color: z.color }}>
-                      {z.id}
+        {/* 2. TUS RITMOS RECOMENDADOS (SIN JERGA TÉCNICA) */}
+        <div className="stack-sm">
+          <strong style={{ fontSize: '0.96rem' }}>Tus ritmos diarios para entrenar</strong>
+          <div className="grid-2" style={{ gap: '0.75rem' }}>
+            {zones.map((z) => {
+              const info = FRIENDLY_ZONE_META[z.id] ?? { title: z.name, feel: z.purpose };
+              return (
+                <div key={z.id} className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)', padding: '0.78rem 0.95rem' }}>
+                  <div className="row-between">
+                    <strong style={{ fontSize: '0.92rem' }}>{info.title}</strong>
+                    <span className="pill mono" style={{ fontSize: '0.72rem', color: 'var(--cobalt)' }}>
+                      {z.hrMin}–{z.hrMax} ppm
                     </span>
-                  </td>
-                  <td style={{ fontWeight: 600 }}>{z.danielsCode}</td>
-                  <td className="mono">
-                    <div style={{ fontWeight: 700, color: 'var(--cobalt)' }}>{z.speedKmhFormatted}</div>
-                    <div className="muted" style={{ fontSize: '0.73rem' }}>{z.speedKmMinFormatted}</div>
-                  </td>
-                  <td className="mono" style={{ fontWeight: 600 }}>{z.paceFormatted}</td>
-                  <td className="mono">{z.hrMin}–{z.hrMax} ppm</td>
-                  <td className="muted">{z.purpose}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <div className="mono" style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--accent)' }}>
+                    {z.speedKmhFormatted} · {z.paceFormatted}
+                  </div>
+                  <div className="muted mono" style={{ fontSize: '0.74rem' }}>
+                    Equivalente: {z.speedKmMinFormatted}
+                  </div>
+                  <p className="muted" style={{ margin: 0, fontSize: '0.79rem' }}>{info.feel}</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </SpotlightCard>
 
-      {/* Tabla de predicción de marcas y ritmos por vuelta de 400m */}
-      <SpotlightCard as="section" staggerIndex={1} className="stack-md" aria-label="Predicción de marcas y paso por 400 m">
+      {/* 3. MARCAS ESTIMADAS EN CARRERA */}
+      <SpotlightCard as="section" staggerIndex={1} className="stack-md" aria-label="Tiempos estimados en carrera">
         <div className="row-wrap">
           <span className="duotone-icon-box is-cobalt">
             <Timer size={18} weight="duotone" aria-hidden="true" />
           </span>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.14rem' }}>Marcas equivalentes estimadas (VDOT {profile.vdot})</h2>
+            <h2 style={{ margin: 0, fontSize: '1.14rem' }}>¿En cuánto tiempo podrías correr estas distancias hoy?</h2>
             <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-              Velocidad equivalente en km/h y km/min, ritmo por kilómetro y paso por vuelta de 400 m en pista.
+              Estimación orientativa a tu ritmo máximo actual en km/h, km/min y tiempo por km.
             </p>
           </div>
         </div>
 
-        <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Tabla de marcas equivalentes y paso por 400 metros">
-          <table className="zone-table">
-            <thead>
-              <tr>
-                <th>Distancia</th>
-                <th>Tiempo estimado</th>
-                <th>Ritmo (min/km)</th>
-                <th>Velocidad (km/h · km/min)</th>
-                <th>Vuelta 400 m</th>
-              </tr>
-            </thead>
-            <tbody>
-              {predictions.map((p) => (
-                <tr key={p.distanceLabel}>
-                  <td style={{ fontWeight: 600 }}>{p.distanceLabel}</td>
-                  <td className="mono" style={{ fontWeight: 700, color: 'var(--accent)' }}>{p.timeFormatted}</td>
-                  <td className="mono">{p.pacePerKm}</td>
-                  <td className="mono" style={{ fontSize: '0.8rem' }}>{p.speedKmh} · {p.speedKmMin}</td>
-                  <td className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>{p.split400m}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid-4" style={{ gap: '0.75rem' }}>
+          {predictions.slice(0, 4).map((p) => (
+            <div key={p.distanceLabel} className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)' }}>
+              <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>{p.distanceLabel}</span>
+              <div className="mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent)' }}>
+                {p.timeFormatted}
+              </div>
+              <div className="muted mono" style={{ fontSize: '0.75rem' }}>
+                {p.speedKmh} · {p.pacePerKm}
+              </div>
+              <div className="muted mono" style={{ fontSize: '0.72rem' }}>
+                {p.speedKmMin}
+              </div>
+            </div>
+          ))}
         </div>
       </SpotlightCard>
 
-      {/* DÍA DE EXAMEN FÍSICO */}
-      <SpotlightCard id="physical-exam-section" as="section" staggerIndex={2} className="stack-md" aria-label="Día de Examen Físico">
-        <div className="editorial-photo-banner" style={{ blockSize: '146px' }}>
-          <img
-            src={assetUrl('images/exam-track-400m.jpg')}
-            alt="Pista de atletismo de 400 metros lista para test de Cooper o 5K"
-            width={1200}
-            height={420}
-            loading="lazy"
-            className="editorial-photo-img"
-          />
-          <div className="editorial-photo-scrim">
-            <span className="editorial-photo-caption">Día de examen físico · Recalibración objetiva de VDOT</span>
-            <span className="pill pill-cyan mono">Test estandarizado</span>
-          </div>
-        </div>
-
+      {/* 4. TEST RÁPIDO DE NIVEL */}
+      <SpotlightCard id="physical-exam-section" as="section" staggerIndex={2} className="stack-md" aria-label="Test rápido de nivel">
         <div className="row-between">
           <div>
             <span className="pill pill-cyan">
               <ClipboardText size={14} weight="duotone" aria-hidden="true" />
-              Día de examen físico
+              Test rápido de nivel
             </span>
-            <h2 style={{ margin: '0.35rem 0 0', fontSize: '1.22rem', letterSpacing: '-0.015em' }}>
-              Registra tus marcas reales y actualiza tu nivel
+            <h2 style={{ margin: '0.35rem 0 0', fontSize: '1.2rem' }}>
+              Actualiza tus ritmos cuando mejores tu marca
             </h2>
-            <p className="secondary" style={{ margin: '0.22rem 0 0', fontSize: '0.87rem' }}>
-              Introduce tu marca (metros / tiempo) o directamente la velocidad en <strong>km/h</strong>, <strong>km/min</strong> o ritmo en <strong>min:seg /km</strong>.
+            <p className="secondary" style={{ margin: '0.2rem 0 0', fontSize: '0.85rem' }}>
+              Elige una prueba sencilla o escribe la velocidad media a la que corriste hoy.
             </p>
           </div>
 
-          <div className="segmented-group" role="group" aria-label="Unidad de entrada del examen">
+          <div className="segmented-group" role="group" aria-label="Unidad del test">
             <button
               type="button"
               aria-pressed={examUnitMode === 'standard'}
@@ -432,7 +328,7 @@ export function StatsAndExamView({
 
         <form onSubmit={handleExamSubmit} className="grid-3">
           <div className="field">
-            <label htmlFor="exam-selector">Prueba física</label>
+            <label htmlFor="exam-selector">¿Qué prueba quieres registrar?</label>
             <select
               id="exam-selector"
               name="examType"
@@ -456,10 +352,10 @@ export function StatsAndExamView({
                 }
               }}
             >
-              <option value="cooper_12min">Test de Cooper (12 min)</option>
-              <option value="time_trial_5k">Contrarreloj 5K</option>
-              <option value="rockport_walk_1600m">Caminata Rockport 1,6 km</option>
-              <option value="caco_continuous_test">Test continuo sostenido</option>
+              <option value="cooper_12min">Distancia en 12 minutos</option>
+              <option value="time_trial_5k">Tu tiempo en 5 kilómetros</option>
+              <option value="rockport_walk_1600m">Caminata rápida de 1,6 km</option>
+              <option value="caco_continuous_test">Minutos trotando sin parar</option>
             </select>
           </div>
 
@@ -469,27 +365,23 @@ export function StatsAndExamView({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.4rem', alignItems: 'center' }}>
                 <input
                   id="exam-pace-mins"
-                  name="examPaceMinutes"
                   type="number"
                   min={2}
                   max={18}
                   className="input mono"
                   value={paceMinPart}
                   onChange={(e) => setPaceMinPart(Number(e.target.value))}
-                  aria-label="Minutos por km"
                   required
                 />
                 <span className="mono muted" style={{ fontWeight: 700 }}>:</span>
                 <input
                   id="exam-pace-secs"
-                  name="examPaceSeconds"
                   type="number"
                   min={0}
                   max={59}
                   className="input mono"
                   value={paceSecPart}
                   onChange={(e) => setPaceSecPart(Number(e.target.value))}
-                  aria-label="Segundos por km"
                   required
                 />
               </div>
@@ -502,11 +394,10 @@ export function StatsAndExamView({
           ) : examUnitMode !== 'standard' ? (
             <div className="field">
               <label htmlFor="exam-speed-val">
-                {examUnitMode === 'kmh' ? 'Velocidad sostenida (km/h)' : 'Velocidad por minuto (km/min)'}
+                {examUnitMode === 'kmh' ? 'Velocidad media (km/h)' : 'Velocidad (km/min)'}
               </label>
               <input
                 id="exam-speed-val"
-                name="examSpeedValue"
                 type="number"
                 min={examUnitMode === 'km_min' ? 0.04 : 2}
                 max={examUnitMode === 'km_min' ? 0.5 : 32}
@@ -518,54 +409,49 @@ export function StatsAndExamView({
               />
               {liveSpeedConv && (
                 <span className="muted mono" style={{ fontSize: '0.73rem' }}>
-                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveSpeedConv.kmPerMin.toFixed(3).replace('.', ',')} km/min · {liveSpeedConv.paceFormatted} /km
+                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveSpeedConv.paceFormatted} /km
                 </span>
               )}
             </div>
           ) : isSplitTimeExam ? (
             <div className="field">
-              <label htmlFor="exam-mins">Tiempo empleado (min : seg)</label>
+              <label htmlFor="exam-mins">Tiempo tardado (min : seg)</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.4rem', alignItems: 'center' }}>
                 <input
                   id="exam-mins"
-                  name="examTimeMinutes"
                   type="number"
                   min={8}
                   max={70}
                   className="input mono"
                   value={timeMins}
                   onChange={(e) => setTimeMins(Number(e.target.value))}
-                  aria-label="Minutos"
                   required
                 />
                 <span className="mono muted" style={{ fontWeight: 700 }}>:</span>
                 <input
                   id="exam-secs"
-                  name="examTimeSeconds"
                   type="number"
                   min={0}
                   max={59}
                   className="input mono"
                   value={timeSecs}
                   onChange={(e) => setTimeSecs(Number(e.target.value))}
-                  aria-label="Segundos"
                   required
                 />
               </div>
               {liveSpeedConv && (
                 <span className="muted mono" style={{ fontSize: '0.73rem' }}>
-                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveSpeedConv.kmPerMin.toFixed(3).replace('.', ',')} km/min · {liveSpeedConv.paceFormatted} /km
+                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveSpeedConv.paceFormatted} /km
                 </span>
               )}
             </div>
           ) : (
             <div className="field">
               <label htmlFor="exam-value">
-                {examType === 'cooper_12min' ? 'Distancia recorrida (metros)' : 'Minutos trotando continuo'}
+                {examType === 'cooper_12min' ? 'Metros recorridos en 12 min' : 'Minutos seguidos trotando'}
               </label>
               <input
                 id="exam-value"
-                name="examRawValue"
                 type="number"
                 min={1}
                 max={6000}
@@ -577,7 +463,7 @@ export function StatsAndExamView({
               />
               {liveSpeedConv && (
                 <span className="muted mono" style={{ fontSize: '0.73rem' }}>
-                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveSpeedConv.kmPerMin.toFixed(3).replace('.', ',')} km/min · {liveSpeedConv.paceFormatted} /km
+                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveSpeedConv.paceFormatted} /km
                 </span>
               )}
             </div>
@@ -585,10 +471,9 @@ export function StatsAndExamView({
 
           {examUnitMode !== 'standard' && examType === 'caco_continuous_test' ? (
             <div className="field">
-              <label htmlFor="exam-speed-dur">Duración del test (minutos)</label>
+              <label htmlFor="exam-speed-dur">Duración (minutos)</label>
               <input
                 id="exam-speed-dur"
-                name="examSpeedDuration"
                 type="number"
                 min={3}
                 max={60}
@@ -599,10 +484,9 @@ export function StatsAndExamView({
             </div>
           ) : (
             <div className="field">
-              <label htmlFor="exam-hr">Pulso final medio/pico (ppm)</label>
+              <label htmlFor="exam-hr">Pulsaciones finales (opcional)</label>
               <input
                 id="exam-hr"
-                name="examHeartRate"
                 type="number"
                 min={80}
                 max={215}
@@ -614,10 +498,9 @@ export function StatsAndExamView({
           )}
 
           <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label htmlFor="exam-rpe">Sensación de esfuerzo del examen ({examRpe}/10)</label>
+            <label htmlFor="exam-rpe">¿Cómo de duro te resultó? ({examRpe}/10)</label>
             <input
               id="exam-rpe"
-              name="examRpe"
               type="range"
               min={2}
               max={10}
@@ -627,9 +510,9 @@ export function StatsAndExamView({
           </div>
 
           <div className="row-wrap" style={{ gridColumn: '1 / -1' }}>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn lovable-cta-btn">
               <Trophy size={16} weight="duotone" aria-hidden="true" />
-              Evaluar examen y recalcular plan (+220 XP)
+              Actualizar mi nivel y ritmos
             </button>
             {examSubmittedMsg && (
               <span style={{ color: 'var(--pine)', fontSize: '0.84rem', fontWeight: 600 }}>
@@ -639,235 +522,72 @@ export function StatsAndExamView({
           </div>
         </form>
 
-        {/* Evolución visual SVG Área + Línea de VDOT */}
-        <div className="grid-2">
-          <div className="inset-panel stack-sm">
-            <div className="row-between">
-              <strong style={{ fontSize: '0.86rem' }}>Evolución de VDOT</strong>
-              <span className="mono muted" style={{ fontSize: '0.73rem' }}>
-                Último: {chartPoints[chartPoints.length - 1]?.vdot}
-              </span>
-            </div>
-            {(() => {
-              const pts =
-                chartPoints.length === 1
-                  ? [
-                      { ...chartPoints[0], label: 'Inicio' },
-                      { ...chartPoints[0], label: 'Hoy' },
-                    ]
-                  : chartPoints;
-              const minV = Math.max(15, Math.min(...pts.map((p) => p.vdot)) - 4);
-              const maxV = Math.min(80, Math.max(...pts.map((p) => p.vdot)) + 4);
-              const w = 380;
-              const h = 112;
-              const padX = 24;
-              const padY = 18;
-              const coords = pts.map((pt, idx) => {
-                const x = padX + (idx / Math.max(1, pts.length - 1)) * (w - padX * 2);
-                const norm = (pt.vdot - minV) / Math.max(1, maxV - minV);
-                const y = h - padY - norm * (h - padY * 2);
-                return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)), ...pt };
-              });
-              const lineStr = coords.map((c) => `${c.x},${c.y}`).join(' ');
-              const areaStr = `${coords[0].x},${h - padY} ${lineStr} ${coords[coords.length - 1].x},${h - padY}`;
-              return (
-                <svg
-                  viewBox={`0 0 ${w} ${h + 18}`}
-                  style={{ inlineSize: '100%', blockSize: 'auto' }}
-                  role="img"
-                  aria-label="Gráfica lineal de evolución de VDOT"
-                >
-                  <defs>
-                    <linearGradient id="vdot-area-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--cobalt)" stopOpacity="0.28" />
-                      <stop offset="100%" stopColor="var(--cobalt)" stopOpacity="0.02" />
-                    </linearGradient>
-                  </defs>
-                  <line x1={padX} y1={padY} x2={w - padX} y2={padY} stroke="var(--border-hairline)" strokeDasharray="3 3" />
-                  <line x1={padX} y1={h / 2} x2={w - padX} y2={h / 2} stroke="var(--border-hairline)" strokeDasharray="3 3" />
-                  <line x1={padX} y1={h - padY} x2={w - padX} y2={h - padY} stroke="var(--border-strong)" />
-                  <polygon points={areaStr} fill="url(#vdot-area-fill)" />
-                  <polyline fill="none" stroke="var(--cobalt)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" points={lineStr} />
-                  {coords.map((c, idx) => (
-                    <g key={`${c.label}-${idx}`}>
-                      <circle cx={c.x} cy={c.y} r="4.5" fill="var(--bg-surface)" stroke="var(--cobalt)" strokeWidth="2.5" />
-                      <text x={c.x} y={c.y - 9} textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--text-primary)" fontFamily="var(--font-mono)">
-                        {c.vdot}
-                      </text>
-                      <text x={c.x} y={h + 10} textAnchor="middle" fontSize="9.5" fill="var(--text-muted)" fontFamily="var(--font-mono)">
-                        {c.label}
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-              );
-            })()}
-          </div>
-
+        {exams.length > 0 && (
           <div className="stack-sm">
-            <strong style={{ fontSize: '0.86rem' }}>Historial de evaluaciones</strong>
-            {exams.length === 0 ? (
-              <div className="inset-panel muted" style={{ fontSize: '0.82rem' }}>
-                Aún no has registrado evaluaciones adicionales.
+            <strong style={{ fontSize: '0.86rem' }}>Tus evaluaciones recientes</strong>
+            {exams.slice(0, 4).map((ex) => (
+              <div key={ex.id} className="inset-panel row-between" style={{ padding: '0.55rem 0.85rem', fontSize: '0.82rem' }}>
+                <span>{ex.summary}</span>
+                <span className="muted mono">{ex.date}</span>
               </div>
-            ) : (
-              exams.slice(0, 4).map((ex) => {
-                const delta = Number((ex.calculatedVdot - ex.previousVdot).toFixed(1));
-                return (
-                  <div
-                    key={ex.id}
-                    className="inset-panel row-between"
-                    style={{ padding: '0.58rem 0.8rem', fontSize: '0.82rem' }}
-                  >
-                    <div style={{ flex: '1 1 200px' }}>{ex.summary}</div>
-                    <div className="row-wrap" style={{ gap: '0.35rem', flexShrink: 0 }}>
-                      {delta !== 0 && (
-                        <span className={`pill mono ${delta > 0 ? 'pill-emerald' : 'pill-amber'}`}>
-                          {delta > 0 ? `+${delta}` : delta} VDOT
-                        </span>
-                      )}
-                      <span className="muted mono">{ex.date}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+            ))}
           </div>
-        </div>
+        )}
       </SpotlightCard>
 
-      <div className="grid-2">
-        <SpotlightCard as="section" staggerIndex={3} className="stack-md">
-          <div className="row-wrap">
-            <Award size={18} color="var(--accent)" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Progresión de niveles (1 a 10)</h2>
-          </div>
-
-          <div className="stack-sm">
-            {allLevels.map((lvl) => {
-              const reached = profile.level >= lvl.level;
-              const current = profile.level === lvl.level;
-              return (
-                <div
-                  key={lvl.level}
-                  className="row-between"
-                  style={{
-                    padding: '0.52rem 0.8rem',
-                    borderRadius: '10px',
-                    border: current
-                      ? '1px solid var(--accent)'
-                      : '1px solid var(--border-hairline)',
-                    background: current
-                      ? 'var(--accent-soft)'
-                      : reached
-                      ? 'var(--pine-soft)'
-                      : 'var(--bg-inset)',
-                  }}
-                >
-                  <div className="row-wrap">
-                    <span className="mono" style={{ fontWeight: 700, color: lvl.badgeColor }}>
-                      Nv.{lvl.level}
-                    </span>
-                    <strong style={{ fontSize: '0.86rem' }}>{lvl.spanishTitle}</strong>
-                  </div>
-                  <div className="row-wrap">
-                    <span className="muted mono" style={{ fontSize: '0.75rem' }}>
-                      VDOT {lvl.minVdot}+ · {lvl.minXp} XP
-                    </span>
-                    {reached ? (
-                      <CheckCircle size={16} weight="duotone" color="var(--pine)" aria-hidden="true" />
-                    ) : (
-                      <Lock size={14} color="var(--text-muted)" aria-hidden="true" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </SpotlightCard>
-
-        <SpotlightCard as="section" staggerIndex={4} className="stack-md">
-          <div className="row-wrap">
-            <Medal size={19} weight="duotone" color="var(--amber-zone)" aria-hidden="true" />
-            <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Insignias de entrenamiento</h2>
-          </div>
-
-          <div className="grid-2" style={{ gap: '0.68rem' }}>
-            {BADGES_CATALOG.map((badge) => {
-              const unlocked = profile.unlockedBadges.includes(badge.id);
-              const prog = getBadgeProgress(badge.id);
-              const pct = Math.round((prog.current / prog.target) * 100);
-              return (
-                <article
-                  key={badge.id}
-                  className="stack-sm"
-                  style={{
-                    padding: '0.78rem',
-                    borderRadius: '10px',
-                    border: unlocked
-                      ? '1px solid var(--pine-border)'
-                      : '1px solid var(--border-hairline)',
-                    background: unlocked ? 'var(--pine-soft)' : 'var(--bg-inset)',
-                  }}
-                >
-                  <div className="row-between">
-                    <strong style={{ fontSize: '0.86rem' }}>{badge.title}</strong>
-                    <span className="mono" style={{ fontSize: '0.72rem', color: 'var(--pine)', fontWeight: 600 }}>
-                      +{badge.xpReward} XP
-                    </span>
-                  </div>
-                  <p className="muted" style={{ margin: 0, fontSize: '0.77rem' }}>
-                    {badge.description}
-                  </p>
-                  <div className="progress-track" style={{ blockSize: '6px' }}>
-                    <div
-                      className={`progress-fill ${unlocked ? 'progress-fill-emerald' : ''}`}
-                      style={{ inlineSize: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="muted mono" style={{ fontSize: '0.7rem' }}>{prog.label}</span>
-                </article>
-              );
-            })}
-          </div>
-        </SpotlightCard>
-      </div>
-
-      {/* Historial de entrenamientos completados */}
-      <SpotlightCard as="section" staggerIndex={5} className="stack-md" aria-label="Historial de entrenamientos completados">
+      {/* 5. LOGROS E HISTORIAL RECIENTE */}
+      <SpotlightCard as="section" staggerIndex={3} className="stack-md">
         <div className="row-between">
-          <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Historial de entrenamientos completados</h2>
-          <span className="pill mono">{completedSessions.length} sesiones</span>
-        </div>
-        {completedSessions.length === 0 ? (
-          <div className="inset-panel muted" style={{ fontSize: '0.84rem' }}>
-            Todavía no has marcado entrenamientos completados. Registra tu sesión de hoy o una actividad libre para verla aquí.
+          <div className="row-wrap">
+            <Medal size={19} weight="duotone" color="var(--accent)" aria-hidden="true" />
+            <h2 style={{ margin: 0, fontSize: '1.08rem' }}>Tus logros y sesiones completadas</h2>
           </div>
-        ) : (
-          <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Historial de entrenamientos completados">
+          <span className="pill pill-emerald mono">
+            {profile.unlockedBadges.length}/{BADGES_CATALOG.length} logros · {completedSessions.length} sesiones
+          </span>
+        </div>
+
+        <div className="grid-4" style={{ gap: '0.6rem' }}>
+          {BADGES_CATALOG.map((b) => {
+            const unlocked = profile.unlockedBadges.includes(b.id);
+            return (
+              <div
+                key={b.id}
+                className="inset-panel stack-sm"
+                style={{
+                  borderColor: unlocked ? 'var(--pine-border)' : 'var(--border-hairline)',
+                  background: unlocked ? 'var(--pine-soft)' : 'var(--bg-inset)',
+                  padding: '0.68rem 0.82rem',
+                }}
+              >
+                <div className="row-between">
+                  <strong style={{ fontSize: '0.84rem' }}>{b.title}</strong>
+                  {unlocked && <CheckCircle size={15} weight="duotone" color="var(--pine)" aria-hidden="true" />}
+                </div>
+                <span className="muted" style={{ fontSize: '0.75rem' }}>{b.description}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {completedSessions.length > 0 && (
+          <div className="scroll-table-wrap">
             <table className="zone-table">
               <thead>
                 <tr>
                   <th>Fecha</th>
                   <th>Sesión</th>
-                  <th>Modalidad</th>
-                  <th>Duración real</th>
-                  <th>RPE</th>
-                  <th>Puntos Cardio</th>
+                  <th>Deporte</th>
+                  <th>Duración</th>
                 </tr>
               </thead>
               <tbody>
-                {completedSessions.slice(0, 12).map((s) => (
+                {completedSessions.slice(0, 8).map((s) => (
                   <tr key={s.id}>
                     <td className="mono">{s.date}</td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{s.title}</div>
-                      {s.notes && <div className="muted" style={{ fontSize: '0.76rem' }}>{s.notes}</div>}
-                    </td>
-                    <td>{getModalityLabel(s.completedModality ?? s.modality)}</td>
+                    <td style={{ fontWeight: 600 }}>{s.title}</td>
+                    <td>{getModalityLabel(s.completedModality ?? s.modality).split(' ')[0]}</td>
                     <td className="mono">{s.actualDurationMinutes ?? s.durationMinutes} min</td>
-                    <td className="mono">{s.rpe ?? '-'}/10</td>
-                    <td className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>+{s.cardioPoints} PC</td>
                   </tr>
                 ))}
               </tbody>

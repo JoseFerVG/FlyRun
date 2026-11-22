@@ -54,8 +54,29 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseConfigValues = {
 const CONFIG_STORAGE_KEY = 'flyrun_firebase_config_v1';
 const LOCAL_STATE_PREFIX = 'flyrun_state_v1_';
 const TELEMETRY_STORAGE_PREFIX = 'flyrun_telemetry_v1_';
+const CUSTOM_AVATAR_PREFIX = 'flyrun_avatar_v1_';
 const DEMO_USER_STORAGE_KEY = 'flyrun_demo_session_v1';
 const GFIT_TOKEN_STORAGE_KEY = 'flyrun_gfit_token_v1';
+
+export function saveCustomAvatarLocal(uid: string, photoUrl: string): void {
+  try {
+    if (photoUrl) {
+      localStorage.setItem(`${CUSTOM_AVATAR_PREFIX}${uid}`, photoUrl);
+    } else {
+      localStorage.removeItem(`${CUSTOM_AVATAR_PREFIX}${uid}`);
+    }
+  } catch {
+    // Ignore storage error
+  }
+}
+
+export function getCustomAvatarLocal(uid: string): string {
+  try {
+    return localStorage.getItem(`${CUSTOM_AVATAR_PREFIX}${uid}`) ?? '';
+  } catch {
+    return '';
+  }
+}
 
 interface WorkoutTelemetryCacheEntry {
   externalSource?: ExternalSyncSource;
@@ -411,7 +432,11 @@ export async function loadUserStateFromCloud(uid: string): Promise<PersistedUser
       return local;
     }
 
-    const profile = userSnap.data() as UserProfile;
+    const rawProfile = userSnap.data() as UserProfile;
+    const localAvatar = getCustomAvatarLocal(uid) || getCustomAvatarLocal(targetUid);
+    const profile: UserProfile = localAvatar
+      ? { ...rawProfile, photoURL: localAvatar }
+      : rawProfile;
 
     const workoutsSnap = await getDocs(collection(clients.db, 'users', targetUid, 'workouts'));
     const workouts: WorkoutSession[] = [];
@@ -457,8 +482,17 @@ export async function persistUserState(uid: string, state: PersistedUserState): 
 
   try {
     if (state.profile) {
+      if (state.profile.photoURL) {
+        saveCustomAvatarLocal(uid, state.profile.photoURL);
+        saveCustomAvatarLocal(activeAuthUid, state.profile.photoURL);
+      }
+      const isCloudSafePhoto =
+        state.profile.photoURL &&
+        (state.profile.photoURL.startsWith('https://') || state.profile.photoURL.startsWith('http://')) &&
+        state.profile.photoURL.length <= 1000;
       const profilePayload = cleanFirestoreData({
         ...state.profile,
+        photoURL: isCloudSafePhoto ? state.profile.photoURL : '',
         uid: activeAuthUid,
       });
       await setDoc(doc(clients.db, 'users', activeAuthUid), profilePayload, { merge: true });

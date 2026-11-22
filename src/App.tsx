@@ -113,7 +113,7 @@ export function App() {
   const [personasOpen, setPersonasOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('connections');
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('profile');
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(PLATFORMS_STORAGE_KEY);
@@ -142,7 +142,7 @@ export function App() {
     document.documentElement.setAttribute('data-theme', theme);
     const meta = document.getElementById('theme-color-meta');
     if (meta) {
-      meta.setAttribute('content', theme === 'dark' ? '#0d0f12' : '#f5f3ed');
+      meta.setAttribute('content', theme === 'dark' ? '#0a0d14' : '#f3f5fa');
     }
   }, [theme]);
 
@@ -573,17 +573,42 @@ export function App() {
     setFitSyncLoading(false);
   };
 
-  const handleUpdateDisplayName = (nextName: string) => {
+  const handleUpdateQuickProfile = (updates: {
+    displayName?: string;
+    photoURL?: string;
+    weightKg?: number;
+    trainingDaysPerWeek?: number;
+    dailyStepsTarget?: number;
+  }) => {
     if (!profile) return;
-    const clean = nextName.trim();
-    if (!clean) return;
+    const nextDays =
+      typeof updates.trainingDaysPerWeek === 'number'
+        ? Math.max(1, Math.min(7, Math.round(updates.trainingDaysPerWeek)))
+        : profile.trainingDaysPerWeek;
+    const nextWeight =
+      typeof updates.weightKg === 'number'
+        ? Math.max(35, Math.min(200, updates.weightKg))
+        : profile.weightKg;
+    const nextSteps =
+      typeof updates.dailyStepsTarget === 'number'
+        ? Math.max(2000, Math.min(40000, Math.round(updates.dailyStepsTarget)))
+        : profile.dailyStepsTarget;
+
     const nextProfile: UserProfile = {
       ...profile,
-      displayName: clean,
+      displayName: updates.displayName ? updates.displayName.trim() : profile.displayName,
+      photoURL: updates.photoURL !== undefined ? updates.photoURL : profile.photoURL,
+      weightKg: nextWeight,
+      trainingDaysPerWeek: nextDays,
+      dailyStepsTarget: nextSteps,
       updatedAt: new Date().toISOString(),
     };
-    saveAll(nextProfile, workouts, exams, fitDays);
-    showToast(`Nombre actualizado a "${clean}".`);
+    const nextWorkouts =
+      nextDays !== profile.trainingDaysPerWeek
+        ? mergePreservingCompleted(workouts, generateWeeklyPlan(nextProfile))
+        : workouts;
+    saveAll(nextProfile, nextWorkouts, exams, fitDays);
+    showToast('Perfil y preferencias actualizadas.');
   };
 
   const handleConfigureTodayRoutine = (
@@ -602,6 +627,12 @@ export function App() {
       restLevel
     );
     const nextWorkouts = workouts.map((w, idx) => (idx === 0 ? built : w));
+    saveAll(profile, nextWorkouts, exams, fitDays);
+  };
+
+  const handleSaveUpdatedTodayWorkout = (updatedWorkout: WorkoutSession) => {
+    if (!profile) return;
+    const nextWorkouts = workouts.map((w) => (w.id === updatedWorkout.id ? updatedWorkout : w));
     saveAll(profile, nextWorkouts, exams, fitDays);
   };
 
@@ -815,7 +846,7 @@ export function App() {
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => {
-                setSettingsTab('connections');
+                setSettingsTab('profile');
                 setSettingsOpen(true);
               }}
               aria-label="Abrir Ajustes, Perfil, Conexiones y Privacidad"
@@ -826,8 +857,8 @@ export function App() {
                 const matchedPersona = SIMULATED_USER_PERSONAS.find(
                   (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
                 );
-                const avatarSrc = profile.photoURL || (matchedPersona ? assetUrl(matchedPersona.avatarFile) : '');
-                return avatarSrc ? (
+                const avatarSrc = profile.photoURL || (matchedPersona ? assetUrl(matchedPersona.avatarFile) : assetUrl('images/avatar-javier.jpg'));
+                return (
                   <img
                     src={avatarSrc}
                     alt=""
@@ -836,7 +867,7 @@ export function App() {
                     className="athlete-avatar"
                     style={{ inlineSize: '22px', blockSize: '22px' }}
                   />
-                ) : null;
+                );
               })()}
               <GearSix size={15} weight="duotone" aria-hidden="true" />
               <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>
@@ -861,11 +892,11 @@ export function App() {
               <CoachLynxBanner
                 profile={profile}
                 levelInfo={levelInfo}
+                workouts={workouts}
+                todayWorkout={todayWorkout}
+                fitToday={fitToday}
+                onOpenExam={handleOpenPhysicalExam}
                 onOpenGoalModal={() => setGoalModalOpen(true)}
-                onOpenSettings={() => {
-                  setSettingsTab('profile');
-                  setSettingsOpen(true);
-                }}
               />
               <DashboardView
                 profile={profile}
@@ -877,6 +908,7 @@ export function App() {
                 fitNotice={fitNotice}
                 connectedPlatforms={connectedPlatforms}
                 onConfigureTodayRoutine={handleConfigureTodayRoutine}
+                onSaveUpdatedWorkout={handleSaveUpdatedTodayWorkout}
                 onStartTimer={(w, blockIdx = 0) => {
                   setTimerStartBlock(blockIdx);
                   setTimerWorkout(w);
@@ -887,7 +919,6 @@ export function App() {
                   setSettingsTab('connections');
                   setSettingsOpen(true);
                 }}
-                onOpenGoalModal={() => setGoalModalOpen(true)}
                 onNavigate={handleSelectTab}
               />
             </>
@@ -1004,7 +1035,7 @@ export function App() {
         onClose={() => setSettingsOpen(false)}
         onTogglePlatform={handleTogglePlatform}
         onSyncNow={handleSyncPlatforms}
-        onUpdateDisplayName={handleUpdateDisplayName}
+        onUpdateQuickProfile={handleUpdateQuickProfile}
         onOpenGoalModal={() => setGoalModalOpen(true)}
         onOpenFullProfileEdit={() => setIsEditingProfile(true)}
         onOpenExam={handleOpenPhysicalExam}

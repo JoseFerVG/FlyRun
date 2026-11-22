@@ -1,53 +1,53 @@
 :root {
   color-scheme: light;
-  /* UI Colors 11-step perceptual palette */
-  --stone-50: #faf9f6;
-  --stone-100: #f5f3ed;
-  --stone-200: #edeae2;
-  --stone-300: #e2dfd6;
-  --stone-400: #cbc7bc;
-  --stone-500: #8a909b;
-  --stone-600: #686f7a;
-  --stone-700: #4a505a;
-  --stone-800: #252a32;
-  --stone-900: #15181d;
-  --stone-950: #0d0f12;
+  /* FlyRun Unified Brand Palette: Cool Alabaster + Coral Pulse + Indigo Tech + Emerald Flow */
+  --stone-50: #f8f9fc;
+  --stone-100: #f3f5fa;
+  --stone-200: #e8ecf4;
+  --stone-300: #dce2ee;
+  --stone-400: #c1cade;
+  --stone-500: #7f899e;
+  --stone-600: #5c6578;
+  --stone-700: #3c4354;
+  --stone-800: #1e2330;
+  --stone-900: #121622;
+  --stone-950: #0a0d14;
 
-  --ember-50: #fff4ef;
-  --ember-100: #fdf0eb;
-  --ember-200: #fad9cc;
-  --ember-300: #f5b69f;
-  --ember-400: #ef7d53;
-  --ember-500: #d94814;
-  --ember-600: #bd3a0c;
-  --ember-700: #992d0a;
-  --ember-800: #7a250c;
-  --ember-900: #5c1e0c;
-  --ember-950: #350f05;
+  --ember-50: #fff3ee;
+  --ember-100: #ffe6dc;
+  --ember-200: #ffcbb6;
+  --ember-300: #ffa583;
+  --ember-400: #ff7a4d;
+  --ember-500: #f24e1e;
+  --ember-600: #d93f12;
+  --ember-700: #b2310d;
+  --ember-800: #8c260a;
+  --ember-900: #661b07;
+  --ember-950: #3d0f04;
 
-  --pine-50: #effaf5;
-  --pine-100: #eaf6f1;
-  --pine-200: #b8dfce;
-  --pine-300: #84c9ac;
-  --pine-400: #43b488;
-  --pine-500: #166547;
-  --pine-600: #13543b;
-  --pine-700: #104531;
-  --pine-800: #0f3829;
-  --pine-900: #0d2e22;
-  --pine-950: #061c14;
+  --pine-50: #ecfdf5;
+  --pine-100: #d1fae5;
+  --pine-200: #a7f3d0;
+  --pine-300: #6ee7b7;
+  --pine-400: #34d399;
+  --pine-500: #0d9468;
+  --pine-600: #0a7a55;
+  --pine-700: #086244;
+  --pine-800: #064e36;
+  --pine-900: #043b29;
+  --pine-950: #022419;
 
-  --cobalt-50: #eff6ff;
-  --cobalt-100: #dbeafe;
-  --cobalt-200: #bfdbfe;
-  --cobalt-300: #93c5fd;
-  --cobalt-400: #60a5fa;
-  --cobalt-500: #1d4ed8;
-  --cobalt-600: #1e40af;
-  --cobalt-700: #1e3a8a;
-  --cobalt-800: #172554;
-  --cobalt-900: #111b3b;
-  --cobalt-950: #0a1024;
+  --cobalt-50: #eef2ff;
+  --cobalt-100: #e0e7ff;
+  --cobalt-200: #c7d2fe;
+  --cobalt-300: #a5b4fc;
+  --cobalt-400: #818cf8;
+  --cobalt-500: #4f46e5;
+  --cobalt-600: #4338ca;
+  --cobalt-700: #3730a3;
+  --cobalt-800: #312e81;
+  --cobalt-900: #1e1b4b;
+  --cobalt-950: #131130;
 
   --bg-canvas: var(--stone-100);
   --bg-surface: #ffffff;
@@ -56,36 +56,36 @@
   --border-hairline: var(--stone-300);
   --border-strong: var(--stone-400);
 
-  --text-primary: #121417;
+  --text-primary: #111521;
   --text-secondary: var(--stone-700);
   --text-muted: var(--stone-600);
 
   --accent: var(--ember-500);
   --accent-hover: var(--ember-600);
   --accent-soft: var(--ember-100);
-  --accent-border: #f5cbbd;
+  --accent-border: var(--ember-200);
 
   --pine: var(--pine-500);
-  --pine-soft: var(--pine-100);
+  --pine-soft: var(--pine-50);
   --pine-border: var(--pine-200);
 
   --cobalt: var(--cobalt-500);
   --cobalt-soft: var(--cobalt-50);
   --cobalt-border: var(--cobalt-200);
 
-  --amber-zone: #b45309;
-  --amber-soft: #fef3c7;
+  --amber-zone: #e11d48;
+  --amber-soft: #ffe4e6;
 
-  --shadow-card: 0 1px 2px rgba(18, 20, 23, 0.04), 0 6px 18px rgba(18, 20, 23, 0.03);
-  --shadow-card-hover: 0 2px 6px rgba(18, 20, 23, 0.06), 0 10px 24px rgba(18, 20, 23, 0.04);
-  --shadow-modal: 0 24px 64px rgba(18, 20, 23, 0.18);
-  --lovable-indigo: #6366f1;
-  --lovable-indigo-soft: rgba(99, 102, 241, 0.1);
-  --lovable-gradient: linear-gradient(135deg, #ff5522 0%, #ec4899 52%, #6366f1 100%);
+  --shadow-card: 0 1px 2px rgba(17, 21, 33, 0.04), 0 8px 24px rgba(17, 21, 33, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(17, 21, 33, 0.06), 0 14px 32px rgba(79, 70, 229, 0.06);
+  --shadow-modal: 0 28px 68px rgba(10, 13, 20, 0.22);
+  --lovable-indigo: #4f46e5;
+  --lovable-indigo-soft: rgba(79, 70, 229, 0.1);
+  --lovable-gradient: linear-gradient(135deg, #f24e1e 0%, #e11d48 52%, #4f46e5 100%);
 
-  --radius-xl: 16px;
-  --radius-lg: 12px;
-  --radius-md: 8px;
+  --radius-xl: 18px;
+  --radius-lg: 13px;
+  --radius-md: 9px;
   --target-size: 28px;
   --duration-exit: 150ms;
   --duration-enter: 200ms;
@@ -104,36 +104,36 @@
 
 [data-theme='dark'] {
   color-scheme: dark;
-  --bg-canvas: #0d0f12;
-  --bg-surface: #15181d;
-  --bg-subtle: #1e2229;
-  --bg-inset: #111419;
-  --border-hairline: #252a32;
-  --border-strong: #353b47;
+  --bg-canvas: #0a0d14;
+  --bg-surface: #121622;
+  --bg-subtle: #191f30;
+  --bg-inset: #0e121c;
+  --border-hairline: #232a3e;
+  --border-strong: #323c57;
 
-  --text-primary: #f3f4f6;
-  --text-secondary: #bcc3cf;
-  --text-muted: #8a93a2;
+  --text-primary: #f4f6fb;
+  --text-secondary: #c5cde0;
+  --text-muted: #8b95ad;
 
-  --accent: #ef5d2a;
-  --accent-hover: #f57142;
-  --accent-soft: #2b1812;
-  --accent-border: #6e2e19;
+  --accent: #ff6336;
+  --accent-hover: #ff7a52;
+  --accent-soft: #2c1714;
+  --accent-border: #662d1f;
 
-  --pine: #2eb482;
-  --pine-soft: #10261e;
-  --pine-border: #1e523e;
+  --pine: #10b981;
+  --pine-soft: #0d2720;
+  --pine-border: #175240;
 
-  --cobalt: #60a5fa;
-  --cobalt-soft: #142034;
-  --cobalt-border: #25406b;
+  --cobalt: #818cf8;
+  --cobalt-soft: #171c36;
+  --cobalt-border: #2e3768;
 
-  --amber-zone: #f59e0b;
-  --amber-soft: #292010;
+  --amber-zone: #fb7185;
+  --amber-soft: #2e1521;
 
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 10px rgba(0, 0, 0, 0.28);
-  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 6px 20px rgba(0, 0, 0, 0.36);
-  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 18px rgba(0, 0, 0, 0.36);
+  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 28px rgba(0, 0, 0, 0.48);
+  --shadow-modal: 0 28px 72px rgba(0, 0, 0, 0.72);
 }
 
 *,
@@ -961,32 +961,34 @@ input[type='range'] {
   background: var(--bg-surface);
   border: 1px solid var(--border-hairline);
   border-radius: var(--radius-lg);
-  padding: 0.85rem;
+  padding: 0.9rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 0.42rem;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
+  gap: 0.45rem;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.12s ease, background-color 0.14s ease;
 }
 
 .calendar-day:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-card);
+  transform: translateY(-1px);
+  border-color: var(--cobalt-border);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .calendar-day.is-selected {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .calendar-day.is-completed {
   border-color: var(--pine-border);
-  background: var(--pine-soft);
+  background: color-mix(in srgb, var(--pine) 7%, var(--bg-surface));
 }
 
 .calendar-day.is-exam {
   border-color: var(--cobalt-border);
-  background: var(--cobalt-soft);
+  background: color-mix(in srgb, var(--cobalt) 8%, var(--bg-surface));
 }
 
 /* KPI Value */
@@ -1087,7 +1089,7 @@ input[type='range'] {
   block-size: min(56vw, 560px);
   inset-block-start: -160px;
   inset-inline-start: -120px;
-  background: radial-gradient(circle, rgba(217, 72, 20, 0.26) 0%, rgba(217, 72, 20, 0) 72%);
+  background: radial-gradient(circle, rgba(242, 78, 30, 0.2) 0%, rgba(242, 78, 30, 0) 72%);
 }
 
 .shader-orb-pine {
@@ -1095,7 +1097,7 @@ input[type='range'] {
   block-size: min(50vw, 520px);
   inset-block-start: 18%;
   inset-inline-end: -140px;
-  background: radial-gradient(circle, rgba(22, 101, 71, 0.22) 0%, rgba(22, 101, 71, 0) 72%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(16, 185, 129, 0) 72%);
 }
 
 .shader-orb-cobalt {
@@ -1103,7 +1105,7 @@ input[type='range'] {
   block-size: min(46vw, 480px);
   inset-block-end: -150px;
   inset-inline-start: 28%;
-  background: radial-gradient(circle, rgba(29, 78, 216, 0.16) 0%, rgba(29, 78, 216, 0) 72%);
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.18) 0%, rgba(79, 70, 229, 0) 72%);
 }
 
 @media (prefers-reduced-motion: no-preference) {

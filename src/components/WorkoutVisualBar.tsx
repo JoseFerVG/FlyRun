@@ -18,14 +18,14 @@ function getBlockVisualMeta(block: WorkoutBlock): { heightPct: number; color: st
     lbl.includes('soltura') ||
     lbl.includes('paseo');
 
-  if (block.zone === 'Z5') return { heightPct: 100, color: '#b91c1c', shortTag: 'Z5' };
-  if (block.zone === 'Z4') return { heightPct: 90, color: '#d94814', shortTag: 'Z4' };
-  if (block.zone === 'Z3') return { heightPct: 76, color: '#b45309', shortTag: 'Z3' };
-  if (block.zone === 'Z2') return { heightPct: 62, color: '#1d4ed8', shortTag: isWarmupCooldownWalk ? 'Z2' : 'CORRE' };
+  if (block.zone === 'Z5') return { heightPct: 100, color: 'var(--amber-zone)', shortTag: 'Z5' };
+  if (block.zone === 'Z4') return { heightPct: 90, color: 'var(--accent)', shortTag: 'Z4' };
+  if (block.zone === 'Z3') return { heightPct: 76, color: 'color-mix(in srgb, var(--accent) 72%, var(--cobalt))', shortTag: 'Z3' };
+  if (block.zone === 'Z2') return { heightPct: 62, color: 'var(--cobalt)', shortTag: isWarmupCooldownWalk ? 'Z2' : 'CORRE' };
   if (isWarmupCooldownWalk) {
-    return { heightPct: 32, color: '#475569', shortTag: lbl.includes('caminar') || lbl.includes('recupera') ? 'ANDA' : 'Z1' };
+    return { heightPct: 32, color: 'var(--text-muted)', shortTag: lbl.includes('caminar') || lbl.includes('recupera') ? 'ANDA' : 'Z1' };
   }
-  return { heightPct: 50, color: '#166547', shortTag: 'Z1' };
+  return { heightPct: 50, color: 'var(--pine)', shortTag: 'Z1' };
 }
 
 export function WorkoutVisualBar({ blocks, activeBlockIndex, onSelectBlock }: WorkoutVisualBarProps) {

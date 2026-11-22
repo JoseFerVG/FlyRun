@@ -2261,6 +2261,206 @@ export const IMAGE_BANK_GALLERY: Array<{ src: string; title: string; tag: string
   { src: 'images/meal-dinner-salmon.jpg', title: 'Cena de Recuperación', tag: 'Nutrición' },
 ];
 
+export type RoutineStylePreset =
+  | 'caco_easy'
+  | 'caco_plus'
+  | 'steady'
+  | 'progressive'
+  | 'intervals'
+  | 'fat_burn';
+
+export const ROUTINE_STYLE_PRESETS: Array<{
+  id: RoutineStylePreset;
+  label: string;
+  hint: string;
+}> = [
+  { id: 'caco_easy', label: "CaCo 2' / 2'", hint: 'Alterna trote suave y caminata' },
+  { id: 'caco_plus', label: "CaCo 4' / 2'", hint: 'Bloques más largos trotando' },
+  { id: 'steady', label: 'Continuo cómodo', hint: 'Ritmo estable sin parar' },
+  { id: 'progressive', label: 'Progresivo', hint: 'Empiezas suave y terminas más rápido' },
+  { id: 'intervals', label: "Series 1' / 1'", hint: 'Cambios de ritmo divertidos' },
+  { id: 'fat_burn', label: 'Quema-grasas', hint: 'Ritmo aeróbico largo y constante' },
+];
+
+export function recalculateWorkoutFromBlocks(
+  workout: WorkoutSession,
+  profile: UserProfile,
+  blocksInput: WorkoutBlock[],
+  modalityOverride?: CardioModality
+): WorkoutSession {
+  const safeBlocks = blocksInput.slice(0, 10);
+  const mod = modalityOverride ?? workout.modality;
+  const totalMin = Math.max(5, safeBlocks.reduce((acc, b) => acc + Math.max(1, Math.round(b.durationMinutes)), 0));
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+
+  // Zona dominante ponderada por minutos
+  let zWeightSum = 0;
+  for (const b of safeBlocks) {
+    const zNum = Number(b.zone.replace('Z', '')) || 2;
+    zWeightSum += zNum * Math.max(1, b.durationMinutes);
+  }
+  const avgZoneNum = Math.max(1, Math.min(4, Math.round(zWeightSum / totalMin)));
+  const dominantZone = (`Z${avgZoneNum}`) as WorkoutSession['targetZone'];
+  const zoneInfo = zones.find((z) => z.id === dominantZone) ?? zones[0];
+
+  const avgRpe = dominantZone === 'Z4' ? 8 : dominantZone === 'Z3' ? 6.5 : dominantZone === 'Z2' ? 5 : 4;
+  const eq = calculateCardioEquivalence(mod, totalMin, avgRpe, profile.weightKg, profile.sex, profile.vdot);
+
+  const avgPaceSec = (zoneInfo.paceMinSecPerKm + zoneInfo.paceMaxSecPerKm) / 2;
+  const targetDistanceKm =
+    mod === 'running'
+      ? Number(((totalMin * 60) / avgPaceSec).toFixed(1))
+      : mod === 'cycling'
+      ? Number(((totalMin / 60) * 23).toFixed(1))
+      : mod === 'walking'
+      ? Number(((totalMin / 60) * 5.6).toFixed(1))
+      : eq.equivalentRunningKm;
+
+  return {
+    ...workout,
+    modality: mod,
+    durationMinutes: totalMin,
+    targetDistanceKm,
+    targetZone: dominantZone,
+    targetPace: `${zoneInfo.speedKmhFormatted} (${zoneInfo.paceFormatted})`,
+    cardioPoints: eq.cardioPoints,
+    metMinutes: eq.metMinutes,
+    trimp: eq.trimp,
+    estimatedCalories: eq.calories,
+    blocks: safeBlocks,
+  };
+}
+
+export function buildRoutineFromStylePreset(
+  baseWorkout: WorkoutSession,
+  profile: UserProfile,
+  style: RoutineStylePreset,
+  durationMinutes: number,
+  modality: CardioModality,
+  powerLevel: RoutinePowerLevel
+): WorkoutSession {
+  const safeDur = Math.max(15, Math.min(90, Math.round(durationMinutes)));
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const z1 = zones[0];
+  const z2 = zones[1];
+  const z3 = zones[2];
+  const z4 = zones[3];
+
+  const warmup = Math.max(3, Math.min(6, Math.round(safeDur * 0.14)));
+  const cooldown = Math.max(3, Math.min(6, Math.round(safeDur * 0.14)));
+  const core = Math.max(6, safeDur - warmup - cooldown);
+
+  let title = baseWorkout.title;
+  let subtitle = baseWorkout.subtitle;
+  const blocks: WorkoutBlock[] = [
+    {
+      label: 'Calentamiento suave',
+      durationMinutes: warmup,
+      intensity: `Z1 · ${z1.speedKmhFormatted}`,
+      description: 'Movilidad articular y arranque progresivo muy cómodo.',
+      zone: 'Z1',
+    },
+  ];
+
+  if (style === 'caco_easy' || style === 'caco_plus') {
+    const runMin = style === 'caco_plus' ? 4 : 2;
+    const walkMin = 2;
+    const cycleLen = runMin + walkMin;
+    const rounds = Math.max(2, Math.min(4, Math.floor(core / cycleLen)));
+    const rem = Math.max(0, core - rounds * cycleLen);
+    title = `${modality === 'running' ? 'CaCo Guiado' : getModalityLabel(modality).split(' ')[0]} ${runMin}'/${walkMin}' (${safeDur} min)`;
+    subtitle = `Alternancia suave · Potencia ${powerLevel}/5`;
+    for (let i = 1; i <= rounds; i++) {
+      blocks.push({
+        label: `Bloque ${i}: ${runMin}' Activo + ${walkMin}' Suave`,
+        durationMinutes: cycleLen,
+        intensity: `${z2.speedKmhFormatted} y recuperación andando`,
+        description: `Alterna ${runMin} min en ritmo cómodo (${z2.speedKmhFormatted}) y ${walkMin} min recuperando.`,
+        zone: powerLevel >= 3 ? 'Z2' : 'Z1',
+      });
+    }
+    if (rem >= 2) {
+      blocks.push({
+        label: 'Tramo final suave',
+        durationMinutes: rem,
+        intensity: `Z1 · ${z1.speedKmhFormatted}`,
+        description: 'Cierre aeróbico relajado.',
+        zone: 'Z1',
+      });
+    }
+  } else if (style === 'progressive') {
+    const half = Math.max(3, Math.floor(core / 2));
+    const endPart = Math.max(3, core - half);
+    title = `Progresivo ${getModalityLabel(modality).split(' ')[0]} (${safeDur} min)`;
+    subtitle = `De cómodo a ritmo alegre · Potencia ${powerLevel}/5`;
+    blocks.push({
+      label: 'Primera mitad cómoda',
+      durationMinutes: half,
+      intensity: `Z2 · ${z2.speedKmhFormatted}`,
+      description: `Ritmo fluido (${z2.speedKmhFormatted}) guardando fuerzas para el final.`,
+      zone: 'Z2',
+    });
+    blocks.push({
+      label: 'Cierre progresivo alegre',
+      durationMinutes: endPart,
+      intensity: `Z3 · ${z3.speedKmhFormatted}`,
+      description: `Sube ligeramente la zancada hasta ${z3.speedKmhFormatted} sintiéndote fuerte.`,
+      zone: 'Z3',
+    });
+  } else if (style === 'intervals') {
+    const sets = Math.max(2, Math.min(4, Math.floor(core / 4)));
+    const eachDur = Math.max(3, Math.round(core / sets));
+    title = `Cambios de Ritmo (${sets}x · ${safeDur} min)`;
+    subtitle = `Series dinámicas rápidas y suaves · Potencia ${powerLevel}/5`;
+    for (let i = 1; i <= sets; i++) {
+      blocks.push({
+        label: `Serie ${i}: 1' fuerte + ${Math.max(1, eachDur - 1)}' suave`,
+        durationMinutes: eachDur,
+        intensity: `Pico ${z4.speedKmhFormatted}`,
+        description: `Acelera 1 minuto con energía (${z4.speedKmhFormatted}) y recupera cómodo después.`,
+        zone: 'Z4',
+      });
+    }
+  } else if (style === 'fat_burn') {
+    title = `Fondo Quema-Grasas (${safeDur} min)`;
+    subtitle = `Ritmo aeróbico continuo en zona óptima · Potencia ${powerLevel}/5`;
+    blocks.push({
+      label: 'Fase aeróbica constante',
+      durationMinutes: core,
+      intensity: `Z1–Z2 · ${z1.speedKmhFormatted}`,
+      description: `Mantén un esfuerzo moderado y constante donde puedas hablar cómodo (${z1.hrMin}–${z2.hrMax} ppm).`,
+      zone: 'Z2',
+    });
+  } else {
+    const targetZ = powerLevel >= 4 ? z3 : z2;
+    title = `Rodaje Continuo ${getModalityLabel(modality).split(' ')[0]} (${safeDur} min)`;
+    subtitle = `Sesión continua constante · Potencia ${powerLevel}/5`;
+    blocks.push({
+      label: 'Bloque principal continuo',
+      durationMinutes: core,
+      intensity: `${targetZ.id} · ${targetZ.speedKmhFormatted}`,
+      description: `Paso constante y fluido a ${targetZ.speedKmhFormatted} (${targetZ.paceFormatted}).`,
+      zone: targetZ.id as WorkoutBlock['zone'],
+    });
+  }
+
+  blocks.push({
+    label: 'Vuelta a la calma',
+    durationMinutes: cooldown,
+    intensity: 'Paseo relajado',
+    description: 'Baja el ritmo poco a poco y suelta piernas.',
+    zone: 'Z1',
+  });
+
+  const updated = recalculateWorkoutFromBlocks(baseWorkout, profile, blocks, modality);
+  return {
+    ...updated,
+    title,
+    subtitle,
+    coachTip: `Rutina "${title}" ajustada con ${updated.blocks.length} fases paso a paso.`,
+  };
+}
+
 export function formatShortUserName(displayName?: string, email?: string): string {
   const raw = (displayName ?? '').trim();
   const base = raw && !raw.includes('@')

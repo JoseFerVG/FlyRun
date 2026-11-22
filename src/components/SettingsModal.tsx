@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowsClockwise,
+  Camera,
   CheckCircle,
   ClipboardText,
   GearSix,
@@ -21,9 +22,11 @@ import {
   getGoalLabel,
   getTrainingFocusInfo,
 } from '../services/scienceEngine';
+import { assetUrl } from '../services/assets';
+import { SIMULATED_USER_PERSONAS } from '../data/userPersonas';
 import type { LegalTabId } from './LegalComplianceModal';
 
-export type SettingsTabId = 'connections' | 'profile' | 'appearance' | 'privacy';
+export type SettingsTabId = 'profile' | 'connections' | 'appearance' | 'privacy';
 
 export interface ConnectedPlatformItem {
   id: 'wahoo' | 'google_fit' | 'strava' | 'garmin' | 'apple_health';
@@ -59,6 +62,15 @@ export const SIMPLE_PLATFORMS: ConnectedPlatformItem[] = [
   },
 ];
 
+const AVATAR_PRESET_FILES = [
+  'images/avatar-javier.jpg',
+  'images/avatar-laura.jpg',
+  'images/avatar-elena.jpg',
+  'images/goal-speed-5k.jpg',
+  'images/goal-endurance-10k.jpg',
+  'images/goal-start-caco.jpg',
+];
+
 interface SettingsModalProps {
   open: boolean;
   initialTab: SettingsTabId;
@@ -70,7 +82,13 @@ interface SettingsModalProps {
   onClose: () => void;
   onTogglePlatform: (platformId: string) => void;
   onSyncNow: () => void;
-  onUpdateDisplayName: (nextName: string) => void;
+  onUpdateQuickProfile: (updates: {
+    displayName?: string;
+    photoURL?: string;
+    weightKg?: number;
+    trainingDaysPerWeek?: number;
+    dailyStepsTarget?: number;
+  }) => void;
   onOpenGoalModal: () => void;
   onOpenFullProfileEdit: () => void;
   onOpenExam: () => void;
@@ -81,6 +99,35 @@ interface SettingsModalProps {
   onExportJSON: () => void;
   onExportCSV: () => void;
   onSignOut: () => void;
+}
+
+function resizeImageFileToAvatarDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Formato de imagen no válido.'));
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('No se pudo procesar el lienzo.'));
+          return;
+        }
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.86));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 export function SettingsModal({
@@ -94,7 +141,7 @@ export function SettingsModal({
   onClose,
   onTogglePlatform,
   onSyncNow,
-  onUpdateDisplayName,
+  onUpdateQuickProfile,
   onOpenGoalModal,
   onOpenFullProfileEdit,
   onOpenExam,
@@ -109,6 +156,10 @@ export function SettingsModal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [tab, setTab] = useState<SettingsTabId>(initialTab);
   const [nameInput, setNameInput] = useState(formatShortUserName(profile.displayName, profile.email));
+  const [weightInput, setWeightInput] = useState(profile.weightKg);
+  const [daysInput, setDaysInput] = useState(profile.trainingDaysPerWeek);
+  const [stepsTargetInput, setStepsTargetInput] = useState(profile.dailyStepsTarget);
+  const [photoInput, setPhotoInput] = useState(profile.photoURL);
 
   useEffect(() => {
     setTab(initialTab);
@@ -116,7 +167,11 @@ export function SettingsModal({
 
   useEffect(() => {
     setNameInput(formatShortUserName(profile.displayName, profile.email));
-  }, [profile.displayName, profile.email]);
+    setWeightInput(profile.weightKg);
+    setDaysInput(profile.trainingDaysPerWeek);
+    setStepsTargetInput(profile.dailyStepsTarget);
+    setPhotoInput(profile.photoURL);
+  }, [profile]);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -131,6 +186,26 @@ export function SettingsModal({
   if (!open) return null;
 
   const focusInfo = getTrainingFocusInfo(profile.preferredStrategy);
+  const matchedPersona = SIMULATED_USER_PERSONAS.find(
+    (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
+  );
+  const resolvedAvatar =
+    photoInput ||
+    (matchedPersona ? assetUrl(matchedPersona.avatarFile) : assetUrl('images/avatar-javier.jpg'));
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImageFileToAvatarDataUrl(file);
+      setPhotoInput(dataUrl);
+      onUpdateQuickProfile({ photoURL: dataUrl });
+    } catch {
+      // Ignore invalid image files
+    } finally {
+      e.target.value = '';
+    }
+  };
 
   return (
     <dialog
@@ -150,7 +225,7 @@ export function SettingsModal({
               Ajustes
             </span>
             <h2 id="settings-modal-title" style={{ margin: '0.35rem 0 0', fontSize: '1.2rem' }}>
-              Configuración, Conexiones y Privacidad
+              Tu Perfil, Conexiones y Apariencia
             </h2>
           </div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Cerrar ajustes">
@@ -162,6 +237,17 @@ export function SettingsModal({
           <button
             type="button"
             role="tab"
+            aria-selected={tab === 'profile'}
+            aria-pressed={tab === 'profile'}
+            className="segmented-btn is-accent"
+            onClick={() => setTab('profile')}
+          >
+            <UserCircle size={14} weight="duotone" aria-hidden="true" />
+            Mi Perfil
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={tab === 'connections'}
             aria-pressed={tab === 'connections'}
             className="segmented-btn is-accent"
@@ -169,17 +255,6 @@ export function SettingsModal({
           >
             <PlugsConnected size={14} weight="duotone" aria-hidden="true" />
             Conexiones
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'profile'}
-            aria-pressed={tab === 'profile'}
-            className="segmented-btn is-accent"
-            onClick={() => setTab('profile')}
-          >
-            <UserCircle size={14} weight="duotone" aria-hidden="true" />
-            Perfil y Meta
           </button>
           <button
             type="button"
@@ -205,11 +280,226 @@ export function SettingsModal({
           </button>
         </div>
 
+        {tab === 'profile' && (
+          <div className="stack-md">
+            {/* Cabecera visual con foto de perfil personalizable */}
+            <div
+              className="inset-panel row-between"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent-soft), var(--cobalt-soft))',
+                borderColor: 'var(--cobalt-border)',
+                padding: '0.95rem 1.05rem',
+              }}
+            >
+              <div className="row-wrap" style={{ gap: '0.9rem' }}>
+                <img
+                  src={resolvedAvatar}
+                  alt={nameInput}
+                  width={64}
+                  height={64}
+                  className="athlete-avatar"
+                  style={{
+                    inlineSize: '64px',
+                    blockSize: '64px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid var(--bg-surface)',
+                    boxShadow: 'var(--shadow-card)',
+                  }}
+                />
+                <div className="stack-sm" style={{ gap: '0.18rem' }}>
+                  <strong style={{ fontSize: '1.08rem' }}>{nameInput}</strong>
+                  <span className="muted" style={{ fontSize: '0.78rem' }}>
+                    {profile.email || 'Cuenta local / Demo'} · Nivel {profile.level}
+                  </span>
+                  <span className="pill lovable-badge" style={{ alignSelf: 'flex-start', fontSize: '0.7rem' }}>
+                    {getGoalLabel(profile.goal)}
+                  </span>
+                </div>
+              </div>
+
+              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                <Camera size={15} weight="duotone" aria-hidden="true" />
+                Subir foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void handlePhotoUpload(e)}
+                  className="sr-only"
+                />
+              </label>
+            </div>
+
+            {/* Avatares rápidos deportivos */}
+            <div className="stack-sm">
+              <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
+                O elige un avatar rápido:
+              </span>
+              <div className="row-wrap" style={{ gap: '0.5rem' }}>
+                {AVATAR_PRESET_FILES.map((file) => {
+                  const fullUrl = `${window.location.origin}/${file}`;
+                  const active = resolvedAvatar.endsWith(file) || photoInput === fullUrl;
+                  return (
+                    <button
+                      key={file}
+                      type="button"
+                      onClick={() => {
+                        setPhotoInput(fullUrl);
+                        onUpdateQuickProfile({ photoURL: fullUrl });
+                      }}
+                      style={{
+                        padding: '2px',
+                        borderRadius: '50%',
+                        border: active ? '2px solid var(--accent)' : '2px solid transparent',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                      }}
+                      title="Elegir este avatar"
+                    >
+                      <img
+                        src={assetUrl(file)}
+                        alt=""
+                        width={40}
+                        height={40}
+                        style={{ inlineSize: '40px', blockSize: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Personalización rápida */}
+            <div className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)' }}>
+              <div className="grid-2" style={{ gap: '0.75rem' }}>
+                <div className="field">
+                  <label htmlFor="settings-short-name">Nombre visible</label>
+                  <input
+                    id="settings-short-name"
+                    type="text"
+                    className="input"
+                    maxLength={32}
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="settings-weight">Peso corporal (kg)</label>
+                  <input
+                    id="settings-weight"
+                    type="number"
+                    min={35}
+                    max={200}
+                    className="input mono"
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(Number(e.target.value))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="settings-days">Días de entreno / semana</label>
+                  <input
+                    id="settings-days"
+                    type="number"
+                    min={1}
+                    max={7}
+                    className="input mono"
+                    value={daysInput}
+                    onChange={(e) => setDaysInput(Number(e.target.value))}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="settings-steps">Meta diaria de pasos</label>
+                  <input
+                    id="settings-steps"
+                    type="number"
+                    min={2000}
+                    max={30000}
+                    step={500}
+                    className="input mono"
+                    value={stepsTargetInput}
+                    onChange={(e) => setStepsTargetInput(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div className="row-between" style={{ paddingTop: '0.25rem' }}>
+                <span className="muted" style={{ fontSize: '0.78rem' }}>
+                  Enfoque actual: <strong>{focusInfo.shortLabel}</strong>
+                </span>
+                <button
+                  type="button"
+                  className="btn lovable-cta-btn btn-sm"
+                  onClick={() =>
+                    onUpdateQuickProfile({
+                      displayName: nameInput.trim() || formatShortUserName(profile.displayName, profile.email),
+                      photoURL: photoInput,
+                      weightKg: weightInput,
+                      trainingDaysPerWeek: daysInput,
+                      dailyStepsTarget: stepsTargetInput,
+                    })
+                  }
+                >
+                  <CheckCircle size={15} weight="duotone" aria-hidden="true" />
+                  Guardar cambios del perfil
+                </button>
+              </div>
+            </div>
+
+            <div className="row-wrap" style={{ gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  onClose();
+                  onOpenGoalModal();
+                }}
+              >
+                <Target size={14} weight="duotone" aria-hidden="true" />
+                Cambiar meta y enfoque
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  onClose();
+                  onOpenExam();
+                }}
+              >
+                <ClipboardText size={14} weight="duotone" aria-hidden="true" />
+                Evaluar nivel
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  onClose();
+                  onOpenFullProfileEdit();
+                }}
+              >
+                Configuración avanzada
+              </button>
+              {isDemoMode && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    onClose();
+                    onOpenPersonas();
+                  }}
+                >
+                  <UsersThree size={14} weight="duotone" aria-hidden="true" />
+                  Cambiar caso demo
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {tab === 'connections' && (
           <div className="stack-sm">
             <div className="row-between">
               <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-                Conecta tu reloj o app de salud con <strong>1 solo clic</strong>. Sin claves técnicas, sin tokens ni archivos.
+                Conecta tu reloj o app de salud con <strong>1 solo clic</strong>. Sin claves técnicas ni pasos raros.
               </p>
               <button
                 type="button"
@@ -260,112 +550,6 @@ export function SettingsModal({
           </div>
         )}
 
-        {tab === 'profile' && (
-          <div className="stack-md">
-            <div className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)' }}>
-              <label htmlFor="settings-short-name" style={{ fontWeight: 700, fontSize: '0.86rem' }}>
-                ¿Cómo quieres que te llamemos?
-              </label>
-              <div className="row-wrap" style={{ gap: '0.5rem' }}>
-                <input
-                  id="settings-short-name"
-                  type="text"
-                  className="input"
-                  style={{ flex: '1 1 200px' }}
-                  maxLength={32}
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="Tu nombre"
-                />
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => {
-                    const clean = nameInput.trim();
-                    if (clean) onUpdateDisplayName(clean);
-                  }}
-                >
-                  Guardar nombre
-                </button>
-              </div>
-              {profile.email && (
-                <span className="muted" style={{ fontSize: '0.76rem' }}>
-                  Cuenta vinculada: {profile.email}
-                </span>
-              )}
-            </div>
-
-            <div className="grid-2" style={{ gap: '0.65rem' }}>
-              <div className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)' }}>
-                <span className="muted" style={{ fontSize: '0.75rem' }}>Meta y enfoque actual</span>
-                <strong style={{ fontSize: '0.94rem' }}>{getGoalLabel(profile.goal)}</strong>
-                <span className="muted" style={{ fontSize: '0.8rem' }}>Entrenas: {focusInfo.shortLabel}</span>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    onClose();
-                    onOpenGoalModal();
-                  }}
-                >
-                  <Target size={14} weight="duotone" aria-hidden="true" />
-                  Cambiar meta o enfoque
-                </button>
-              </div>
-
-              <div className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)' }}>
-                <span className="muted" style={{ fontSize: '0.75rem' }}>Nivel fisiológico y biometría</span>
-                <strong style={{ fontSize: '0.94rem' }}>
-                  Nivel {profile.level} · VDOT {profile.vdot}
-                </strong>
-                <span className="muted" style={{ fontSize: '0.8rem' }}>
-                  {profile.age} años · {profile.weightKg} kg · {profile.trainingDaysPerWeek} d/sem
-                </span>
-                <div className="row-wrap" style={{ gap: '0.4rem' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      onClose();
-                      onOpenExam();
-                    }}
-                  >
-                    <ClipboardText size={14} weight="duotone" aria-hidden="true" />
-                    Test de nivel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      onClose();
-                      onOpenFullProfileEdit();
-                    }}
-                  >
-                    Editar datos
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {isDemoMode && (
-              <div className="inset-panel row-between" style={{ background: 'var(--bg-surface)' }}>
-                <span className="muted" style={{ fontSize: '0.82rem' }}>Explorar otros perfiles de ejemplo</span>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    onClose();
-                    onOpenPersonas();
-                  }}
-                >
-                  <UsersThree size={15} weight="duotone" aria-hidden="true" />
-                  Cambiar caso demo
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {tab === 'appearance' && (
           <div className="grid-2" style={{ gap: '0.75rem' }}>
             <button
@@ -381,7 +565,7 @@ export function SettingsModal({
               </div>
               <strong>Modo Claro</strong>
               <span className="muted" style={{ fontSize: '0.78rem' }}>
-                Fondo cálido limpio ideal para leer entrenamientos a plena luz del día.
+                Fondo alabastro limpio con tarjetas nítidas y contraste suave para el día.
               </span>
             </button>
 
@@ -396,9 +580,9 @@ export function SettingsModal({
                 <MoonStars size={22} weight="duotone" color="var(--cobalt)" aria-hidden="true" />
                 {theme === 'dark' && <span className="pill pill-emerald">Activo</span>}
               </div>
-              <strong>Modo Oscuro Mate</strong>
+              <strong>Modo Oscuro</strong>
               <span className="muted" style={{ fontSize: '0.78rem' }}>
-                Contrastes suaves sin brillos molestos para entrenar al amanecer o de noche.
+                Obsidiana profunda con acentos Coral e Índigo para descansar la vista de noche.
               </span>
             </button>
           </div>
@@ -409,7 +593,7 @@ export function SettingsModal({
             <div className="inset-panel stack-sm" style={{ background: 'var(--bg-surface)' }}>
               <strong style={{ fontSize: '0.92rem' }}>Tus derechos, privacidad y documentos legales</strong>
               <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>
-                Cumplimiento RGPD UE, LOPDGDD, LSSI-CE y Política de Privacidad. Consulta tus textos legales, gestiona cookies o descarga una copia completa de tus entrenamientos.
+                Cumplimiento RGPD UE, LOPDGDD, LSSI-CE y Política de Privacidad. Consulta tus textos legales, gestiona cookies o descarga tus datos.
               </p>
               <div className="row-wrap" style={{ gap: '0.45rem' }}>
                 <button
