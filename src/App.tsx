@@ -51,8 +51,10 @@ import {
   createManualGoogleFitUpdate,
   fetchGoogleFitLast7Days,
 } from './services/googleFit';
-import type { SimulatedUserPersona } from './data/userPersonas';
 import { ScientificLoader } from './components/ScientificLoader';
+import { FlyRunLogo } from './components/FlyRunLogo';
+import { assetUrl } from './services/assets';
+import { SIMULATED_USER_PERSONAS, type SimulatedUserPersona } from './data/userPersonas';
 import { AuthLanding } from './components/AuthLanding';
 import { OnboardingModal } from './components/OnboardingModal';
 import { CoachLynxBanner } from './components/CoachLynxBanner';
@@ -622,17 +624,7 @@ export function App() {
       </a>
       <header className="top-header" style={{ viewTransitionName: 'persistent-nav' }}>
         <div className="header-inner">
-          <div className="brand-mark">
-            <span className="brand-monogram" aria-hidden="true">FR</span>
-            <div>
-              <div className="brand-title">
-                <span translate="no">FlyRun</span> <span className="brand-badge">Nivel {levelInfo.level}</span>
-              </div>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>
-                {profile.displayName}
-              </div>
-            </div>
-          </div>
+          <FlyRunLogo size="md" badgeText={`Nivel ${levelInfo.level}`} subtitle={profile.displayName} />
 
           <nav className="desktop-nav" aria-label="Navegación principal">
             {navItems.map((item) => {
@@ -661,6 +653,22 @@ export function App() {
           </nav>
 
           <div className="header-actions">
+            {(() => {
+              const matchedPersona = SIMULATED_USER_PERSONAS.find(
+                (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
+              );
+              const avatarSrc = profile.photoURL || (matchedPersona ? assetUrl(matchedPersona.avatarFile) : '');
+              return avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt={profile.displayName}
+                  width={32}
+                  height={32}
+                  className="athlete-avatar"
+                  style={{ inlineSize: '32px', blockSize: '32px' }}
+                />
+              ) : null;
+            })()}
             <button
               type="button"
               className="btn btn-secondary btn-sm"

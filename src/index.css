@@ -1212,6 +1212,86 @@ dialog::backdrop {
   }
 }
 
+/* Editorial Sports Photography & Avatars (Anti AI Slop) */
+.editorial-photo-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-subtle);
+  block-size: 152px;
+}
+
+.editorial-photo-img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.spotlight-card:hover .editorial-photo-img {
+  transform: scale(1.025);
+}
+
+.editorial-photo-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(13, 15, 18, 0.04) 20%, rgba(13, 15, 18, 0.72) 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0.72rem 0.9rem;
+  gap: 0.5rem;
+}
+
+.editorial-photo-caption {
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.hero-photo-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 760px) {
+  .hero-photo-grid {
+    grid-template-columns: 1.35fr 1fr 1fr;
+  }
+}
+
+.athlete-avatar {
+  inline-size: 38px;
+  block-size: 38px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  background: var(--bg-subtle);
+}
+
+.avatar-stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.avatar-stack img {
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1.5px solid var(--bg-surface);
+  margin-inline-start: -6px;
+}
+
+.avatar-stack img:first-child {
+  margin-inline-start: 0;
+}
+
 /* Native View Transitions (progressive enhancement) */
 @keyframes vt-fade {
   from {

@@ -5,6 +5,7 @@ import { buildInitialWeekSteps } from '../services/googleFit';
 export interface SimulatedUserPersona {
   id: string;
   name: string;
+  avatarFile: string;
   roleLabel: string;
   rating: string;
   quote: string;
@@ -20,7 +21,8 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-laura',
     name: 'Laura Gómez',
-    roleLabel: '34 años · Empieza desde cero con CaCo (2\' / 6\')',
+    avatarFile: 'images/avatar-laura.jpg',
+    roleLabel: "34 años · Empieza desde cero con CaCo (2' / 6')",
     rating: '4.8 / 5',
     quote:
       '“Al principio me daba miedo lesionarme la rodilla. Tener bloques claros de 2 minutos corriendo y 6 caminando me quita la presión, pero cuando salgo a la calle necesito un temporizador dentro de la app que me avise cuándo cambiar sin mirar el reloj todo el rato.”',
@@ -75,6 +77,7 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-javier',
     name: 'Javier Ruiz',
+    avatarFile: 'images/avatar-javier.jpg',
     roleLabel: '27 años · Juega Fútbol 7 dos veces por semana + Running',
     rating: '4.9 / 5',
     quote:
@@ -130,6 +133,7 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-elena',
     name: 'Elena Vázquez',
+    avatarFile: 'images/avatar-elena.jpg',
     roleLabel: '41 años · Prepara 10K con método polarizado 80/20',
     rating: '4.7 / 5',
     quote:
@@ -197,6 +201,7 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-miguel',
     name: 'Miguel Ángel Soto',
+    avatarFile: 'images/avatar-miguel.jpg',
     roleLabel: '52 años · Caminata diaria Google Fit + Bicicleta sin impacto',
     rating: '4.8 / 5',
     quote:
@@ -252,6 +257,7 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-sofia',
     name: 'Sofía Morales',
+    avatarFile: 'images/avatar-sofia.jpg',
     roleLabel: '24 años · Prepara pruebas físicas (Test de Cooper y series 30-30)',
     rating: '4.9 / 5',
     quote:
@@ -331,6 +337,7 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-david',
     name: 'David Navarro',
+    avatarFile: 'images/avatar-david.jpg',
     roleLabel: '36 años · Recomposición corporal y control práctico de macros',
     rating: '4.7 / 5',
     quote:
@@ -386,6 +393,7 @@ export const SIMULATED_USER_PERSONAS: SimulatedUserPersona[] = [
   {
     id: 'persona-carmen',
     name: 'Carmen Ortega',
+    avatarFile: 'images/avatar-carmen.jpg',
     roleLabel: '46 años · Entrena a última hora y consulta la app de noche',
     rating: '4.9 / 5',
     quote:

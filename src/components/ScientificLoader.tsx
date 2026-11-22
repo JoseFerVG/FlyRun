@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ArrowsClockwise } from '@phosphor-icons/react';
 import { SCIENTIFIC_LOADING_TIPS } from '../data/runningKnowledge';
+import { FlyRunLogo } from './FlyRunLogo';
 
 interface ScientificLoaderProps {
   message?: string;
@@ -36,13 +37,7 @@ export function ScientificLoader({
     <div className="loader-screen" role="status" aria-live="polite">
       <div className="loader-card stack-md">
         <div className="row-between">
-          <div className="brand-mark">
-            <span className="brand-monogram" aria-hidden="true">FR</span>
-            <div>
-              <div className="brand-title">FlyRun</div>
-              <div className="muted" style={{ fontSize: '0.76rem' }}>Entrenamiento de fondo y cardio</div>
-            </div>
-          </div>
+          <FlyRunLogo size="sm" subtitle="Entrenamiento de fondo y cardio" />
           <span className="pill">{tip.category}</span>
         </div>
 
@@ -68,7 +63,7 @@ export function ScientificLoader({
               onClick={() => setTipIndex((prev) => (prev + 1) % SCIENTIFIC_LOADING_TIPS.length)}
               aria-label="Ver otro apunte técnico"
             >
-              <RefreshCw size={13} aria-hidden="true" />
+              <ArrowsClockwise size={14} weight="duotone" aria-hidden="true" />
               Otro apunte
             </button>
           </div>

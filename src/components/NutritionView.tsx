@@ -3,6 +3,7 @@ import { CookingPot, Drop, Flame } from '@phosphor-icons/react';
 import type { GoogleFitDay, UserProfile, WorkoutSession } from '../types/fitness';
 import { calculateDailyMacros } from '../services/nutritionEngine';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
+import { assetUrl } from '../services/assets';
 
 interface NutritionViewProps {
   profile: UserProfile;
@@ -74,6 +75,21 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
   return (
     <div className="stack-lg">
       <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Recomendador de Nutrición Macro">
+        <div className="editorial-photo-banner" style={{ blockSize: '142px' }}>
+          <img
+            src={assetUrl('images/nutrition-athlete-meal.jpg')}
+            alt="Plato saludable equilibrado con proteína, cereales y verduras frescas"
+            width={1200}
+            height={420}
+            loading="lazy"
+            className="editorial-photo-img"
+          />
+          <div className="editorial-photo-scrim">
+            <span className="editorial-photo-caption">Nutrición real adaptada al gasto diario</span>
+            <span className="pill pill-emerald mono">Mifflin-St Jeor</span>
+          </div>
+        </div>
+
         <div className="row-between">
           <div>
             <span className="pill pill-emerald">

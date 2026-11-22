@@ -27,6 +27,57 @@ import {
 } from '../services/scienceEngine';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
+import { assetUrl } from '../services/assets';
+
+function getSessionBannerPhoto(workout?: WorkoutSession): { src: string; alt: string; badge: string } {
+  if (!workout) {
+    return {
+      src: assetUrl('images/modality-active-walk.jpg'),
+      alt: 'Caminata activa al aire libre',
+      badge: 'Descanso activo',
+    };
+  }
+  if (workout.isExamDay || workout.sessionType === 'physical_exam') {
+    return {
+      src: assetUrl('images/exam-track-400m.jpg'),
+      alt: 'Calles numeradas de pista de atletismo de 400 metros',
+      badge: 'Examen oficial',
+    };
+  }
+  if (workout.modality === 'cycling') {
+    return {
+      src: assetUrl('images/cardio-road-cycling.jpg'),
+      alt: 'Ciclista rodando en carretera',
+      badge: 'Ciclismo equivalente',
+    };
+  }
+  if (workout.modality === 'soccer') {
+    return {
+      src: assetUrl('images/cardio-soccer-pitch.jpg'),
+      alt: 'Partido de fútbol en campo de césped',
+      badge: 'Fútbol intermitente',
+    };
+  }
+  if (workout.modality === 'walking' || workout.sessionType === 'rest') {
+    return {
+      src: assetUrl('images/modality-active-walk.jpg'),
+      alt: 'Persona caminando a paso activo en parque',
+      badge: 'Caminata y pasos',
+    };
+  }
+  if (workout.sessionType === 'intervals_z4' || workout.sessionType === 'threshold_z3') {
+    return {
+      src: assetUrl('images/hero-track-runner.jpg'),
+      alt: 'Corredores entrenando series en pista de atletismo',
+      badge: 'Calidad 20%',
+    };
+  }
+  return {
+    src: assetUrl('images/modality-running-road.jpg'),
+    alt: 'Corredores entrenando rodaje aeróbico en asfalto',
+    badge: 'Base aeróbica 80%',
+  };
+}
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -97,6 +148,26 @@ export function DashboardView({
 
           {todayWorkout ? (
             <>
+              {(() => {
+                const photo = getSessionBannerPhoto(todayWorkout);
+                return (
+                  <div className="editorial-photo-banner" style={{ blockSize: '138px' }}>
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      width={1200}
+                      height={420}
+                      fetchPriority="high"
+                      className="editorial-photo-img"
+                    />
+                    <div className="editorial-photo-scrim">
+                      <span className="editorial-photo-caption">{photo.badge}</span>
+                      <span className="pill mono">{todayWorkout.targetZone}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.22rem', letterSpacing: '-0.02em' }}>{todayWorkout.title}</h2>
                 <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.86rem' }}>

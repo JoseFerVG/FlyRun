@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Check, MessageSquareQuote, UserCheck, X } from 'lucide-react';
 import { SIMULATED_USER_PERSONAS, type SimulatedUserPersona } from '../data/userPersonas';
+import { assetUrl } from '../services/assets';
 
 interface UserPersonasModalProps {
   open: boolean;
@@ -75,14 +76,24 @@ export function UserPersonasModal({
                 }}
               >
                 <div className="row-between">
-                  <div>
-                    <div className="row-wrap">
-                      <strong style={{ fontSize: '0.98rem' }}>{persona.name}</strong>
-                      <span className="pill mono">Nivel {persona.profile.level} · VDOT {persona.profile.vdot}</span>
-                      <span className="pill pill-emerald mono">{persona.rating}</span>
-                    </div>
-                    <div className="muted" style={{ fontSize: '0.78rem', marginTop: '0.15rem' }}>
-                      {persona.roleLabel}
+                  <div className="row-wrap" style={{ gap: '0.75rem', flexWrap: 'nowrap' }}>
+                    <img
+                      src={assetUrl(persona.avatarFile)}
+                      alt={persona.name}
+                      width={38}
+                      height={38}
+                      loading="lazy"
+                      className="athlete-avatar"
+                    />
+                    <div>
+                      <div className="row-wrap">
+                        <strong style={{ fontSize: '0.98rem' }}>{persona.name}</strong>
+                        <span className="pill mono">Nivel {persona.profile.level} · VDOT {persona.profile.vdot}</span>
+                        <span className="pill pill-emerald mono">{persona.rating}</span>
+                      </div>
+                      <div className="muted" style={{ fontSize: '0.78rem', marginTop: '0.15rem' }}>
+                        {persona.roleLabel}
+                      </div>
                     </div>
                   </div>
 

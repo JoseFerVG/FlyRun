@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   ArrowRight,
   Bicycle,
@@ -7,10 +8,11 @@ import {
   MoonStars,
   PersonSimpleRun,
   SunDim,
-  UsersThree,
 } from '@phosphor-icons/react';
 import { AmbientBackdrop } from './AmbientBackdrop';
+import { FlyRunLogo } from './FlyRunLogo';
 import { SpotlightCard, TelemetryMockupCard } from './MotionPrimitives';
+import { assetUrl } from '../services/assets';
 
 interface AuthLandingProps {
   onGoogleLogin: () => Promise<void>;
@@ -60,21 +62,19 @@ export function AuthLanding({
       <main id="main-content" className="main-container" style={{ paddingBlock: 'clamp(1.5rem, 4vw, 3rem)' }}>
         <div className="stack-lg">
           <header className="row-between">
-            <div className="brand-mark">
-              <span className="brand-monogram" aria-hidden="true">FR</span>
-              <div>
-                <div className="brand-title">
-                  <span translate="no">FlyRun</span> <span className="brand-badge">Entrenamiento</span>
-                </div>
-                <div className="muted" style={{ fontSize: '0.78rem' }}>
-                  Planificación de carrera, cardio diario y nutrición macro
-                </div>
-              </div>
-            </div>
+            <FlyRunLogo
+              size="md"
+              badgeText="Entrenamiento"
+              subtitle="Planificación de carrera, cardio diario y nutrición macro"
+            />
 
             <div className="row-wrap">
               <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPersonas}>
-                <UsersThree size={15} weight="duotone" aria-hidden="true" />
+                <span className="avatar-stack" aria-hidden="true">
+                  <img src={assetUrl('images/avatar-laura.jpg')} alt="" width={20} height={20} />
+                  <img src={assetUrl('images/avatar-javier.jpg')} alt="" width={20} height={20} />
+                  <img src={assetUrl('images/avatar-elena.jpg')} alt="" width={20} height={20} />
+                </span>
                 7 Perfiles de Prueba
               </button>
               <button
@@ -165,6 +165,53 @@ export function AuthLanding({
 
             <TelemetryMockupCard />
           </SpotlightCard>
+
+          <section className="hero-photo-grid stagger-item" style={{ '--stagger': 1 } as CSSProperties} aria-label="Disciplinas reales de entrenamiento">
+            <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
+              <img
+                src={assetUrl('images/hero-track-runner.jpg')}
+                alt="Atletas corriendo en pista sintética de 400 metros"
+                width={1200}
+                height={520}
+                fetchPriority="high"
+                className="editorial-photo-img"
+              />
+              <figcaption className="editorial-photo-scrim">
+                <span className="editorial-photo-caption">Pista 400 m y series por VDOT</span>
+                <span className="pill pill-amber mono">Z3 – Z4</span>
+              </figcaption>
+            </figure>
+
+            <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
+              <img
+                src={assetUrl('images/cardio-road-cycling.jpg')}
+                alt="Ciclista en carretera realizando trabajo aeróbico equivalente"
+                width={1200}
+                height={520}
+                loading="lazy"
+                className="editorial-photo-img"
+              />
+              <figcaption className="editorial-photo-scrim">
+                <span className="editorial-photo-caption">Cardio cruzado en bicicleta y fútbol</span>
+                <span className="pill pill-cyan mono">TRIMP</span>
+              </figcaption>
+            </figure>
+
+            <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
+              <img
+                src={assetUrl('images/nutrition-athlete-meal.jpg')}
+                alt="Plato equilibrado con proteína magra, cereales y verduras frescas"
+                width={1200}
+                height={520}
+                loading="lazy"
+                className="editorial-photo-img"
+              />
+              <figcaption className="editorial-photo-scrim">
+                <span className="editorial-photo-caption">Combustible real por gramos de macro</span>
+                <span className="pill pill-emerald mono">C · P · G</span>
+              </figcaption>
+            </figure>
+          </section>
 
           <section className="grid-4" aria-label="Pilares del sistema de entrenamiento">
             <SpotlightCard staggerIndex={1} className="stack-sm">

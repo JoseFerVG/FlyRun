@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="fr-bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A1D22" />
+      <stop offset="55%" stop-color="#121417" />
+      <stop offset="100%" stop-color="#351207" />
+    </linearGradient>
+    <linearGradient id="fr-accent" x1="14" y1="48" x2="52" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D94814" />
+      <stop offset="100%" stop-color="#F57142" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#fr-bg)" />
+  <rect x="2" y="2" width="60" height="60" rx="14" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1.5" />
+  <!-- 400m athletics track outer & inner lanes -->
+  <rect x="11" y="18" width="42" height="28" rx="14" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2.2" />
+  <rect x="15.5" y="22.5" width="33" height="19" rx="9.5" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.6" />
+  <!-- Forward aerodynamic kinetic stride / wing mark -->
+  <path
+    d="M18 40.5C24.5 40.5 29.5 34.5 34 27.5C37.2 22.5 41.2 19.2 48.5 18.5C44.5 23.2 42.2 26.8 39.2 31.5C35.2 37.8 29.8 42.8 18 44.5V40.5Z"
+    fill="#FAF9F6"
+  />
+  <path
+    d="M19 32.5C25.5 32.2 31.2 28.2 36.2 22.8C39.2 19.6 42.4 18.2 46.8 18C42.2 20.6 39.2 24.4 35.8 28.4C31.5 33.4 26.4 35.6 19 35.8V32.5Z"
+    fill="url(#fr-accent)"
+  />
+</svg>

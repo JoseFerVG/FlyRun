@@ -4,6 +4,7 @@ import type { CardioModality, UserProfile } from '../types/fitness';
 import { RUNNING_STRATEGIES } from '../data/runningKnowledge';
 import { calculateCardioEquivalence } from '../services/scienceEngine';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
+import { assetUrl } from '../services/assets';
 
 interface StrategiesAndCardioViewProps {
   profile: UserProfile;
@@ -52,6 +53,48 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
               Convierte cualquier sesión a Puntos Cardio combinando gasto metabólico (MET-minutos) y carga cardíaca (TRIMP).
             </p>
           </div>
+        </div>
+
+        <div className="grid-4" style={{ gap: '0.7rem' }}>
+          {(
+            [
+              { id: 'running', title: 'Running', sub: 'Referencia 1.0x', img: 'images/modality-running-road.jpg' },
+              { id: 'cycling', title: 'Ciclismo', sub: 'Bajo impacto 0.15x', img: 'images/cardio-road-cycling.jpg' },
+              { id: 'soccer', title: 'Fútbol', sub: 'Carga intermitente', img: 'images/cardio-soccer-pitch.jpg' },
+              { id: 'walking', title: 'Caminata', sub: 'Recuperación 0.3x', img: 'images/modality-active-walk.jpg' },
+            ] as Array<{ id: CardioModality; title: string; sub: string; img: string }>
+          ).map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => setModality(card.id)}
+              className="editorial-photo-banner"
+              aria-pressed={modality === card.id}
+              style={{
+                padding: 0,
+                textAlign: 'left',
+                blockSize: '108px',
+                cursor: 'pointer',
+                borderColor: modality === card.id ? 'var(--accent)' : 'var(--border-hairline)',
+                borderWidth: modality === card.id ? '2px' : '1px',
+              }}
+            >
+              <img
+                src={assetUrl(card.img)}
+                alt={card.title}
+                width={600}
+                height={320}
+                loading="lazy"
+                className="editorial-photo-img"
+              />
+              <div className="editorial-photo-scrim">
+                <div>
+                  <div className="editorial-photo-caption">{card.title}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.82)', fontSize: '0.68rem' }}>{card.sub}</div>
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
 
         <div className="grid-3">

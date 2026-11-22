@@ -11,6 +11,8 @@ import {
 } from '../services/scienceEngine';
 import { BADGES_CATALOG } from '../data/runningKnowledge';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
+import { assetUrl } from '../services/assets';
+import { SIMULATED_USER_PERSONAS } from '../data/userPersonas';
 
 interface StatsAndExamViewProps {
   profile: UserProfile;
@@ -109,11 +111,29 @@ export function StatsAndExamView({
     <div className="stack-lg">
       <SpotlightCard as="section" staggerIndex={0} className="stack-md" aria-label="Mis Datos Biométricos">
         <div className="row-between">
-          <div>
-            <span className="pill pill-amber">Perfil fisiológico</span>
-            <h1 style={{ margin: '0.35rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
-              Tus datos, zonas de ritmo y predicciones
-            </h1>
+          <div className="row-wrap" style={{ gap: '0.8rem' }}>
+            {(() => {
+              const matched = SIMULATED_USER_PERSONAS.find(
+                (p) => p.profile.uid === profile.uid || (Boolean(profile.email) && p.profile.email === profile.email)
+              );
+              const avatarSrc = profile.photoURL || (matched ? assetUrl(matched.avatarFile) : '');
+              return avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt={profile.displayName}
+                  width={46}
+                  height={46}
+                  className="athlete-avatar"
+                  style={{ inlineSize: '46px', blockSize: '46px' }}
+                />
+              ) : null;
+            })()}
+            <div>
+              <span className="pill pill-amber">Perfil fisiológico</span>
+              <h1 style={{ margin: '0.35rem 0 0', fontSize: '1.3rem', letterSpacing: '-0.02em' }}>
+                Tus datos, zonas de ritmo y predicciones
+              </h1>
+            </div>
           </div>
           <div className="row-wrap">
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => void handleCopySummary()}>
@@ -239,6 +259,21 @@ export function StatsAndExamView({
 
       {/* DÍA DE EXAMEN FÍSICO */}
       <SpotlightCard as="section" staggerIndex={2} className="stack-md" aria-label="Día de Examen Físico">
+        <div className="editorial-photo-banner" style={{ blockSize: '146px' }}>
+          <img
+            src={assetUrl('images/exam-track-400m.jpg')}
+            alt="Pista de atletismo de 400 metros lista para test de Cooper o 5K"
+            width={1200}
+            height={420}
+            loading="lazy"
+            className="editorial-photo-img"
+          />
+          <div className="editorial-photo-scrim">
+            <span className="editorial-photo-caption">Día de examen físico · Recalibración objetiva de VDOT</span>
+            <span className="pill pill-cyan mono">Test estandarizado</span>
+          </div>
+        </div>
+
         <div className="row-between">
           <div>
             <span className="pill pill-cyan">
