@@ -24,7 +24,14 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
-import type { GoogleFitDay, PhysicalExamResult, UserProfile, WorkoutSession } from '../types/fitness';
+import type {
+  ExternalSyncSource,
+  GoogleFitDay,
+  PhysicalExamResult,
+  UserProfile,
+  WorkoutKmSplit,
+  WorkoutSession,
+} from '../types/fitness';
 
 export interface FirebaseConfigValues {
   apiKey: string;
@@ -46,8 +53,96 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseConfigValues = {
 
 const CONFIG_STORAGE_KEY = 'flyrun_firebase_config_v1';
 const LOCAL_STATE_PREFIX = 'flyrun_state_v1_';
+const TELEMETRY_STORAGE_PREFIX = 'flyrun_telemetry_v1_';
 const DEMO_USER_STORAGE_KEY = 'flyrun_demo_session_v1';
 const GFIT_TOKEN_STORAGE_KEY = 'flyrun_gfit_token_v1';
+
+interface WorkoutTelemetryCacheEntry {
+  externalSource?: ExternalSyncSource;
+  externalActivityId?: string;
+  avgHeartRateBpm?: number;
+  maxHeartRateBpm?: number;
+  cadenceSpm?: number;
+  kmSplits?: WorkoutKmSplit[];
+}
+
+function saveWorkoutTelemetryLocal(uid: string, workouts: WorkoutSession[]): void {
+  try {
+    const existingRaw = localStorage.getItem(`${TELEMETRY_STORAGE_PREFIX}${uid}`);
+    const map: Record<string, WorkoutTelemetryCacheEntry> = existingRaw
+      ? (JSON.parse(existingRaw) as Record<string, WorkoutTelemetryCacheEntry>)
+      : {};
+    for (const w of workouts) {
+      if (w.externalSource || w.avgHeartRateBpm || (w.kmSplits && w.kmSplits.length > 0)) {
+        map[w.id] = {
+          externalSource: w.externalSource,
+          externalActivityId: w.externalActivityId,
+          avgHeartRateBpm: w.avgHeartRateBpm,
+          maxHeartRateBpm: w.maxHeartRateBpm,
+          cadenceSpm: w.cadenceSpm,
+          kmSplits: w.kmSplits,
+        };
+      }
+    }
+    localStorage.setItem(`${TELEMETRY_STORAGE_PREFIX}${uid}`, JSON.stringify(map));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function mergeWorkoutTelemetryLocal(uid: string, workouts: WorkoutSession[]): WorkoutSession[] {
+  try {
+    const raw = localStorage.getItem(`${TELEMETRY_STORAGE_PREFIX}${uid}`);
+    if (!raw) return workouts;
+    const map = JSON.parse(raw) as Record<string, WorkoutTelemetryCacheEntry>;
+    return workouts.map((w) => {
+      const t = map[w.id];
+      return t
+        ? {
+            ...w,
+            externalSource: w.externalSource ?? t.externalSource,
+            externalActivityId: w.externalActivityId ?? t.externalActivityId,
+            avgHeartRateBpm: w.avgHeartRateBpm ?? t.avgHeartRateBpm,
+            maxHeartRateBpm: w.maxHeartRateBpm ?? t.maxHeartRateBpm,
+            cadenceSpm: w.cadenceSpm ?? t.cadenceSpm,
+            kmSplits: w.kmSplits ?? t.kmSplits,
+          }
+        : w;
+    });
+  } catch {
+    return workouts;
+  }
+}
+
+function sanitizeWorkoutForFirestore(w: WorkoutSession): Record<string, unknown> {
+  return cleanFirestoreData({
+    id: w.id,
+    date: w.date,
+    dayIndex: Math.max(0, w.dayIndex),
+    title: w.title.slice(0, 150),
+    subtitle: w.subtitle.slice(0, 250),
+    modality: w.modality,
+    sessionType: w.sessionType,
+    strategyTag: w.strategyTag.slice(0, 80),
+    durationMinutes: Math.max(0, Math.min(1440, Math.round(w.durationMinutes))),
+    targetDistanceKm: Math.max(0, Math.min(500, w.targetDistanceKm)),
+    targetZone: w.targetZone,
+    targetPace: w.targetPace.slice(0, 80),
+    cardioPoints: Math.max(0, Math.round(w.cardioPoints)),
+    metMinutes: Math.max(0, Math.round(w.metMinutes)),
+    trimp: Math.max(0, Math.round(w.trimp)),
+    estimatedCalories: Math.max(0, Math.round(w.estimatedCalories)),
+    blocks: w.blocks.slice(0, 10),
+    coachTip: w.coachTip ? w.coachTip.slice(0, 500) : '',
+    completed: Boolean(w.completed),
+    rpe: w.rpe,
+    actualDurationMinutes: w.actualDurationMinutes,
+    actualDistanceKm: w.actualDistanceKm,
+    completedModality: w.completedModality,
+    notes: w.notes ? w.notes.slice(0, 2000) : undefined,
+    isExamDay: w.isExamDay,
+  });
+}
 
 export function getSavedGoogleFitToken(): string | null {
   try {
@@ -348,9 +443,13 @@ export async function loadUserStateFromCloud(uid: string): Promise<PersistedUser
     fitSnap.forEach((d) => fitDays.push(d.data() as GoogleFitDay));
     fitDays.sort((a, b) => a.date.localeCompare(b.date));
 
+    const cloudWorkouts = mergeWorkoutTelemetryLocal(
+      uid,
+      mergeWorkoutTelemetryLocal(targetUid, workouts.length > 0 ? workouts : local.workouts)
+    );
     const cloudState: PersistedUserState = {
       profile,
-      workouts: workouts.length > 0 ? workouts : local.workouts,
+      workouts: cloudWorkouts,
       exams: exams.length > 0 ? exams : local.exams,
       fitDays: fitDays.length > 0 ? fitDays : local.fitDays,
     };
@@ -365,9 +464,11 @@ export async function loadUserStateFromCloud(uid: string): Promise<PersistedUser
 
 export async function persistUserState(uid: string, state: PersistedUserState): Promise<boolean> {
   saveLocalState(uid, state);
+  saveWorkoutTelemetryLocal(uid, state.workouts);
   const clients = getFirebaseClients();
   const activeAuthUid = clients?.auth.currentUser?.uid;
   if (!clients || !activeAuthUid) return false;
+  saveWorkoutTelemetryLocal(activeAuthUid, state.workouts);
 
   try {
     if (state.profile) {
@@ -380,10 +481,7 @@ export async function persistUserState(uid: string, state: PersistedUserState): 
 
     await Promise.all([
       ...state.workouts.slice(0, 40).map((w) => {
-        const cleanWorkout = cleanFirestoreData({
-          ...w,
-          dayIndex: Math.max(0, w.dayIndex),
-        });
+        const cleanWorkout = sanitizeWorkoutForFirestore(w);
         return setDoc(doc(clients.db, 'users', activeAuthUid, 'workouts', w.id), cleanWorkout, { merge: true });
       }),
       ...state.exams.slice(0, 10).map((ex) => {
@@ -545,8 +643,10 @@ export async function deleteUserAccountCascade(uid: string): Promise<void> {
 
   try {
     localStorage.removeItem(`${LOCAL_STATE_PREFIX}${uid}`);
+    localStorage.removeItem(`${TELEMETRY_STORAGE_PREFIX}${uid}`);
     if (activeAuthUid) {
       localStorage.removeItem(`${LOCAL_STATE_PREFIX}${activeAuthUid}`);
+      localStorage.removeItem(`${TELEMETRY_STORAGE_PREFIX}${activeAuthUid}`);
     }
     localStorage.removeItem(DEMO_USER_STORAGE_KEY);
     localStorage.removeItem(GFIT_TOKEN_STORAGE_KEY);

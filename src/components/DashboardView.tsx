@@ -17,6 +17,7 @@ import {
   Timer,
   Trophy,
   UploadSimple,
+  Watch,
 } from '@phosphor-icons/react';
 import type {
   CardioModality,
@@ -40,6 +41,7 @@ import {
 } from '../services/scienceEngine';
 import { parseGoogleFitImportFile } from '../services/googleFit';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
+import { WorkoutTelemetrySplits } from './WorkoutTelemetrySplits';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 import { TodayRoutineModal } from './TodayRoutineModal';
 import { assetUrl } from '../services/assets';
@@ -136,6 +138,7 @@ interface DashboardViewProps {
   onManualStepsUpdate: (steps: number) => void;
   onUploadFitDays: (days: GoogleFitDay[], sourceLabel?: string) => void;
   onOpenGoalModal: () => void;
+  onOpenDeviceHub: () => void;
   onNavigate: (tab: 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition') => void;
 }
 
@@ -158,6 +161,7 @@ export function DashboardView({
   onManualStepsUpdate,
   onUploadFitDays,
   onOpenGoalModal,
+  onOpenDeviceHub,
   onNavigate,
 }: DashboardViewProps) {
   const fitToday = fitDays[fitDays.length - 1];
@@ -527,6 +531,8 @@ export function DashboardView({
                 onSelectBlock={(idx) => setInspectedBlockIdx((prev) => (prev === idx ? undefined : idx))}
               />
 
+              <WorkoutTelemetrySplits workout={todayWorkout} compact />
+
               {/* GRAN CTA PRINCIPAL: ¡QUIERO ENTRENAR HOY! */}
               <div className="row-wrap" style={{ justifyContent: 'space-between' }}>
                 {!todayWorkout.completed ? (
@@ -717,6 +723,14 @@ export function DashboardView({
                 >
                   <CloudArrowUp size={15} weight="duotone" aria-hidden="true" />
                   {fitUploadOpen ? 'Cerrar tabla' : 'Subir datos (7 días)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={onOpenDeviceHub}
+                >
+                  <Watch size={15} weight="duotone" aria-hidden="true" />
+                  Hub Strava · Garmin · GPX
                 </button>
               </div>
             </div>

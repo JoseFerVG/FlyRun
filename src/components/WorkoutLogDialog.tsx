@@ -175,6 +175,13 @@ export function WorkoutLogDialog({
             </button>
           </div>
 
+          {workout.kmSplits && workout.kmSplits.length > 0 && (
+            <div className="inset-panel" style={{ borderColor: 'var(--cobalt-border)', background: 'var(--cobalt-soft)', padding: '0.52rem 0.78rem', fontSize: '0.78rem' }}>
+              <strong>Telemetría lista ({workout.externalSource === 'live_gps' ? 'GPS en Vivo' : 'Cronómetro'}):</strong>{' '}
+              {workout.kmSplits.length} parciales por km capturados y listos para guardar en la sesión.
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="stack-md">
             <div className="grid-2">
               <div className="field">

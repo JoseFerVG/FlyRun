@@ -12,6 +12,7 @@ import {
   SignOut,
   SunDim,
   UsersThree,
+  Watch,
 } from '@phosphor-icons/react';
 import { AmbientBackdrop } from './components/AmbientBackdrop';
 import { AnimatedNumber } from './components/MotionPrimitives';
@@ -84,6 +85,8 @@ import { UserPersonasModal } from './components/UserPersonasModal';
 import { GoalFocusModal } from './components/GoalFocusModal';
 import { LegalComplianceModal, type LegalTabId } from './components/LegalComplianceModal';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { DeviceConnectionsModal } from './components/DeviceConnectionsModal';
+import { evaluateSyncedActivityImpact, type SyncedExternalActivity } from './services/deviceHub';
 
 type NavTab = 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition';
 
@@ -129,6 +132,7 @@ export function App() {
   const [timerStartBlock, setTimerStartBlock] = useState<number>(0);
   const [personasOpen, setPersonasOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [deviceHubOpen, setDeviceHubOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalTab, setLegalTab] = useState<LegalTabId>('privacy');
   const [forceCookieConfig, setForceCookieConfig] = useState(false);
@@ -408,6 +412,17 @@ export function App() {
   ) => {
     if (!profile) return;
     const target = workouts.find((w) => w.id === workoutId);
+    const liveTelemetry =
+      loggingWorkout?.id === workoutId
+        ? {
+            externalSource: loggingWorkout.externalSource,
+            externalActivityId: loggingWorkout.externalActivityId,
+            avgHeartRateBpm: loggingWorkout.avgHeartRateBpm,
+            maxHeartRateBpm: loggingWorkout.maxHeartRateBpm,
+            cadenceSpm: loggingWorkout.cadenceSpm,
+            kmSplits: loggingWorkout.kmSplits,
+          }
+        : {};
 
     if (!target) {
       const eq = calculateCardioEquivalence(modality, actualDurationMinutes, rpe, profile.weightKg, profile.sex, profile.vdot);
@@ -436,6 +451,7 @@ export function App() {
         actualDistanceKm,
         completedModality: modality,
         notes,
+        ...liveTelemetry,
       };
       const evalResult = evaluateProgressiveLevelUpdate(profile, extraSession, rpe, actualDurationMinutes);
       saveAll(evalResult.updatedProfile, [...workouts, extraSession], exams, fitDays);
@@ -445,6 +461,7 @@ export function App() {
 
     const updatedWorkout: WorkoutSession = {
       ...target,
+      ...liveTelemetry,
       completed: true,
       rpe,
       actualDurationMinutes,
@@ -746,6 +763,112 @@ export function App() {
     showToast('Datos de Google Fit subidos a tu cuenta Cloud.');
   };
 
+  const handleApplySyncedActivity = (
+    activity: SyncedExternalActivity,
+    applyVdotUpgrade: boolean
+  ) => {
+    if (!profile) return;
+    const ev = evaluateSyncedActivityImpact(activity, profile, workouts);
+    let nextWorkouts: WorkoutSession[];
+    let referenceWorkout: WorkoutSession;
+
+    if (ev.pairedWorkout) {
+      const updatedPaired: WorkoutSession = {
+        ...ev.pairedWorkout,
+        title: `${ev.pairedWorkout.title} · ${activity.sourceLabel}`,
+        completed: true,
+        rpe: ev.rpeEstimated,
+        actualDurationMinutes: activity.durationMinutes,
+        actualDistanceKm: activity.distanceKm,
+        completedModality: activity.modality,
+        cardioPoints: ev.cardioPoints,
+        metMinutes: ev.metMinutes,
+        trimp: ev.trimp,
+        estimatedCalories: ev.calories,
+        notes: activity.notes ?? `Emparejado automáticamente desde ${activity.sourceLabel}.`,
+        externalSource: activity.source,
+        externalActivityId: activity.externalId,
+        avgHeartRateBpm: activity.avgHeartRateBpm,
+        maxHeartRateBpm: activity.maxHeartRateBpm,
+        cadenceSpm: activity.cadenceSpm,
+        kmSplits: activity.kmSplits,
+      };
+      referenceWorkout = updatedPaired;
+      nextWorkouts = workouts.map((w) => (w.id === ev.pairedWorkout!.id ? updatedPaired : w));
+    } else {
+      const extraSynced: WorkoutSession = {
+        id: `extra_${Date.now()}`,
+        date: activity.date,
+        dayIndex: 0,
+        title: activity.title.slice(0, 145),
+        subtitle: `Importado de ${activity.sourceLabel}`,
+        modality: activity.modality,
+        sessionType: ev.rpeEstimated >= 7 ? 'intervals_z4' : 'easy_z1',
+        strategyTag: activity.sourceLabel,
+        durationMinutes: activity.durationMinutes,
+        targetDistanceKm: activity.distanceKm,
+        targetZone: ev.rpeEstimated >= 7 ? 'Z4' : 'Z2',
+        targetPace: `${ev.avgSpeedKmh.toFixed(1).replace('.', ',')} km/h`,
+        cardioPoints: ev.cardioPoints,
+        metMinutes: ev.metMinutes,
+        trimp: ev.trimp,
+        estimatedCalories: ev.calories,
+        blocks: [
+          {
+            label: activity.title.slice(0, 60),
+            durationMinutes: activity.durationMinutes,
+            intensity: `${ev.avgSpeedKmh.toFixed(1).replace('.', ',')} km/h · RPE ${ev.rpeEstimated}`,
+            description: activity.notes ?? `Sesión sincronizada (${activity.distanceKm} km).`,
+            zone: ev.rpeEstimated >= 7 ? 'Z4' : 'Z2',
+          },
+        ],
+        coachTip: ev.vdotReason,
+        completed: true,
+        rpe: ev.rpeEstimated,
+        actualDurationMinutes: activity.durationMinutes,
+        actualDistanceKm: activity.distanceKm,
+        completedModality: activity.modality,
+        notes: activity.notes,
+        externalSource: activity.source,
+        externalActivityId: activity.externalId,
+        avgHeartRateBpm: activity.avgHeartRateBpm,
+        maxHeartRateBpm: activity.maxHeartRateBpm,
+        cadenceSpm: activity.cadenceSpm,
+        kmSplits: activity.kmSplits,
+      };
+      referenceWorkout = extraSynced;
+      nextWorkouts = [extraSynced, ...workouts];
+    }
+
+    const evalResult = evaluateProgressiveLevelUpdate(
+      profile,
+      referenceWorkout,
+      ev.rpeEstimated,
+      activity.durationMinutes
+    );
+
+    let finalProfile = evalResult.updatedProfile;
+    let finalWorkouts = nextWorkouts;
+
+    if (applyVdotUpgrade && ev.suggestedVdot && ev.suggestedVdot > finalProfile.vdot) {
+      const upgradedInfo = getLynxLevel(ev.suggestedVdot, finalProfile.xp);
+      finalProfile = {
+        ...finalProfile,
+        vdot: ev.suggestedVdot,
+        level: upgradedInfo.level,
+        updatedAt: new Date().toISOString(),
+      };
+      finalWorkouts = mergePreservingCompleted(nextWorkouts, generateWeeklyPlan(finalProfile));
+    }
+
+    saveAll(finalProfile, finalWorkouts, exams, fitDays);
+    showToast(
+      applyVdotUpgrade && ev.suggestedVdot
+        ? `Sesión emparejada (+${ev.cardioPoints} PC) · VDOT adaptado a ${finalProfile.vdot}!`
+        : `Sesión de ${activity.sourceLabel} emparejada (+${ev.cardioPoints} PC, +${evalResult.xpEarned} XP).`
+    );
+  };
+
   const handleConfigureTodayRoutine = (
     power: RoutinePowerLevel,
     durationMinutes: number,
@@ -1024,6 +1147,16 @@ export function App() {
             </button>
             <button
               type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setDeviceHubOpen(true)}
+              aria-label="Dispositivos, Strava, Garmin, GPX y Google Fit"
+              title="Conectar Strava, Garmin (.TCX/.GPX) o Google Fit Avanzado"
+            >
+              <Watch size={15} weight="duotone" aria-hidden="true" />
+              Dispositivos
+            </button>
+            <button
+              type="button"
               className="btn btn-ghost btn-sm"
               onClick={handleToggleTheme}
               aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
@@ -1112,6 +1245,7 @@ export function App() {
                 onManualStepsUpdate={handleManualStepsUpdate}
                 onUploadFitDays={handleUploadFitDays}
                 onOpenGoalModal={() => setGoalModalOpen(true)}
+                onOpenDeviceHub={() => setDeviceHubOpen(true)}
                 onNavigate={handleSelectTab}
               />
             </>
@@ -1214,13 +1348,30 @@ export function App() {
         initialBlockIndex={timerStartBlock}
         onClose={() => setTimerWorkout(null)}
         onCustomizeRoutine={handleCustomizeRoutine}
-        onFinishToLog={(w, elapsedMin, elapsedDistKm) => {
+        onFinishToLog={(w, elapsedMin, elapsedDistKm, recordedSplits, usedLiveGps) => {
           setLoggingWorkout({
             ...w,
             durationMinutes: elapsedMin,
             targetDistanceKm: elapsedDistKm ?? w.targetDistanceKm,
+            kmSplits: recordedSplits,
+            externalSource: usedLiveGps ? 'live_gps' : 'manual',
           });
         }}
+      />
+
+      <DeviceConnectionsModal
+        open={deviceHubOpen}
+        profile={profile}
+        workouts={workouts}
+        fitDays={fitDays}
+        hasGoogleFitOAuth={Boolean(session.googleFitAccessToken || getSavedGoogleFitToken())}
+        googleFitToken={session.googleFitAccessToken ?? getSavedGoogleFitToken()}
+        fitSyncLoading={fitSyncLoading}
+        onClose={() => setDeviceHubOpen(false)}
+        onSyncGoogleFitSteps={() => void handleSyncGoogleFit()}
+        onUploadFitDays={handleUploadFitDays}
+        onApplySyncedActivity={handleApplySyncedActivity}
+        onNotify={showToast}
       />
 
       <UserPersonasModal

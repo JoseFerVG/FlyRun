@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { CheckCircle, Fire, Gauge, Play, Sparkle, Timer, X } from '@phosphor-icons/react';
+import { CheckCircle, DownloadSimple, Fire, Gauge, Play, Sparkle, Timer, X } from '@phosphor-icons/react';
 import type { UserProfile, WorkoutSession } from '../types/fitness';
 import {
   calculateTrainingZones,
@@ -8,6 +8,8 @@ import {
   type RestLevel,
   type RoutinePowerLevel,
 } from '../services/scienceEngine';
+import { buildWorkoutTCX, downloadTextFile } from '../services/deviceHub';
+import { WorkoutTelemetrySplits } from './WorkoutTelemetrySplits';
 import { assetUrl } from '../services/assets';
 
 interface TodayRoutineModalProps {
@@ -159,6 +161,8 @@ export function TodayRoutineModal({
           <span className="secondary">{recommendationReason}</span>
         </div>
 
+        <WorkoutTelemetrySplits workout={workout} compact />
+
         <div className="stack-sm">
           <div className="row-between">
             <strong style={{ fontSize: '0.94rem' }}>Tu rutina paso a paso ({workout.blocks.length} fases)</strong>
@@ -233,6 +237,18 @@ export function TodayRoutineModal({
           >
             <CheckCircle size={18} weight="duotone" aria-hidden="true" />
             Ya la hice · Registrar
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              const fname = `flyrun-rutina-${workout.date}.tcx`;
+              downloadTextFile(fname, buildWorkoutTCX(workout), 'application/vnd.garmin.tcx+xml;charset=utf-8');
+            }}
+            title="Descargar esta rutina estructurada para tu reloj Garmin, Polar o Coros"
+          >
+            <DownloadSimple size={16} weight="duotone" aria-hidden="true" />
+            Reloj .TCX
           </button>
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             <Fire size={15} weight="duotone" aria-hidden="true" />

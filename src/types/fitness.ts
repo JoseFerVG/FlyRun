@@ -94,6 +94,24 @@ export interface WorkoutBlock {
   zone: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
 }
 
+export type ExternalSyncSource =
+  | 'google_fit'
+  | 'strava'
+  | 'garmin'
+  | 'gpx_tcx'
+  | 'live_gps'
+  | 'manual';
+
+export interface WorkoutKmSplit {
+  km: number;
+  durationSec: number;
+  paceSecPerKm: number;
+  speedKmh: number;
+  speedKmMin: number;
+  avgHrBpm?: number;
+  elevationDeltaM?: number;
+}
+
 export interface WorkoutSession {
   id: string;
   date: string; // YYYY-MM-DD
@@ -120,6 +138,13 @@ export interface WorkoutSession {
   completedModality?: CardioModality;
   notes?: string;
   isExamDay?: boolean;
+  // Telemetría avanzada local / sincronizada (GPX, TCX, Strava, Garmin, Google Fit, GPS en vivo)
+  externalSource?: ExternalSyncSource;
+  externalActivityId?: string;
+  avgHeartRateBpm?: number;
+  maxHeartRateBpm?: number;
+  cadenceSpm?: number;
+  kmSplits?: WorkoutKmSplit[];
 }
 
 export interface PhysicalExamResult {
