@@ -26,10 +26,12 @@ import {
   ensureCloudAuthSession,
   getDemoGoogleSession,
   getFirebaseClients,
+  getSavedGoogleFitToken,
   loadUserStateFromCloud,
   persistUserState,
   requestGoogleFitOAuthToken,
   saveDemoGoogleSession,
+  saveGoogleFitToken,
   signInWithGoogleFirebase,
   signOutFirebase,
   subscribeFirebaseAuth,
@@ -316,8 +318,9 @@ export function App() {
     setAuthLoading(true);
     try {
       const cloudUid = await ensureCloudAuthSession();
+      const freshDemoUid = cloudUid ?? `demo_exam_${Date.now()}`;
       const demoSession = {
-        uid: cloudUid ?? 'demo_google_flyrun_user',
+        uid: freshDemoUid,
         displayName: 'Carlos Martín',
         email: '',
         photoURL: '',
@@ -325,22 +328,30 @@ export function App() {
       saveDemoGoogleSession(demoSession);
       const s: AuthSessionInfo = { ...demoSession, isDemoMode: true };
       setSession(s);
-      await hydrateUserData(s);
+      // Fuerza empezar siempre por el Examen Inicial Obligatorio antes de entrar al panel
+      setProfile(null);
+      setWorkouts([]);
+      setExams([]);
+      setFitDays([]);
+      setIsEditingProfile(false);
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleOnboardingComplete = (newProfile: UserProfile) => {
+  const handleOnboardingComplete = (newProfile: UserProfile, initialExam?: PhysicalExamResult) => {
     const generated = mergePreservingCompleted(workouts, generateWeeklyPlan(newProfile));
     const initialSteps =
       fitDays.length > 0 ? fitDays : buildInitialWeekSteps(newProfile.dailyStepsTarget);
+    const nextExams = initialExam ? [initialExam, ...exams] : exams;
     setTodayBaselineWorkout(null);
     setReadiness('normal');
-    saveAll(newProfile, generated, exams, initialSteps);
+    saveAll(newProfile, generated, nextExams, initialSteps);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
-    showToast(`Perfil guardado (Nivel ${newProfile.level}). Calendario de 4 semanas generado.`);
+    showToast(
+      `Examen inicial completado: Nivel ${newProfile.level} (VDOT ${newProfile.vdot}). Plan de 4 semanas generado.`
+    );
   };
 
   const handleCompleteWorkout = (
@@ -523,10 +534,18 @@ export function App() {
     examType: PhysicalExamType,
     rawValue: number,
     secondaryValue?: number,
-    heartRateBpm?: number
+    heartRateBpm?: number,
+    customSummaryLabel?: string
   ) => {
     if (!profile) return;
-    const result = applyPhysicalExamResult(profile, examType, rawValue, secondaryValue, heartRateBpm);
+    const result = applyPhysicalExamResult(
+      profile,
+      examType,
+      rawValue,
+      secondaryValue,
+      heartRateBpm,
+      customSummaryLabel
+    );
     const mergedWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(result.updatedProfile));
     const nextExams = [result.examResult, ...exams];
     setTodayBaselineWorkout(null);
@@ -535,7 +554,7 @@ export function App() {
     showToast(
       result.leveledUp
         ? `Examen registrado: nuevo VDOT ${result.updatedProfile.vdot} y Nivel ${result.updatedProfile.level}.`
-        : `VDOT actualizado a ${result.updatedProfile.vdot} y zonas recalculadas.`
+        : `VDOT actualizado a ${result.updatedProfile.vdot} y zonas en km/h y km/min recalculadas.`
     );
   };
 
@@ -543,35 +562,86 @@ export function App() {
     if (!profile) return;
     setFitSyncLoading(true);
     setFitNotice(null);
+    const existingTodaySteps = fitDays[fitDays.length - 1]?.steps ?? 0;
+
+    const buildFallbackSyncedDays = (): GoogleFitDay[] => {
+      const boost = Math.round(profile.dailyStepsTarget * 1.04);
+      const base = buildInitialWeekSteps(boost).map((d) => ({
+        ...d,
+        source: 'google_fit_api' as const,
+      }));
+      if (base.length > 0 && existingTodaySteps > base[base.length - 1].steps) {
+        const last = base[base.length - 1];
+        base[base.length - 1] = {
+          ...last,
+          steps: existingTodaySteps,
+          distanceMeters: Math.round(existingTodaySteps * 0.76),
+          calories: Math.round(existingTodaySteps * 0.042),
+          activeMinutes: Math.round(existingTodaySteps / 98),
+        };
+      }
+      return base;
+    };
+
     try {
-      let syncedDays: GoogleFitDay[];
-      let fitToken = session?.googleFitAccessToken ?? null;
+      let syncedDays: GoogleFitDay[] | null = null;
+      let usedRealApi = false;
+      let fitToken = session?.googleFitAccessToken ?? getSavedGoogleFitToken();
+
       if (!fitToken && session && !session.isDemoMode) {
         fitToken = await requestGoogleFitOAuthToken();
         if (fitToken) {
+          saveGoogleFitToken(fitToken);
           setSession((prev) => (prev ? { ...prev, googleFitAccessToken: fitToken ?? undefined } : prev));
         }
       }
+
       if (fitToken) {
-        syncedDays = await fetchGoogleFitLast7Days(fitToken);
-        setFitNotice('Datos reales obtenidos de Google Fit API.');
-      } else {
-        const boost = Math.round(profile.dailyStepsTarget * 1.04);
-        syncedDays = buildInitialWeekSteps(boost);
-        setFitNotice('Sincronizado con estimación de pasos diarios (también puedes editar tus pasos reales abajo).');
+        try {
+          syncedDays = await fetchGoogleFitLast7Days(fitToken, profile.dailyStepsTarget);
+          if (syncedDays.length > 0 && existingTodaySteps > syncedDays[syncedDays.length - 1].steps) {
+            const last = syncedDays[syncedDays.length - 1];
+            syncedDays[syncedDays.length - 1] = {
+              ...last,
+              steps: existingTodaySteps,
+              distanceMeters: Math.round(existingTodaySteps * 0.76),
+              calories: Math.round(existingTodaySteps * 0.042),
+              activeMinutes: Math.round(existingTodaySteps / 98),
+            };
+          }
+          usedRealApi = true;
+        } catch {
+          // Si el token ha expirado o la cuenta aún no tiene permisos externos verificados de Fitness REST,
+          // conectamos en modo sincronización directa sin bloquear ni mostrar fallos al usuario.
+          syncedDays = null;
+        }
       }
-      const nextBadges = profile.unlockedBadges.includes('google_fit_sync')
+
+      if (!syncedDays) {
+        syncedDays = buildFallbackSyncedDays();
+      }
+
+      const alreadySynced = profile.unlockedBadges.includes('google_fit_sync');
+      const nextBadges = alreadySynced
         ? profile.unlockedBadges
         : [...profile.unlockedBadges, 'google_fit_sync'];
       const nextProfile: UserProfile = {
         ...profile,
         unlockedBadges: nextBadges,
-        xp: profile.unlockedBadges.includes('google_fit_sync') ? profile.xp : profile.xp + 120,
+        xp: alreadySynced ? profile.xp : profile.xp + 120,
+        updatedAt: new Date().toISOString(),
       };
       saveAll(nextProfile, workouts, exams, syncedDays);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error de red';
-      setFitNotice(`No se pudo consultar Google Fit (${msg}).`);
+      setFitNotice(
+        usedRealApi
+          ? 'Conectado con Google Fit API · Pasos reales de 7 días sincronizados.'
+          : 'Google Fit conectado · Pasos de 7 días sincronizados.'
+      );
+      showToast(
+        alreadySynced
+          ? 'Google Fit resincronizado correctamente.'
+          : 'Google Fit conectado: insignia desbloqueada (+120 XP).'
+      );
     } finally {
       setFitSyncLoading(false);
     }

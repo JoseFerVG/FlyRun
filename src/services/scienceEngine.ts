@@ -111,11 +111,94 @@ const LEVEL_DEFINITIONS: Array<{
   },
 ];
 
+export type SpeedUnit = 'kmh' | 'km_min' | 'min_km';
+
 export function formatPace(secPerKm: number): string {
-  const clamped = Math.max(175, Math.min(720, Math.round(secPerKm)));
+  const clamped = Math.max(120, Math.min(900, Math.round(secPerKm)));
   const min = Math.floor(clamped / 60);
   const sec = clamped % 60;
   return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+export function secPerKmToKmh(secPerKm: number): number {
+  return Number((3600 / Math.max(120, secPerKm)).toFixed(1));
+}
+
+export function secPerKmToKmPerMin(secPerKm: number): number {
+  return Number((60 / Math.max(120, secPerKm)).toFixed(3));
+}
+
+export function kmhToSecPerKm(kmh: number): number {
+  return Math.round(3600 / Math.max(2.5, Math.min(30, kmh)));
+}
+
+export function kmPerMinToSecPerKm(kmPerMin: number): number {
+  return Math.round(60 / Math.max(0.04, Math.min(0.5, kmPerMin)));
+}
+
+export function minPerKmToSecPerKm(minPerKm: number): number {
+  return Math.round(Math.max(2, Math.min(25, minPerKm)) * 60);
+}
+
+export function formatSpeedKmh(secPerKm: number): string {
+  return `${secPerKmToKmh(secPerKm).toFixed(1).replace('.', ',')} km/h`;
+}
+
+export function formatSpeedKmMin(secPerKm: number): string {
+  return `${secPerKmToKmPerMin(secPerKm).toFixed(3).replace('.', ',')} km/min`;
+}
+
+export function convertSpeedValue(
+  value: number,
+  fromUnit: SpeedUnit
+): {
+  secPerKm: number;
+  kmh: number;
+  kmPerMin: number;
+  minPerKmDecimal: number;
+  paceFormatted: string;
+} {
+  const safeVal = Number.isFinite(value) && value > 0 ? value : fromUnit === 'kmh' ? 10 : fromUnit === 'km_min' ? 0.167 : 6;
+  const secPerKm =
+    fromUnit === 'kmh'
+      ? kmhToSecPerKm(safeVal)
+      : fromUnit === 'km_min'
+      ? kmPerMinToSecPerKm(safeVal)
+      : minPerKmToSecPerKm(safeVal);
+  return {
+    secPerKm,
+    kmh: secPerKmToKmh(secPerKm),
+    kmPerMin: secPerKmToKmPerMin(secPerKm),
+    minPerKmDecimal: Number((secPerKm / 60).toFixed(2)),
+    paceFormatted: formatPace(secPerKm),
+  };
+}
+
+export function calculateVDOTFromSpeed(
+  speedUnit: SpeedUnit,
+  speedValue: number,
+  durationMinutes: number
+): {
+  vdot: number;
+  distanceMeters: number;
+  speedKmh: number;
+  speedKmMin: number;
+  paceFormatted: string;
+  secPerKm: number;
+} {
+  const conv = convertSpeedValue(speedValue, speedUnit);
+  const safeDur = Math.max(3, Math.min(90, Number.isFinite(durationMinutes) ? durationMinutes : 12));
+  const metersPerMin = 1000 / Math.max(2, conv.secPerKm / 60);
+  const distanceMeters = Math.round(metersPerMin * safeDur);
+  const vdot = calculateDanielsVDOT(distanceMeters, safeDur);
+  return {
+    vdot,
+    distanceMeters,
+    speedKmh: conv.kmh,
+    speedKmMin: conv.kmPerMin,
+    paceFormatted: conv.paceFormatted,
+    secPerKm: conv.secPerKm,
+  };
 }
 
 export function estimateMaxHR(age: number): number {
@@ -256,7 +339,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '60–74% VO2max',
       paceMinSecPerKm: z1Fast,
       paceMaxSecPerKm: z1Slow,
-      paceFormatted: `${formatPace(z1Fast)} – ${formatPace(z1Slow)} /km`,
+      paceFormatted: `${formatPace(z1Fast)}–${formatPace(z1Slow)} /km (${secPerKmToKmh(z1Slow)}–${secPerKmToKmh(z1Fast)} km/h)`,
+      speedKmhFormatted: `${secPerKmToKmh(z1Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z1Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z1Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z1Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.58),
       hrMax: hrAt(0.72),
       purpose: 'Base aeróbica, capilarización y recuperación sin fatiga (80% del volumen semanal).',
@@ -269,7 +354,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '75–82% VO2max',
       paceMinSecPerKm: z2Fast,
       paceMaxSecPerKm: z2Slow,
-      paceFormatted: `${formatPace(z2Fast)} – ${formatPace(z2Slow)} /km`,
+      paceFormatted: `${formatPace(z2Fast)}–${formatPace(z2Slow)} /km (${secPerKmToKmh(z2Slow)}–${secPerKmToKmh(z2Fast)} km/h)`,
+      speedKmhFormatted: `${secPerKmToKmh(z2Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z2Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z2Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z2Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.73),
       hrMax: hrAt(0.81),
       purpose: 'Ritmo sostenido cómodo y economía de glucógeno.',
@@ -282,7 +369,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '83–89% VO2max',
       paceMinSecPerKm: z3Fast,
       paceMaxSecPerKm: z3Slow,
-      paceFormatted: `${formatPace(z3Fast)} – ${formatPace(z3Slow)} /km`,
+      paceFormatted: `${formatPace(z3Fast)}–${formatPace(z3Slow)} /km (${secPerKmToKmh(z3Slow)}–${secPerKmToKmh(z3Fast)} km/h)`,
+      speedKmhFormatted: `${secPerKmToKmh(z3Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z3Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z3Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z3Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.82),
       hrMax: hrAt(0.88),
       purpose: 'Eleva tu segundo umbral (VT2) para sostener ritmos vivos sin saturar las piernas.',
@@ -295,7 +384,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '94–100% VO2max',
       paceMinSecPerKm: z4Fast,
       paceMaxSecPerKm: z4Slow,
-      paceFormatted: `${formatPace(z4Fast)} – ${formatPace(z4Slow)} /km`,
+      paceFormatted: `${formatPace(z4Fast)}–${formatPace(z4Slow)} /km (${secPerKmToKmh(z4Slow)}–${secPerKmToKmh(z4Fast)} km/h)`,
+      speedKmhFormatted: `${secPerKmToKmh(z4Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z4Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z4Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z4Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.89),
       hrMax: hrAt(0.96),
       purpose: 'Mejora el volumen sistólico cardíaco y tu consumo máximo de oxígeno.',
@@ -308,7 +399,9 @@ export function calculateTrainingZones(vdot: number, maxHR: number, restHR: numb
       vo2PctRange: '>104% VO2max',
       paceMinSecPerKm: z5Fast,
       paceMaxSecPerKm: z5Slow,
-      paceFormatted: `${formatPace(z5Fast)} – ${formatPace(z5Slow)} /km`,
+      paceFormatted: `${formatPace(z5Fast)}–${formatPace(z5Slow)} /km (${secPerKmToKmh(z5Slow)}–${secPerKmToKmh(z5Fast)} km/h)`,
+      speedKmhFormatted: `${secPerKmToKmh(z5Slow).toFixed(1).replace('.', ',')} – ${secPerKmToKmh(z5Fast).toFixed(1).replace('.', ',')} km/h`,
+      speedKmMinFormatted: `${secPerKmToKmPerMin(z5Slow).toFixed(3).replace('.', ',')} – ${secPerKmToKmPerMin(z5Fast).toFixed(3).replace('.', ',')} km/min`,
       hrMin: hrAt(0.95),
       hrMax: maxHR,
       purpose: 'Eficiencia mecánica de zancada y velocidad punta.',
@@ -1081,7 +1174,8 @@ export function applyPhysicalExamResult(
   examType: PhysicalExamType,
   rawValue: number,
   secondaryValue?: number,
-  heartRateBpm?: number
+  heartRateBpm?: number,
+  customSummaryLabel?: string
 ): {
   updatedProfile: UserProfile;
   examResult: PhysicalExamResult;
@@ -1115,6 +1209,8 @@ export function applyPhysicalExamResult(
     caco_continuous_test: `Test Continuo (${rawValue} min sin parar)`,
   };
 
+  const baseLabel = customSummaryLabel?.trim() || labels[examType];
+
   const examResult: PhysicalExamResult = {
     id: `exam_${Date.now()}`,
     date: new Date().toISOString().slice(0, 10),
@@ -1126,7 +1222,7 @@ export function applyPhysicalExamResult(
     previousVdot: profile.vdot,
     newLevel: newLevelInfo.level,
     previousLevel: profile.level,
-    summary: `${labels[examType]} — VDOT ${blendedVdot} · Nivel ${newLevelInfo.level} (${newLevelInfo.spanishTitle})`,
+    summary: `${baseLabel} — VDOT ${blendedVdot} · Nivel ${newLevelInfo.level} (${newLevelInfo.spanishTitle})`.slice(0, 480),
   };
 
   const updatedProfile: UserProfile = {
@@ -1150,6 +1246,8 @@ export interface RacePrediction {
   distanceMeters: number;
   timeFormatted: string;
   pacePerKm: string;
+  speedKmh: string;
+  speedKmMin: string;
   split400m: string;
 }
 
@@ -1182,6 +1280,8 @@ export function calculateRacePredictions(vdot: number): RacePrediction[] {
       distanceMeters: d.meters,
       timeFormatted: formatDurationHMS(totalSec),
       pacePerKm: `${formatPace(secPerKm)} /km`,
+      speedKmh: formatSpeedKmh(secPerKm),
+      speedKmMin: formatSpeedKmMin(secPerKm),
       split400m: `${formatDurationHMS(split400Sec)} /400m`,
     };
   });

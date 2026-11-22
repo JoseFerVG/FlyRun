@@ -45,6 +45,23 @@ export const DEFAULT_FIREBASE_CONFIG: FirebaseConfigValues = {
 const CONFIG_STORAGE_KEY = 'flyrun_firebase_config_v1';
 const LOCAL_STATE_PREFIX = 'flyrun_state_v1_';
 const DEMO_USER_STORAGE_KEY = 'flyrun_demo_session_v1';
+const GFIT_TOKEN_STORAGE_KEY = 'flyrun_gfit_token_v1';
+
+export function getSavedGoogleFitToken(): string | null {
+  try {
+    return localStorage.getItem(GFIT_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveGoogleFitToken(token: string): void {
+  try {
+    localStorage.setItem(GFIT_TOKEN_STORAGE_KEY, token);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export interface PersistedUserState {
   profile: UserProfile | null;
@@ -166,6 +183,9 @@ export async function signInWithGoogleFirebase(): Promise<{
 
   const result = await signInWithPopup(clients.auth, provider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (credential?.accessToken) {
+    saveGoogleFitToken(credential.accessToken);
+  }
 
   return {
     uid: result.user.uid,
@@ -183,9 +203,12 @@ export async function requestGoogleFitOAuthToken(): Promise<string | null> {
   try {
     const provider = new GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/fitness.activity.read');
-    provider.setCustomParameters({ prompt: 'consent' });
+    provider.setCustomParameters({ prompt: 'select_account' });
     const result = await signInWithPopup(clients.auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      saveGoogleFitToken(credential.accessToken);
+    }
     return credential?.accessToken ?? null;
   } catch {
     return null;
@@ -248,6 +271,7 @@ export function subscribeFirebaseAuth(callback: (user: User | null) => void): ()
 
 export async function signOutFirebase(): Promise<void> {
   localStorage.removeItem(DEMO_USER_STORAGE_KEY);
+  localStorage.removeItem(GFIT_TOKEN_STORAGE_KEY);
   const clients = getFirebaseClients();
   if (clients) {
     await signOut(clients.auth);

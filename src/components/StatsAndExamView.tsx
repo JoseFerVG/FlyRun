@@ -5,14 +5,19 @@ import type { PhysicalExamResult, PhysicalExamType, UserProfile, WorkoutSession 
 import {
   calculateRacePredictions,
   calculateTrainingZones,
+  calculateVDOTFromSpeed,
+  convertSpeedValue,
   getAllLevelDefinitions,
   getLynxLevel,
   getModalityLabel,
+  type SpeedUnit,
 } from '../services/scienceEngine';
 import { BADGES_CATALOG } from '../data/runningKnowledge';
 import { AnimatedNumber, BiometricRing, SpotlightCard } from './MotionPrimitives';
 import { assetUrl } from '../services/assets';
 import { SIMULATED_USER_PERSONAS } from '../data/userPersonas';
+
+type ExamUnitMode = 'standard' | SpeedUnit;
 
 interface StatsAndExamViewProps {
   profile: UserProfile;
@@ -22,7 +27,8 @@ interface StatsAndExamViewProps {
     examType: PhysicalExamType,
     rawValue: number,
     secondaryValue?: number,
-    heartRateBpm?: number
+    heartRateBpm?: number,
+    customSummaryLabel?: string
   ) => void;
   onEditProfile: () => void;
 }
@@ -35,6 +41,9 @@ export function StatsAndExamView({
   onEditProfile,
 }: StatsAndExamViewProps) {
   const [examType, setExamType] = useState<PhysicalExamType>('cooper_12min');
+  const [examUnitMode, setExamUnitMode] = useState<ExamUnitMode>('standard');
+  const [speedValue, setSpeedValue] = useState<number>(11.2);
+  const [speedDuration, setSpeedDuration] = useState<number>(12);
   const [rawValue, setRawValue] = useState<number>(2250);
   const [timeMins, setTimeMins] = useState<number>(25);
   const [timeSecs, setTimeSecs] = useState<number>(30);
@@ -51,6 +60,17 @@ export function StatsAndExamView({
 
   const isSplitTimeExam = examType === 'time_trial_5k' || examType === 'rockport_walk_1600m';
 
+  const handleExamUnitChange = (nextMode: ExamUnitMode) => {
+    if (nextMode !== 'standard' && examUnitMode !== 'standard') {
+      const conv = convertSpeedValue(speedValue, examUnitMode);
+      setSpeedValue(nextMode === 'kmh' ? conv.kmh : nextMode === 'km_min' ? conv.kmPerMin : conv.minPerKmDecimal);
+    }
+    setExamUnitMode(nextMode);
+  };
+
+  const liveSpeedConv =
+    examUnitMode !== 'standard' ? convertSpeedValue(speedValue, examUnitMode) : null;
+
   const handleCopySummary = async () => {
     const lines = [
       `FlyRun — Resumen fisiológico de ${profile.displayName}`,
@@ -58,10 +78,13 @@ export function StatsAndExamView({
       `Frecuencia: ${profile.trainingDaysPerWeek} días/sem | Meta pasos: ${profile.dailyStepsTarget}/día`,
       '',
       'Zonas de entrenamiento:',
-      ...zones.map((z) => `- ${z.id} (${z.danielsCode}): ${z.paceFormatted} | ${z.hrMin}-${z.hrMax} ppm`),
+      ...zones.map(
+        (z) =>
+          `- ${z.id} (${z.danielsCode}): ${z.speedKmhFormatted} | ${z.speedKmMinFormatted} | ${z.hrMin}-${z.hrMax} ppm`
+      ),
       '',
       'Marcas equivalentes estimadas:',
-      ...predictions.map((p) => `- ${p.distanceLabel}: ${p.timeFormatted} (${p.pacePerKm})`),
+      ...predictions.map((p) => `- ${p.distanceLabel}: ${p.timeFormatted} (${p.pacePerKm} · ${p.speedKmh} · ${p.speedKmMin})`),
     ].join('\n');
 
     try {
@@ -75,12 +98,34 @@ export function StatsAndExamView({
 
   const handleExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const numericVal = isSplitTimeExam
-      ? Number((Math.max(1, timeMins) + Math.max(0, Math.min(59, timeSecs)) / 60).toFixed(2))
-      : rawValue;
-    onSubmitExam(examType, numericVal, undefined, heartRate);
+    if (examUnitMode !== 'standard') {
+      const effectiveDur =
+        examType === 'cooper_12min'
+          ? 12
+          : examType === 'time_trial_5k'
+          ? Number(((5 / Math.max(3, convertSpeedValue(speedValue, examUnitMode).kmh)) * 60).toFixed(2))
+          : examType === 'rockport_walk_1600m'
+          ? Number(((1.6 / Math.max(2.5, convertSpeedValue(speedValue, examUnitMode).kmh)) * 60).toFixed(2))
+          : Math.max(3, speedDuration);
+
+      const calc = calculateVDOTFromSpeed(examUnitMode, speedValue, effectiveDur);
+      const targetExamType: PhysicalExamType =
+        examType === 'rockport_walk_1600m'
+          ? 'rockport_walk_1600m'
+          : examType === 'time_trial_5k'
+          ? 'time_trial_5k'
+          : 'cooper_12min';
+      const numericVal = targetExamType === 'cooper_12min' ? calc.distanceMeters : effectiveDur;
+      const customLabel = `Prueba por velocidad (${calc.speedKmh.toFixed(1).replace('.', ',')} km/h · ${calc.speedKmMin.toFixed(3).replace('.', ',')} km/min · ${calc.paceFormatted} /km)`;
+      onSubmitExam(targetExamType, numericVal, undefined, heartRate, customLabel);
+    } else {
+      const numericVal = isSplitTimeExam
+        ? Number((Math.max(1, timeMins) + Math.max(0, Math.min(59, timeSecs)) / 60).toFixed(2))
+        : rawValue;
+      onSubmitExam(examType, numericVal, undefined, heartRate);
+    }
     setExamSubmittedMsg(
-      'Examen físico registrado. Tu VDOT, nivel, predicciones y zonas de ritmo se han actualizado.'
+      'Examen físico registrado. Tu VDOT, nivel, predicciones y zonas en km/h y km/min se han actualizado.'
     );
   };
 
@@ -218,7 +263,9 @@ export function StatsAndExamView({
               <tr>
                 <th>Zona</th>
                 <th>Referencia Daniels</th>
-                <th>Ritmo objetivo</th>
+                <th>Velocidad (km/h)</th>
+                <th>Velocidad (km/min)</th>
+                <th>Ritmo (min/km)</th>
                 <th>Pulso (Karvonen)</th>
                 <th>Objetivo fisiológico</th>
               </tr>
@@ -232,7 +279,9 @@ export function StatsAndExamView({
                     </span>
                   </td>
                   <td style={{ fontWeight: 600 }}>{z.danielsCode}</td>
-                  <td className="mono" style={{ fontWeight: 600 }}>{z.paceFormatted}</td>
+                  <td className="mono" style={{ fontWeight: 600, color: 'var(--cobalt)' }}>{z.speedKmhFormatted}</td>
+                  <td className="mono" style={{ fontWeight: 600 }}>{z.speedKmMinFormatted}</td>
+                  <td className="mono">{z.paceFormatted.split(' (')[0]}</td>
                   <td className="mono">{z.hrMin}–{z.hrMax} ppm</td>
                   <td className="muted">{z.purpose}</td>
                 </tr>
@@ -251,7 +300,7 @@ export function StatsAndExamView({
           <div>
             <h2 style={{ margin: 0, fontSize: '1.14rem' }}>Marcas equivalentes estimadas (VDOT {profile.vdot})</h2>
             <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-              Incluye el tiempo objetivo por cada vuelta de 400 m en pista de atletismo para preparar pruebas como el Test de Cooper o 5K.
+              Incluye velocidad en km/h y km/min, ritmo por km y paso objetivo por cada vuelta de 400 m en pista.
             </p>
           </div>
         </div>
@@ -262,7 +311,8 @@ export function StatsAndExamView({
               <tr>
                 <th>Distancia</th>
                 <th>Tiempo estimado</th>
-                <th>Ritmo medio</th>
+                <th>Ritmo (min/km)</th>
+                <th>Velocidad (km/h · km/min)</th>
                 <th>Paso por vuelta (400 m)</th>
               </tr>
             </thead>
@@ -272,6 +322,7 @@ export function StatsAndExamView({
                   <td style={{ fontWeight: 600 }}>{p.distanceLabel}</td>
                   <td className="mono" style={{ fontWeight: 700, color: 'var(--accent)' }}>{p.timeFormatted}</td>
                   <td className="mono">{p.pacePerKm}</td>
+                  <td className="mono" style={{ fontSize: '0.8rem' }}>{p.speedKmh} · {p.speedKmMin}</td>
                   <td className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>{p.split400m}</td>
                 </tr>
               ))}
@@ -307,8 +358,43 @@ export function StatsAndExamView({
               Registra tus marcas reales y actualiza tu nivel
             </h2>
             <p className="secondary" style={{ margin: '0.22rem 0 0', fontSize: '0.87rem' }}>
-              Calienta 10 minutos suaves, realiza una de las pruebas estandarizadas e introduce tu resultado exacto (minutos y segundos reales).
+              Introduce tu marca estándar (metros / tiempo) o directamente la velocidad media sostenida en <strong>km/h</strong>, <strong>km/min</strong> o <strong>min/km</strong>.
             </p>
+          </div>
+
+          <div className="segmented-group" role="group" aria-label="Unidad de entrada del examen">
+            <button
+              type="button"
+              aria-pressed={examUnitMode === 'standard'}
+              className="segmented-btn is-accent"
+              onClick={() => handleExamUnitChange('standard')}
+            >
+              Distancia / Tiempo
+            </button>
+            <button
+              type="button"
+              aria-pressed={examUnitMode === 'kmh'}
+              className="segmented-btn is-accent mono"
+              onClick={() => handleExamUnitChange('kmh')}
+            >
+              km/h
+            </button>
+            <button
+              type="button"
+              aria-pressed={examUnitMode === 'km_min'}
+              className="segmented-btn is-accent mono"
+              onClick={() => handleExamUnitChange('km_min')}
+            >
+              km/min
+            </button>
+            <button
+              type="button"
+              aria-pressed={examUnitMode === 'min_km'}
+              className="segmented-btn is-accent mono"
+              onClick={() => handleExamUnitChange('min_km')}
+            >
+              min/km
+            </button>
           </div>
         </div>
 
@@ -323,24 +409,55 @@ export function StatsAndExamView({
               onChange={(e) => {
                 const next = e.target.value as PhysicalExamType;
                 setExamType(next);
-                if (next === 'cooper_12min') setRawValue(2250);
-                else if (next === 'time_trial_5k') {
+                if (next === 'cooper_12min') {
+                  setRawValue(2250);
+                  setSpeedDuration(12);
+                } else if (next === 'time_trial_5k') {
                   setTimeMins(25);
                   setTimeSecs(30);
                 } else if (next === 'rockport_walk_1600m') {
                   setTimeMins(14);
                   setTimeSecs(20);
-                } else setRawValue(20);
+                } else {
+                  setRawValue(20);
+                  setSpeedDuration(20);
+                }
               }}
             >
               <option value="cooper_12min">Test de Cooper (12 min máx distancia)</option>
               <option value="time_trial_5k">Contrarreloj 5K (min y seg)</option>
               <option value="rockport_walk_1600m">Test Rockport caminata 1,6 km (min y seg)</option>
-              <option value="caco_continuous_test">Test continuo base (min sin parar)</option>
+              <option value="caco_continuous_test">Test continuo base (ritmo sostenido)</option>
             </select>
           </div>
 
-          {isSplitTimeExam ? (
+          {examUnitMode !== 'standard' ? (
+            <div className="field">
+              <label htmlFor="exam-speed-val">
+                {examUnitMode === 'kmh' && 'Velocidad sostenida (km/h)'}
+                {examUnitMode === 'km_min' && 'Velocidad en km por minuto (km/min)'}
+                {examUnitMode === 'min_km' && 'Ritmo medio (minutos decimales / km)'}
+              </label>
+              <input
+                id="exam-speed-val"
+                name="examSpeedValue"
+                type="number"
+                min={examUnitMode === 'km_min' ? 0.04 : 2}
+                max={examUnitMode === 'km_min' ? 0.5 : 32}
+                step={examUnitMode === 'km_min' ? '0.005' : '0.1'}
+                className="input mono"
+                value={speedValue}
+                onChange={(e) => setSpeedValue(Number(e.target.value))}
+                required
+              />
+              {liveSpeedConv && (
+                <span className="muted mono" style={{ fontSize: '0.73rem' }}>
+                  {liveSpeedConv.kmh.toFixed(1).replace('.', ',')} km/h ·{' '}
+                  {liveSpeedConv.kmPerMin.toFixed(3).replace('.', ',')} km/min · {liveSpeedConv.paceFormatted} /km
+                </span>
+              )}
+            </div>
+          ) : isSplitTimeExam ? (
             <div className="field">
               <label htmlFor="exam-mins">Tiempo empleado (min : seg)</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -392,19 +509,35 @@ export function StatsAndExamView({
             </div>
           )}
 
-          <div className="field">
-            <label htmlFor="exam-hr">Pulso final medio/pico (ppm)</label>
-            <input
-              id="exam-hr"
-              name="examHeartRate"
-              type="number"
-              min={80}
-              max={215}
-              className="input"
-              value={heartRate}
-              onChange={(e) => setHeartRate(Number(e.target.value))}
-            />
-          </div>
+          {examUnitMode !== 'standard' && examType === 'caco_continuous_test' ? (
+            <div className="field">
+              <label htmlFor="exam-speed-dur">Duración del test (minutos)</label>
+              <input
+                id="exam-speed-dur"
+                name="examSpeedDuration"
+                type="number"
+                min={3}
+                max={90}
+                className="input mono"
+                value={speedDuration}
+                onChange={(e) => setSpeedDuration(Number(e.target.value))}
+              />
+            </div>
+          ) : (
+            <div className="field">
+              <label htmlFor="exam-hr">Pulso final medio/pico (ppm)</label>
+              <input
+                id="exam-hr"
+                name="examHeartRate"
+                type="number"
+                min={80}
+                max={215}
+                className="input"
+                value={heartRate}
+                onChange={(e) => setHeartRate(Number(e.target.value))}
+              />
+            </div>
+          )}
 
           <div className="row-wrap" style={{ gridColumn: '1 / -1' }}>
             <button type="submit" className="btn btn-primary">

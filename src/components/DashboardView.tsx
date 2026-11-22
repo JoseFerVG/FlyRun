@@ -21,6 +21,7 @@ import type {
   WorkoutSession,
 } from '../types/fitness';
 import {
+  calculateTrainingZones,
   calculateWeekly8020Balance,
   getModalityLabel,
   type DailyReadiness,
@@ -122,9 +123,34 @@ export function DashboardView({
 }: DashboardViewProps) {
   const fitToday = fitDays[fitDays.length - 1];
   const [stepsInput, setStepsInput] = useState(fitToday?.steps ?? profile.dailyStepsTarget);
+  const [livePedometerOn, setLivePedometerOn] = useState(false);
+
   useEffect(() => {
     setStepsInput(fitToday?.steps ?? profile.dailyStepsTarget);
   }, [fitToday?.steps, profile.dailyStepsTarget]);
+
+  useEffect(() => {
+    if (!livePedometerOn) return;
+    let lastPeakAt = 0;
+    const handleMotion = (event: DeviceMotionEvent) => {
+      const acc = event.accelerationIncludingGravity ?? event.acceleration;
+      if (!acc) return;
+      const mag = Math.sqrt((acc.x ?? 0) ** 2 + (acc.y ?? 0) ** 2 + (acc.z ?? 0) ** 2);
+      const now = Date.now();
+      if (mag > 12.2 && now - lastPeakAt > 360) {
+        lastPeakAt = now;
+        onManualStepsUpdate((fitToday?.steps ?? 0) + 1);
+      }
+    };
+    window.addEventListener('devicemotion', handleMotion);
+    return () => window.removeEventListener('devicemotion', handleMotion);
+  }, [livePedometerOn, fitToday?.steps, onManualStepsUpdate]);
+
+  const isGoogleFitConnected =
+    profile.unlockedBadges.includes('google_fit_sync') || fitToday?.source === 'google_fit_api';
+  const todayZoneInfo = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR).find(
+    (z) => z.id === todayWorkout?.targetZone
+  );
   const stepsPct = Math.min(100, Math.round(((fitToday?.steps ?? 0) / Math.max(1000, profile.dailyStepsTarget)) * 100));
   const balance8020 = calculateWeekly8020Balance(workouts);
   const todayChargePct = todayWorkout?.completed
@@ -251,9 +277,14 @@ export function DashboardView({
                 </div>
                 <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
                   <div className="muted" style={{ fontSize: '0.72rem' }}>Zona / Ritmo</div>
-                  <div className="mono" style={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                  <div className="mono" style={{ fontWeight: 700, fontSize: '0.86rem' }}>
                     {todayWorkout.targetZone} · {todayWorkout.targetPace}
                   </div>
+                  {todayZoneInfo && todayWorkout.modality === 'running' && todayWorkout.sessionType !== 'rest' && (
+                    <div className="muted mono" style={{ fontSize: '0.7rem', marginTop: '0.15rem' }}>
+                      {todayZoneInfo.speedKmMinFormatted}
+                    </div>
+                  )}
                 </div>
                 <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
                   <div className="muted" style={{ fontSize: '0.72rem' }}>Carga metabólica</div>
@@ -458,7 +489,18 @@ export function DashboardView({
                   <Footprints size={18} weight="duotone" aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Google Fit · Pasos diarios</h2>
+                  <div className="row-wrap" style={{ gap: '0.45rem' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Google Fit · Pasos diarios</h2>
+                    {isGoogleFitConnected ? (
+                      <span className="pill pill-emerald" style={{ fontSize: '0.7rem' }}>
+                        Conectado con Google Fit
+                      </span>
+                    ) : (
+                      <span className="pill" style={{ fontSize: '0.7rem' }}>
+                        Sin conectar
+                      </span>
+                    )}
+                  </div>
                   <div className="muted" style={{ fontSize: '0.78rem' }}>
                     Meta diaria: {profile.dailyStepsTarget.toLocaleString('es-ES')} pasos ({profile.weeklyWalkGoalSessions} días/sem)
                   </div>
@@ -467,12 +509,16 @@ export function DashboardView({
 
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className={`btn btn-sm ${isGoogleFitConnected ? 'btn-secondary' : 'btn-emerald'}`}
                 onClick={onSyncGoogleFit}
                 disabled={fitSyncLoading}
               >
                 <ArrowsClockwise size={15} weight="duotone" aria-hidden="true" />
-                {fitSyncLoading ? 'Sincronizando…' : 'Sincronizar Google Fit'}
+                {fitSyncLoading
+                  ? 'Conectando…'
+                  : isGoogleFitConnected
+                  ? 'Resincronizar Google Fit'
+                  : 'Conectar Google Fit'}
               </button>
             </div>
 
@@ -535,6 +581,37 @@ export function DashboardView({
             </div>
 
             <div className="row-wrap">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm mono"
+                onClick={() => onManualStepsUpdate((fitToday?.steps ?? 0) + 1000)}
+              >
+                +1.000 pasos
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm mono"
+                onClick={() => onManualStepsUpdate((fitToday?.steps ?? 0) + 2500)}
+              >
+                +2.500 pasos
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => onManualStepsUpdate(Math.max(fitToday?.steps ?? 0, profile.dailyStepsTarget))}
+              >
+                Cumplir meta hoy
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${livePedometerOn ? 'btn-emerald' : 'btn-ghost'}`}
+                onClick={() => setLivePedometerOn((v) => !v)}
+              >
+                {livePedometerOn ? 'Podómetro en vivo: Activo' : 'Activar podómetro sensor'}
+              </button>
+            </div>
+
+            <div className="row-wrap">
               <label htmlFor="manual-fit-steps" className="sr-only">
                 Pasos diarios de hoy
               </label>
@@ -558,7 +635,7 @@ export function DashboardView({
               >
                 Actualizar pasos de hoy
               </button>
-              {fitNotice && <span className="muted" style={{ fontSize: '0.76rem' }}>{fitNotice}</span>}
+              {fitNotice && <span style={{ color: 'var(--pine)', fontSize: '0.78rem', fontWeight: 600 }}>{fitNotice}</span>}
             </div>
           </SpotlightCard>
         </div>

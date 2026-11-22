@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, X } from 'lucide-react';
 import type { CardioModality, WorkoutSession } from '../types/fitness';
+import { convertSpeedValue, formatPace, type SpeedUnit } from '../services/scienceEngine';
 
 interface WorkoutLogDialogProps {
   workout: WorkoutSession | null;
@@ -20,6 +21,8 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
   const [rpe, setRpe] = useState(5);
   const [duration, setDuration] = useState(35);
   const [distance, setDistance] = useState(4.5);
+  const [speedUnit, setSpeedUnit] = useState<SpeedUnit>('kmh');
+  const [speedInput, setSpeedInput] = useState(10.0);
   const [modality, setModality] = useState<CardioModality>('running');
   const [notes, setNotes] = useState('');
 
@@ -28,8 +31,13 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
     if (!dialog) return;
 
     if (workout) {
-      setDuration(workout.durationMinutes);
-      setDistance(workout.targetDistanceKm);
+      const dur = Math.max(5, workout.durationMinutes);
+      const dist = Math.max(0.5, workout.targetDistanceKm);
+      setDuration(dur);
+      setDistance(dist);
+      const initialKmh = Number(((dist / dur) * 60).toFixed(1));
+      setSpeedUnit('kmh');
+      setSpeedInput(initialKmh);
       setModality(workout.modality);
       setRpe(workout.sessionType === 'intervals_z4' || workout.sessionType === 'soccer' ? 7 : 5);
       setNotes('');
@@ -47,6 +55,43 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
     }
     onClose();
   };
+
+  const syncSpeedFromDistanceDuration = (nextDist: number, nextDur: number, unit: SpeedUnit) => {
+    if (nextDist <= 0 || nextDur <= 0) return;
+    const secPerKm = (nextDur * 60) / nextDist;
+    const conv = convertSpeedValue(3600 / Math.max(120, secPerKm), 'kmh');
+    setSpeedInput(unit === 'kmh' ? conv.kmh : unit === 'km_min' ? conv.kmPerMin : conv.minPerKmDecimal);
+  };
+
+  const handleDurationChange = (nextDur: number) => {
+    setDuration(nextDur);
+    syncSpeedFromDistanceDuration(distance, nextDur, speedUnit);
+  };
+
+  const handleDistanceChange = (nextDist: number) => {
+    setDistance(nextDist);
+    syncSpeedFromDistanceDuration(nextDist, duration, speedUnit);
+  };
+
+  const handleUnitChange = (nextUnit: SpeedUnit) => {
+    const conv = convertSpeedValue(speedInput, speedUnit);
+    setSpeedUnit(nextUnit);
+    setSpeedInput(nextUnit === 'kmh' ? conv.kmh : nextUnit === 'km_min' ? conv.kmPerMin : conv.minPerKmDecimal);
+  };
+
+  const handleSpeedInputChange = (nextVal: number) => {
+    setSpeedInput(nextVal);
+    if (!Number.isFinite(nextVal) || nextVal <= 0) return;
+    const conv = convertSpeedValue(nextVal, speedUnit);
+    const derivedDist = Number(((conv.kmh * Math.max(5, duration)) / 60).toFixed(2));
+    setDistance(derivedDist);
+  };
+
+  const safeSecPerKm =
+    distance > 0 && duration > 0
+      ? (duration * 60) / distance
+      : convertSpeedValue(speedInput, speedUnit).secPerKm;
+  const liveConv = convertSpeedValue(3600 / Math.max(120, safeSecPerKm), 'kmh');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +157,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                   max={300}
                   className="input"
                   value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
+                  onChange={(e) => handleDurationChange(Number(e.target.value))}
                   required
                 />
               </div>
@@ -124,35 +169,74 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                   name="logDistance"
                   type="number"
                   min={0}
-                  max={100}
-                  step="0.1"
+                  max={150}
+                  step="0.05"
                   className="input"
                   value={distance}
-                  onChange={(e) => setDistance(Number(e.target.value))}
+                  onChange={(e) => handleDistanceChange(Number(e.target.value))}
                 />
               </div>
 
               <div className="field">
-                <label htmlFor="log-rpe">Esfuerzo percibido RPE ({rpe}/10)</label>
+                <div className="row-between">
+                  <label htmlFor="log-speed">Velocidad o ritmo</label>
+                  <div className="segmented-group" role="group" aria-label="Unidad de velocidad">
+                    {(
+                      [
+                        { id: 'kmh', label: 'km/h' },
+                        { id: 'km_min', label: 'km/min' },
+                        { id: 'min_km', label: 'min/km' },
+                      ] as const
+                    ).map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        aria-pressed={speedUnit === u.id}
+                        className="segmented-btn is-accent mono"
+                        onClick={() => handleUnitChange(u.id)}
+                      >
+                        {u.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <input
-                  id="log-rpe"
-                  name="logRpe"
-                  type="range"
-                  min={1}
-                  max={10}
-                  value={rpe}
-                  onChange={(e) => setRpe(Number(e.target.value))}
+                  id="log-speed"
+                  name="logSpeed"
+                  type="number"
+                  min={speedUnit === 'km_min' ? 0.04 : 2}
+                  max={speedUnit === 'km_min' ? 0.5 : 35}
+                  step={speedUnit === 'km_min' ? '0.005' : '0.1'}
+                  className="input mono"
+                  value={speedInput}
+                  onChange={(e) => handleSpeedInputChange(Number(e.target.value))}
                 />
-                <span className="muted" style={{ fontSize: '0.76rem' }}>
-                  {rpe <= 4
-                    ? 'Muy cómodo / Conversacional'
-                    : rpe <= 6
-                    ? 'Moderado / Controlado'
-                    : rpe <= 8
-                    ? 'Exigente / Umbral'
-                    : 'Máximo'}
+                <span className="muted mono" style={{ fontSize: '0.73rem' }}>
+                  {liveConv.kmh.toFixed(1).replace('.', ',')} km/h · {liveConv.kmPerMin.toFixed(3).replace('.', ',')} km/min · {formatPace(safeSecPerKm)} /km
                 </span>
               </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="log-rpe">Esfuerzo percibido RPE ({rpe}/10)</label>
+              <input
+                id="log-rpe"
+                name="logRpe"
+                type="range"
+                min={1}
+                max={10}
+                value={rpe}
+                onChange={(e) => setRpe(Number(e.target.value))}
+              />
+              <span className="muted" style={{ fontSize: '0.76rem' }}>
+                {rpe <= 4
+                  ? 'Muy cómodo / Conversacional'
+                  : rpe <= 6
+                  ? 'Moderado / Controlado'
+                  : rpe <= 8
+                  ? 'Exigente / Umbral'
+                  : 'Máximo'}
+              </span>
             </div>
 
             <div className="field">

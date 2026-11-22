@@ -70,6 +70,8 @@ export interface TrainingZone {
   paceMinSecPerKm: number;
   paceMaxSecPerKm: number;
   paceFormatted: string;
+  speedKmhFormatted: string;
+  speedKmMinFormatted: string;
   hrMin: number;
   hrMax: number;
   purpose: string;

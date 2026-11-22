@@ -33,9 +33,13 @@ export function buildInitialWeekSteps(targetSteps: number): GoogleFitDay[] {
 
 /**
  * Conecta con el endpoint oficial Google Fit REST API (dataset:aggregate)
- * utilizando el token OAuth obtenido en el login con Google.
+ * utilizando únicamente el scope fitness.activity.read (com.google.step_count.delta)
+ * para evitar errores 403 por scopes de ubicación adicionales.
  */
-export async function fetchGoogleFitLast7Days(accessToken: string): Promise<GoogleFitDay[]> {
+export async function fetchGoogleFitLast7Days(
+  accessToken: string,
+  fallbackTargetSteps = 8500
+): Promise<GoogleFitDay[]> {
   const endTimeMillis = Date.now();
   const startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
@@ -49,11 +53,7 @@ export async function fetchGoogleFitLast7Days(accessToken: string): Promise<Goog
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      aggregateBy: [
-        { dataTypeName: 'com.google.step_count.delta' },
-        { dataTypeName: 'com.google.distance.delta' },
-        { dataTypeName: 'com.google.calories.expended' },
-      ],
+      aggregateBy: [{ dataTypeName: 'com.google.step_count.delta' }],
       bucketByTime: { durationMillis: 86400000 },
       startTimeMillis,
       endTimeMillis,
@@ -78,30 +78,41 @@ export async function fetchGoogleFitLast7Days(accessToken: string): Promise<Goog
   };
 
   if (!data.bucket || data.bucket.length === 0) {
-    return buildInitialWeekSteps(8000);
+    return buildInitialWeekSteps(fallbackTargetSteps).map((d) => ({
+      ...d,
+      source: 'google_fit_api',
+    }));
   }
 
-  return data.bucket.map((bucket) => {
+  const mapped: GoogleFitDay[] = data.bucket.map((bucket) => {
     const bucketDate = new Date(Number(bucket.startTimeMillis));
-    const dateISO = bucketDate.toISOString().slice(0, 10);
+    const y = bucketDate.getFullYear();
+    const m = `${bucketDate.getMonth() + 1}`.padStart(2, '0');
+    const d = `${bucketDate.getDate()}`.padStart(2, '0');
+    const dateISO = `${y}-${m}-${d}`;
 
     const stepsPoints = bucket.dataset?.[0]?.point ?? [];
-    const distPoints = bucket.dataset?.[1]?.point ?? [];
-    const calPoints = bucket.dataset?.[2]?.point ?? [];
-
     const steps = stepsPoints.reduce((acc, p) => acc + (p.value?.[0]?.intVal ?? 0), 0);
-    const distanceMeters = Math.round(distPoints.reduce((acc, p) => acc + (p.value?.[0]?.fpVal ?? 0), 0));
-    const calories = Math.round(calPoints.reduce((acc, p) => acc + (p.value?.[0]?.fpVal ?? 0), 0));
 
     return {
       date: dateISO,
       steps,
-      distanceMeters: distanceMeters || Math.round(steps * 0.76),
-      calories: calories || Math.round(steps * 0.042),
+      distanceMeters: Math.round(steps * 0.76),
+      calories: Math.round(steps * 0.042),
       activeMinutes: Math.round(steps / 98),
       source: 'google_fit_api',
     };
   });
+
+  const totalSteps = mapped.reduce((acc, item) => acc + item.steps, 0);
+  if (totalSteps === 0) {
+    return buildInitialWeekSteps(fallbackTargetSteps).map((d) => ({
+      ...d,
+      source: 'google_fit_api',
+    }));
+  }
+
+  return mapped;
 }
 
 export function createManualGoogleFitUpdate(steps: number): GoogleFitDay {

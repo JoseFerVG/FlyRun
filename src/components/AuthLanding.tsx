@@ -311,9 +311,9 @@ export function AuthLanding({
                   <span className="bento-index">PASO 01</span>
                   <Heartbeat size={18} weight="duotone" color="var(--accent)" aria-hidden="true" />
                 </div>
-                <h3 style={{ margin: 0, fontSize: '1.02rem' }}>Mide tu punto de partida</h3>
+                <h3 style={{ margin: 0, fontSize: '1.02rem' }}>Supera el examen inicial de nivel</h3>
                 <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
-                  Introduce tu edad, peso, días semanales de entreno/caminata y una referencia objetiva (minutos continuos, Test de Cooper, 5K o Rockport).
+                  Antes de entrar, realiza tu prueba inicial en <strong>km/h</strong>, <strong>km/min</strong>, ritmo por km o Test de Cooper/5K/Rockport para calibrar tu VDOT.
                 </p>
               </SpotlightCard>
 
