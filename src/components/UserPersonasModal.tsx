@@ -5,6 +5,7 @@ import { SIMULATED_USER_PERSONAS, type SimulatedUserPersona } from '../data/user
 interface UserPersonasModalProps {
   open: boolean;
   activeUid?: string;
+  activeEmail?: string;
   onClose: () => void;
   onSelectPersona: (persona: SimulatedUserPersona) => void;
 }
@@ -12,6 +13,7 @@ interface UserPersonasModalProps {
 export function UserPersonasModal({
   open,
   activeUid,
+  activeEmail,
   onClose,
   onSelectPersona,
 }: UserPersonasModalProps) {
@@ -60,7 +62,9 @@ export function UserPersonasModal({
 
         <div className="stack-md">
           {SIMULATED_USER_PERSONAS.map((persona) => {
-            const isCurrent = activeUid === persona.profile.uid;
+            const isCurrent =
+              activeUid === persona.profile.uid ||
+              (Boolean(activeEmail) && activeEmail === persona.profile.email);
             return (
               <article
                 key={persona.id}

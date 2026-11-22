@@ -3,6 +3,7 @@ import {
   Activity,
   BookOpen,
   Calendar,
+  Cloud,
   Compass,
   LogOut,
   Moon,
@@ -21,11 +22,14 @@ import type {
   WorkoutSession,
 } from './types/fitness';
 import {
+  ensureCloudAuthSession,
   getDemoGoogleSession,
   getFirebaseClients,
   loadUserStateFromCloud,
   persistUserState,
+  requestGoogleFitOAuthToken,
   saveDemoGoogleSession,
+  signInWithEmailFirebase,
   signInWithGoogleFirebase,
   signOutFirebase,
   subscribeFirebaseAuth,
@@ -96,6 +100,7 @@ export function App() {
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [cloudSyncState, setCloudSyncState] = useState<'synced' | 'syncing' | 'local'>('local');
 
   const mergePreservingCompleted = (existingWorkouts: WorkoutSession[], newPlan: WorkoutSession[]) => {
     const extraCompleted = existingWorkouts.filter((w) => w.completed && w.id.startsWith('extra_'));
@@ -118,6 +123,8 @@ export function App() {
 
   const hydrateUserData = async (authInfo: AuthSessionInfo) => {
     const cloud = await loadUserStateFromCloud(authInfo.uid);
+    const hasCloudUser = Boolean(getFirebaseClients()?.auth.currentUser);
+    setCloudSyncState(hasCloudUser && cloud.profile ? 'synced' : 'local');
     if (cloud.profile) {
       setProfile(cloud.profile);
       setWorkouts(
@@ -158,10 +165,10 @@ export function App() {
           if (fbUser) {
             const s: AuthSessionInfo = {
               uid: fbUser.uid,
-              displayName: fbUser.displayName ?? 'Usuario FlyRun',
-              email: fbUser.email ?? '',
+              displayName: fbUser.displayName ?? demo?.displayName ?? 'Usuario FlyRun',
+              email: fbUser.email ?? demo?.email ?? '',
               photoURL: fbUser.photoURL ?? '',
-              isDemoMode: false,
+              isDemoMode: fbUser.isAnonymous,
             };
             setSession(s);
             void hydrateUserData(s).finally(() => {
@@ -189,30 +196,42 @@ export function App() {
     setWorkouts(nextWorkouts);
     setExams(nextExams);
     setFitDays(nextFitDays);
+    setCloudSyncState('syncing');
     void persistUserState(nextProfile.uid, {
       profile: nextProfile,
       workouts: nextWorkouts,
       exams: nextExams,
       fitDays: nextFitDays,
+    }).then((ok) => {
+      setCloudSyncState(ok ? 'synced' : 'local');
     });
   };
 
-  const handleSelectPersona = (persona: SimulatedUserPersona) => {
+  const handleSelectPersona = async (persona: SimulatedUserPersona) => {
+    const cloudUid = await ensureCloudAuthSession();
+    const targetUid = cloudUid ?? persona.profile.uid;
     const demoSession = {
-      uid: persona.profile.uid,
+      uid: targetUid,
       displayName: persona.profile.displayName,
       email: persona.profile.email,
       photoURL: '',
+    };
+    const personaProfile: UserProfile = {
+      ...persona.profile,
+      uid: targetUid,
+      updatedAt: new Date().toISOString(),
     };
     saveDemoGoogleSession(demoSession);
     setSession({ ...demoSession, isDemoMode: true });
     setReadiness('normal');
     setTodayBaselineWorkout(null);
     const generatedWorkouts = persona.buildWorkouts();
-    saveAll(persona.profile, generatedWorkouts, persona.exams, persona.fitDays);
+    saveAll(personaProfile, generatedWorkouts, persona.exams, persona.fitDays);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
-    showToast(`Cargado el perfil de ${persona.name} (Nivel ${persona.profile.level}, VDOT ${persona.profile.vdot}).`);
+    showToast(
+      `Perfil de ${persona.name} cargado${cloudUid ? ' y sincronizado en Firebase Cloud' : ''} (Nivel ${personaProfile.level}, VDOT ${personaProfile.vdot}).`
+    );
   };
 
   const handleGoogleLogin = async () => {
@@ -225,31 +244,53 @@ export function App() {
       await hydrateUserData(s);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error de autenticación';
-      if (msg === 'FIREBASE_NOT_CONFIGURED') {
-        setAuthError(
-          'Configura primero tus claves en "Conectar Firebase" arriba a la derecha, o usa el perfil de ejemplo.'
-        );
-      } else {
-        setAuthError(
-          `No se pudo completar el inicio con Google (${msg}). Comprueba los dominios autorizados en Firebase o prueba con el perfil de ejemplo.`
-        );
-      }
+      setAuthError(
+        `No se pudo completar el inicio con Google (${msg}). También puedes entrar con Email o con Acceso Rápido Cloud.`
+      );
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleEmailLogin = async (
+    email: string,
+    password: string,
+    displayName: string,
+    isRegister: boolean
+  ) => {
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      const res = await signInWithEmailFirebase(email, password, displayName, isRegister);
+      const s: AuthSessionInfo = { ...res, isDemoMode: false };
+      setSession(s);
+      await hydrateUserData(s);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error de acceso con correo';
+      setAuthError(`Error de acceso con correo: ${msg}`);
     } finally {
       setAuthLoading(false);
     }
   };
 
   const handleDemoLogin = async () => {
-    const demoSession = {
-      uid: 'demo_google_flyrun_user',
-      displayName: 'Carlos Martín',
-      email: 'carlos.martin@gmail.com',
-      photoURL: '',
-    };
-    saveDemoGoogleSession(demoSession);
-    const s: AuthSessionInfo = { ...demoSession, isDemoMode: true };
-    setSession(s);
-    await hydrateUserData(s);
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      const cloudUid = await ensureCloudAuthSession();
+      const demoSession = {
+        uid: cloudUid ?? 'demo_google_flyrun_user',
+        displayName: 'Carlos Martín',
+        email: '',
+        photoURL: '',
+      };
+      saveDemoGoogleSession(demoSession);
+      const s: AuthSessionInfo = { ...demoSession, isDemoMode: true };
+      setSession(s);
+      await hydrateUserData(s);
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleOnboardingComplete = (newProfile: UserProfile) => {
@@ -280,7 +321,7 @@ export function App() {
       const extraSession: WorkoutSession = {
         id: workoutId,
         date: new Date().toISOString().slice(0, 10),
-        dayIndex: -1,
+        dayIndex: 0,
         title: `Actividad libre: ${modality === 'cycling' ? 'Bicicleta' : modality === 'soccer' ? 'Partido de fútbol' : modality === 'walking' ? 'Caminata' : modality === 'swimming' ? 'Natación' : 'Running'}`,
         subtitle: 'Sesión registrada fuera del calendario base',
         modality,
@@ -341,7 +382,7 @@ export function App() {
     setLoggingWorkout({
       id: `extra_${Date.now()}`,
       date: new Date().toISOString().slice(0, 10),
-      dayIndex: -1,
+      dayIndex: 0,
       title: 'Actividad libre / Extra',
       subtitle: 'Registro manual fuera de calendario',
       modality: 'cycling',
@@ -466,13 +507,20 @@ export function App() {
     setFitNotice(null);
     try {
       let syncedDays: GoogleFitDay[];
-      if (session?.googleFitAccessToken) {
-        syncedDays = await fetchGoogleFitLast7Days(session.googleFitAccessToken);
-        setFitNotice('Datos obtenidos de Google Fit.');
+      let fitToken = session?.googleFitAccessToken ?? null;
+      if (!fitToken && session && !session.isDemoMode) {
+        fitToken = await requestGoogleFitOAuthToken();
+        if (fitToken) {
+          setSession((prev) => (prev ? { ...prev, googleFitAccessToken: fitToken ?? undefined } : prev));
+        }
+      }
+      if (fitToken) {
+        syncedDays = await fetchGoogleFitLast7Days(fitToken);
+        setFitNotice('Datos reales obtenidos de Google Fit API.');
       } else {
         const boost = Math.round(profile.dailyStepsTarget * 1.04);
         syncedDays = buildInitialWeekSteps(boost);
-        setFitNotice('Sincronizado con datos de ejemplo (conecta Google OAuth para lectura real).');
+        setFitNotice('Sincronizado con estimación de pasos diarios (también puedes editar tus pasos reales abajo).');
       }
       const nextBadges = profile.unlockedBadges.includes('google_fit_sync')
         ? profile.unlockedBadges
@@ -518,6 +566,7 @@ export function App() {
       <>
         <AuthLanding
           onGoogleLogin={handleGoogleLogin}
+          onEmailLogin={handleEmailLogin}
           onDemoLogin={() => void handleDemoLogin()}
           onOpenPersonas={() => setPersonasOpen(true)}
           theme={theme}
@@ -528,7 +577,7 @@ export function App() {
         <UserPersonasModal
           open={personasOpen}
           onClose={() => setPersonasOpen(false)}
-          onSelectPersona={handleSelectPersona}
+          onSelectPersona={(p) => void handleSelectPersona(p)}
         />
       </>
     );
@@ -598,6 +647,23 @@ export function App() {
           </nav>
 
           <div className="header-actions">
+            <span
+              className={`pill mono ${cloudSyncState === 'synced' ? 'pill-emerald' : ''}`}
+              title={
+                cloudSyncState === 'synced'
+                  ? 'Datos sincronizados con Cloud Firestore'
+                  : cloudSyncState === 'syncing'
+                  ? 'Guardando en Cloud Firestore...'
+                  : 'Respaldo local activo'
+              }
+            >
+              <Cloud size={12} aria-hidden="true" />
+              {cloudSyncState === 'synced'
+                ? 'Cloud OK'
+                : cloudSyncState === 'syncing'
+                ? 'Sincronizando...'
+                : 'Local'}
+            </span>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
@@ -753,8 +819,9 @@ export function App() {
       <UserPersonasModal
         open={personasOpen}
         activeUid={profile.uid}
+        activeEmail={profile.email}
         onClose={() => setPersonasOpen(false)}
-        onSelectPersona={handleSelectPersona}
+        onSelectPersona={(p) => void handleSelectPersona(p)}
       />
     </div>
   );

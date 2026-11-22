@@ -7,95 +7,45 @@ service cloud.firestore {
     // Assumed Data Model
     // ===============================================================
     //
-    // This security rules file assumes the following data structures
-    // under the default Cloud Firestore (Standard Edition) database,
+    // Under the default Cloud Firestore (Standard Edition) database,
     // aligned with src/types/fitness.ts and src/services/firebase.ts:
     //
-    // 1. Collection: users
-    //    Document ID: {userId} (must match request.auth.uid)
-    //    Fields:
-    //      - uid: string (required, immutable, must equal userId and request.auth.uid, 1..128 chars)
-    //      - displayName: string (required 1..100 chars when onboardingCompleted == true; optional 0..100 otherwise)
-    //      - email: string (required when onboardingCompleted == true, valid email or '' if no email, <= 254 chars)
-    //      - photoURL: string (optional/nullable, '' or http(s) URL <= 1024 chars)
-    //      - age: number (required when onboardingCompleted == true, 12..100)
-    //      - weightKg: number (required when onboardingCompleted == true, 30..250)
-    //      - heightCm: number (required when onboardingCompleted == true, 100..250)
-    //      - sex: string (required when onboardingCompleted == true, 'male' | 'female' | 'other')
-    //      - goal: string (required when onboardingCompleted == true, FitnessGoal enum)
-    //      - trainingDaysPerWeek: number (required when onboardingCompleted == true, 1..7)
-    //      - weeklyWalkGoalSessions: number (optional/nullable, 0..7)
-    //      - dailyStepsTarget: number (required when onboardingCompleted == true, 0..100000)
-    //      - restHR: number (optional/nullable, 25..150, must be < maxHR when both set)
-    //      - maxHR: number (optional/nullable, 100..230, must be > restHR when both set)
-    //      - vdot: number (required when onboardingCompleted == true, 15..90)
-    //      - level: number (required when onboardingCompleted == true, 1..1000)
-    //      - xp: number (required when onboardingCompleted == true, 0..100000000)
-    //      - streakDays: number (required when onboardingCompleted == true, 0..36500)
-    //      - totalCardioPoints: number (optional/nullable, 0..100000000)
-    //      - preferredStrategyId: string (1..60 chars; required with or via preferredStrategy when onboarded)
-    //      - preferredStrategy: string (optional/nullable alias, 1..60 chars)
-    //      - preferredModalities: list<string> (required when onboardingCompleted == true, 0..10 items in CardioModality enum)
-    //      - unlockedBadges: list<string> (optional/nullable, 0..20 badge IDs, each 1..50 chars)
-    //      - onboardingCompleted: bool (required)
-    //      - isDemoMode: bool (optional/nullable)
-    //      - updatedAt: string (ISO 8601 date/datetime, 10..40 chars) or timestamp (required)
+    // 1. Collection: users/{userId}
+    //    - uid: string (required, immutable, == userId == request.auth.uid, 1..128 chars)
+    //    - displayName: string (required 1..100 chars when onboarded; optional 0..100 otherwise)
+    //    - email: string (required when onboarded; '' or valid email <= 254 chars)
+    //    - photoURL: string (optional/nullable; '' or http(s) URL <= 1024 chars)
+    //    - age: number (12..100), weightKg: number (30..250), heightCm: number (100..250)
+    //    - sex: 'male' | 'female' | 'other'
+    //    - goal: FitnessGoal enum
+    //    - trainingDaysPerWeek: number (1..7), weeklyWalkGoalSessions: number (0..7)
+    //    - dailyStepsTarget: number (0..100000)
+    //    - restHR: number (25..150), maxHR: number (100..230), restHR < maxHR when both set
+    //    - vdot: number (15..90), level: number (1..1000), xp: number (>= 0)
+    //    - streakDays: number (>= 0), totalCardioPoints: number (>= 0)
+    //    - preferredStrategyId / preferredStrategy: string (1..60 chars)
+    //    - preferredModalities: list (<= 10 items in CardioModality enum)
+    //    - unlockedBadges: list (<= 20 items)
+    //    - onboardingCompleted: bool (required)
+    //    - isDemoMode: bool (optional/nullable)
+    //    - updatedAt: timestamp or ISO 8601 date/datetime string (10..40 chars, required)
     //
-    // 2. Collection: users/{userId}/workouts
-    //    Document ID: {workoutId}
-    //    Fields:
-    //      - id: string (optional/nullable, 1..128 chars, must equal workoutId when present)
-    //      - date: string (ISO 8601 date/datetime, 10..40 chars) or timestamp (required)
-    //      - dayIndex: number (optional/nullable, 0..3650)
-    //      - title: string (required, 1..150 chars)
-    //      - subtitle: string (optional/nullable, 0..250 chars)
-    //      - modality: string (required, CardioModality enum)
-    //      - sessionType: string (optional/nullable, SessionType enum)
-    //      - strategyTag: string (optional/nullable, 1..80 chars)
-    //      - strategy: string (optional/nullable alias, 1..80 chars)
-    //      - durationMinutes: number (required, 0..1440)
-    //      - targetDistanceKm: number (optional/nullable, 0..500)
-    //      - distanceKm: number (optional/nullable alias, 0..500)
-    //      - targetZone: string (optional/nullable, 'Z1'..'Z5')
-    //      - targetPace: string (optional/nullable, 1..80 chars)
-    //      - cardioPoints: number (optional/nullable, 0..10000)
-    //      - metMinutes: number (optional/nullable, 0..50000)
-    //      - trimp: number (optional/nullable, 0..10000)
-    //      - estimatedCalories: number (optional/nullable, 0..20000)
-    //      - blocks: list<map> (optional/nullable, 0..10 WorkoutBlock objects)
-    //      - coachTip: string (optional/nullable, 0..500 chars)
-    //      - completed: bool (required)
-    //      - rpe: number (optional/nullable, 1..10)
-    //      - actualDurationMinutes: number (optional/nullable, 0..1440)
-    //      - actualDistanceKm: number (optional/nullable, 0..500)
-    //      - completedModality: string (optional/nullable, CardioModality enum)
-    //      - notes: string (optional/nullable, 0..2000 chars)
-    //      - isExamDay: bool (optional/nullable)
+    // 2. Collection: users/{userId}/workouts/{workoutId}
+    //    - Required: date, title (1..150), modality (CardioModality), durationMinutes (0..1440), completed (bool)
+    //    - Optional/nullable: id (== workoutId), dayIndex (>= 0), subtitle, sessionType,
+    //      strategyTag, strategy, targetDistanceKm, distanceKm (0..500), targetZone ('Z1'..'Z5'),
+    //      targetPace, cardioPoints, metMinutes, trimp, estimatedCalories (>= 0),
+    //      blocks (list <= 10), coachTip, rpe (1..10), actualDurationMinutes (0..1440),
+    //      actualDistanceKm (0..500), completedModality (CardioModality), notes (<= 2000), isExamDay (bool)
     //
-    // 3. Collection: users/{userId}/exams
-    //    Document ID: {examId}
-    //    Fields:
-    //      - id: string (optional/nullable, 1..128 chars, must equal examId when present)
-    //      - date: string (ISO 8601 date/datetime, 10..40 chars) or timestamp (required)
-    //      - examType: string (required, PhysicalExamType enum)
-    //      - rawValue: number (required, > 0 and <= 100000)
-    //      - secondaryValue: number (optional/nullable, 0..1000)
-    //      - heartRateBpm: number (optional/nullable, 40..230)
-    //      - calculatedVdot: number (required, 15..90)
-    //      - previousVdot: number (optional/nullable, 15..90)
-    //      - newLevel: number (optional/nullable, 1..1000)
-    //      - previousLevel: number (optional/nullable, 1..1000)
-    //      - summary: string (optional/nullable, 0..500 chars)
+    // 3. Collection: users/{userId}/exams/{examId}
+    //    - Required: date, examType (PhysicalExamType), rawValue (> 0 and <= 100000), calculatedVdot (15..90)
+    //    - Optional/nullable: id (== examId), secondaryValue (0..1000), heartRateBpm (40..230),
+    //      previousVdot (15..90), newLevel (1..1000), previousLevel (1..1000), summary (<= 500)
     //
-    // 4. Collection: users/{userId}/dailySteps
-    //    Document ID: {dateId}
-    //    Fields:
-    //      - date: string (ISO 8601 date/datetime, 10..40 chars) or timestamp (required)
-    //      - steps: number (required, 0..500000)
-    //      - distanceMeters: number (optional/nullable, 0..500000)
-    //      - calories: number (optional/nullable, 0..50000)
-    //      - activeMinutes: number (optional/nullable, 0..1440)
-    //      - source: string (required, 'google_fit_api' | 'simulated_sync' | 'manual' | 'google_fit')
+    // 4. Collection: users/{userId}/dailySteps/{dateId}
+    //    - Required: date, steps (0..500000), source ('google_fit_api' | 'simulated_sync' | 'manual' | 'google_fit')
+    //    - Optional/nullable: distanceMeters (0..500000), calories (0..50000), activeMinutes (0..1440)
     //
     // ===============================================================
 
@@ -103,95 +53,52 @@ service cloud.firestore {
     // Helper Functions
     // ===============================================================
 
-    // Check if the request is from an authenticated user
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Check if the authenticated user owns the target userId path
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Check if the authenticated user matches the existing document's uid field
     function isDocOwner() {
       return isAuthenticated() && request.auth.uid == resource.data.uid;
     }
 
-    // Verify UID hasn't been tampered with on create
     function uidUnchanged() {
       return !('uid' in request.resource.data) ||
              request.resource.data.uid == request.auth.uid;
     }
 
-    // Ensure uid field is not modified on update
     function uidNotModified() {
       return !('uid' in request.resource.data) ||
              request.resource.data.uid == resource.data.uid;
     }
 
-    // Validate required fields exist
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
 
-    // Validate that the document contains only the allowed fields
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
 
-    // Validate that immutable fields did not change on update
     function areImmutableFieldsUnchanged(fields) {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
     }
 
-    // Validate string type and inclusive length bounds
-    function isValidStringLength(val, minLen, maxLen) {
-      return val is string && val.size() >= minLen && val.size() <= maxLen;
-    }
-
-    // Validate optional/nullable string field length
-    function isValidOptionalString(data, field, minLen, maxLen) {
-      return !(field in data) ||
-             data[field] == null ||
-             isValidStringLength(data[field], minLen, maxLen);
-    }
-
-    // Validate optional/nullable boolean field
-    function isValidOptionalBool(data, field) {
-      return !(field in data) ||
-             data[field] == null ||
-             data[field] is bool;
-    }
-
-    // Validate numeric type and inclusive range (rejects NaN and Infinity)
-    function isValidNumberRange(val, minVal, maxVal) {
-      return val is number && val >= minVal && val <= maxVal;
-    }
-
-    // Validate optional/nullable numeric field range
-    function isValidOptionalNumber(data, field, minVal, maxVal) {
-      return !(field in data) ||
-             data[field] == null ||
-             isValidNumberRange(data[field], minVal, maxVal);
-    }
-
-    // Validate HTTP/HTTPS URL with strict length cap
-    function isValidUrl(url) {
-      return url is string &&
-             url.size() <= 1024 &&
-             (url.matches("^https://.*") || url.matches("^http://.*"));
-    }
-
-    // Validate email format with bounded length
     function isValidEmail(email) {
       return email is string &&
              email.size() <= 254 &&
              email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
-    // Validate ISO 8601 date (YYYY-MM-DD) or datetime string with strict length cap
-    // Note: validates format only, not calendar validity (e.g., Feb 30).
+    function isValidUrl(url) {
+      return url is string &&
+             url.size() <= 1024 &&
+             (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
     function isValidDateString(dateStr) {
       return dateStr is string &&
              dateStr.size() >= 10 &&
@@ -199,144 +106,24 @@ service cloud.firestore {
              dateStr.matches("^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})?)?$");
     }
 
-    // Accept either a Firestore Timestamp or a bounded ISO 8601 date/datetime string
     function isValidDateOrTimestamp(val) {
       return val is timestamp || isValidDateString(val);
     }
 
-    // Validate enum values for CardioModality
-    function isValidCardioModality(val) {
-      return val is string && val in ['running', 'cycling', 'soccer', 'walking', 'swimming'];
-    }
-
-    // Validate enum values for TrainingZone IDs
-    function isValidZoneId(val) {
-      return val is string && val in ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
-    }
-
-    // Validate preferredModalities list (bounded size + allowed CardioModality enum items)
-    function isValidModalitiesList(arr) {
-      return arr is list &&
-             arr.size() >= 0 &&
-             arr.size() <= 10 &&
-             arr.hasOnly(['running', 'cycling', 'soccer', 'walking', 'swimming']);
-    }
-
-    // Deep array validation for unlockedBadges (up to 20 bounded string badge IDs)
     function isValidBadgesList(arr) {
-      return arr is list &&
-             arr.size() >= 0 &&
-             arr.size() <= 20 &&
-             (arr.size() < 1 || isValidStringLength(arr[0], 1, 50)) &&
-             (arr.size() < 2 || isValidStringLength(arr[1], 1, 50)) &&
-             (arr.size() < 3 || isValidStringLength(arr[2], 1, 50)) &&
-             (arr.size() < 4 || isValidStringLength(arr[3], 1, 50)) &&
-             (arr.size() < 5 || isValidStringLength(arr[4], 1, 50)) &&
-             (arr.size() < 6 || isValidStringLength(arr[5], 1, 50)) &&
-             (arr.size() < 7 || isValidStringLength(arr[6], 1, 50)) &&
-             (arr.size() < 8 || isValidStringLength(arr[7], 1, 50)) &&
-             (arr.size() < 9 || isValidStringLength(arr[8], 1, 50)) &&
-             (arr.size() < 10 || isValidStringLength(arr[9], 1, 50)) &&
-             (arr.size() < 11 || isValidStringLength(arr[10], 1, 50)) &&
-             (arr.size() < 12 || isValidStringLength(arr[11], 1, 50)) &&
-             (arr.size() < 13 || isValidStringLength(arr[12], 1, 50)) &&
-             (arr.size() < 14 || isValidStringLength(arr[13], 1, 50)) &&
-             (arr.size() < 15 || isValidStringLength(arr[14], 1, 50)) &&
-             (arr.size() < 16 || isValidStringLength(arr[15], 1, 50)) &&
-             (arr.size() < 17 || isValidStringLength(arr[16], 1, 50)) &&
-             (arr.size() < 18 || isValidStringLength(arr[17], 1, 50)) &&
-             (arr.size() < 19 || isValidStringLength(arr[18], 1, 50)) &&
-             (arr.size() < 20 || isValidStringLength(arr[19], 1, 50));
+      return arr is list && arr.size() <= 20;
     }
 
-    // Validate a single WorkoutBlock map inside WorkoutSession.blocks
-    function isValidWorkoutBlock(block) {
-      return block is map &&
-             block.keys().hasOnly(['label', 'durationMinutes', 'intensity', 'description', 'zone']) &&
-             block.keys().hasAll(['label', 'durationMinutes', 'intensity', 'description', 'zone']) &&
-             isValidStringLength(block.label, 1, 150) &&
-             isValidNumberRange(block.durationMinutes, 0, 1440) &&
-             isValidStringLength(block.intensity, 1, 150) &&
-             isValidStringLength(block.description, 0, 500) &&
-             isValidZoneId(block.zone);
-    }
-
-    // Deep array validation for WorkoutSession.blocks (up to 10 structured blocks)
     function isValidWorkoutBlocks(blocks) {
-      return blocks is list &&
-             blocks.size() >= 0 &&
-             blocks.size() <= 10 &&
-             (blocks.size() < 1 || isValidWorkoutBlock(blocks[0])) &&
-             (blocks.size() < 2 || isValidWorkoutBlock(blocks[1])) &&
-             (blocks.size() < 3 || isValidWorkoutBlock(blocks[2])) &&
-             (blocks.size() < 4 || isValidWorkoutBlock(blocks[3])) &&
-             (blocks.size() < 5 || isValidWorkoutBlock(blocks[4])) &&
-             (blocks.size() < 6 || isValidWorkoutBlock(blocks[5])) &&
-             (blocks.size() < 7 || isValidWorkoutBlock(blocks[6])) &&
-             (blocks.size() < 8 || isValidWorkoutBlock(blocks[7])) &&
-             (blocks.size() < 9 || isValidWorkoutBlock(blocks[8])) &&
-             (blocks.size() < 10 || isValidWorkoutBlock(blocks[9]));
+      return blocks is list && blocks.size() <= 10 &&
+             (blocks.size() == 0 || (blocks[0] is map && blocks[0].keys().hasAll(['label', 'durationMinutes', 'intensity', 'description', 'zone'])));
     }
 
     // ===============================================================
-    // Domain Validators (Used in BOTH create and update)
+    // Domain Validators (Streamlined for < 250 evaluated expressions)
     // ===============================================================
 
-    function isValidUserEmail(data) {
-      return !('email' in data) ||
-             data.email == null ||
-             (data.email is string &&
-              data.email.size() <= 254 &&
-              (data.email == '' || isValidEmail(data.email)));
-    }
-
-    function isValidUserPhotoUrl(data) {
-      return !('photoURL' in data) ||
-             data.photoURL == null ||
-             (data.photoURL is string &&
-              (data.photoURL == '' || isValidUrl(data.photoURL)));
-    }
-
-    function isValidUserSex(data) {
-      return !('sex' in data) ||
-             data.sex == null ||
-             (data.sex is string && data.sex in ['male', 'female', 'other']);
-    }
-
-    function isValidUserGoal(data) {
-      return !('goal' in data) ||
-             data.goal == null ||
-             (data.goal is string &&
-              data.goal in [
-                'health_maintenance',
-                'start_running',
-                'improve_5k',
-                'improve_10k',
-                'fat_loss_cardio'
-              ]);
-    }
-
-    function isValidUserModalities(data) {
-      return !('preferredModalities' in data) ||
-             data.preferredModalities == null ||
-             isValidModalitiesList(data.preferredModalities);
-    }
-
-    function isValidUserBadges(data) {
-      return !('unlockedBadges' in data) ||
-             data.unlockedBadges == null ||
-             isValidBadgesList(data.unlockedBadges);
-    }
-
-    function isValidHeartRateRelation(data) {
-      return !('restHR' in data) ||
-             !('maxHR' in data) ||
-             data.restHR == null ||
-             data.maxHR == null ||
-             data.restHR < data.maxHR;
-    }
-
-    function isValidCoreUserFields(data, userId) {
+    function isValidCoreUserFields(d, userId) {
       return hasOnlyAllowedFields([
                'uid', 'displayName', 'email', 'photoURL', 'age', 'weightKg',
                'heightCm', 'sex', 'goal', 'trainingDaysPerWeek',
@@ -346,69 +133,73 @@ service cloud.firestore {
                'unlockedBadges', 'onboardingCompleted', 'isDemoMode', 'updatedAt'
              ]) &&
              hasRequiredFields(['uid', 'onboardingCompleted', 'updatedAt']) &&
-             isValidStringLength(data.uid, 1, 128) &&
-             data.uid == userId &&
-             data.uid == request.auth.uid &&
-             data.onboardingCompleted is bool &&
-             isValidDateOrTimestamp(data.updatedAt) &&
-             isValidOptionalString(data, 'displayName', 0, 100) &&
-             isValidUserEmail(data) &&
-             isValidUserPhotoUrl(data) &&
-             isValidOptionalNumber(data, 'age', 12, 100) &&
-             isValidOptionalNumber(data, 'weightKg', 30, 250) &&
-             isValidOptionalNumber(data, 'heightCm', 100, 250) &&
-             isValidUserSex(data) &&
-             isValidUserGoal(data) &&
-             isValidOptionalNumber(data, 'trainingDaysPerWeek', 1, 7) &&
-             isValidOptionalNumber(data, 'weeklyWalkGoalSessions', 0, 7) &&
-             isValidOptionalNumber(data, 'dailyStepsTarget', 0, 100000) &&
-             isValidOptionalNumber(data, 'restHR', 25, 150) &&
-             isValidOptionalNumber(data, 'maxHR', 100, 230) &&
-             isValidHeartRateRelation(data) &&
-             isValidOptionalNumber(data, 'vdot', 15, 90) &&
-             isValidOptionalNumber(data, 'level', 1, 1000) &&
-             isValidOptionalNumber(data, 'xp', 0, 100000000) &&
-             isValidOptionalNumber(data, 'streakDays', 0, 36500) &&
-             isValidOptionalNumber(data, 'totalCardioPoints', 0, 100000000) &&
-             isValidOptionalString(data, 'preferredStrategyId', 1, 60) &&
-             isValidOptionalString(data, 'preferredStrategy', 1, 60) &&
-             isValidUserModalities(data) &&
-             isValidUserBadges(data) &&
-             isValidOptionalBool(data, 'isDemoMode');
+             d.uid is string && d.uid.size() >= 1 && d.uid.size() <= 128 &&
+             d.uid == userId &&
+             d.onboardingCompleted is bool &&
+             isValidDateOrTimestamp(d.updatedAt) &&
+             (!('photoURL' in d) || d.photoURL == null || d.photoURL == '' || isValidUrl(d.photoURL)) &&
+             (!('weeklyWalkGoalSessions' in d) || d.weeklyWalkGoalSessions == null || (d.weeklyWalkGoalSessions is number && d.weeklyWalkGoalSessions >= 0 && d.weeklyWalkGoalSessions <= 7)) &&
+             (!('restHR' in d) || d.restHR == null || (d.restHR is number && d.restHR >= 25 && d.restHR <= 150)) &&
+             (!('maxHR' in d) || d.maxHR == null || (d.maxHR is number && d.maxHR >= 100 && d.maxHR <= 230)) &&
+             (!('restHR' in d) || !('maxHR' in d) || d.restHR == null || d.maxHR == null || d.restHR < d.maxHR) &&
+             (!('totalCardioPoints' in d) || d.totalCardioPoints == null || (d.totalCardioPoints is number && d.totalCardioPoints >= 0)) &&
+             (!('unlockedBadges' in d) || d.unlockedBadges == null || isValidBadgesList(d.unlockedBadges)) &&
+             (!('isDemoMode' in d) || d.isDemoMode == null || d.isDemoMode is bool);
     }
 
-    function hasCompletedOnboardingFields(data) {
-      return !data.onboardingCompleted || (
-        hasRequiredFields([
-          'uid', 'displayName', 'email', 'age', 'weightKg', 'heightCm', 'sex',
-          'goal', 'trainingDaysPerWeek', 'dailyStepsTarget', 'vdot', 'level',
-          'xp', 'streakDays', 'preferredModalities', 'onboardingCompleted', 'updatedAt'
-        ]) &&
-        isValidStringLength(data.displayName, 1, 100) &&
-        data.email is string &&
-        data.age != null &&
-        data.weightKg != null &&
-        data.heightCm != null &&
-        data.sex != null &&
-        data.goal != null &&
-        data.trainingDaysPerWeek != null &&
-        data.dailyStepsTarget != null &&
-        data.vdot != null &&
-        data.level != null &&
-        data.xp != null &&
-        data.streakDays != null &&
-        data.preferredModalities != null &&
-        (('preferredStrategyId' in data && data.preferredStrategyId != null) ||
-         ('preferredStrategy' in data && data.preferredStrategy != null))
-      );
+    function hasCompletedOnboardingFields(d) {
+      return hasRequiredFields([
+               'displayName', 'email', 'age', 'weightKg', 'heightCm', 'sex',
+               'goal', 'trainingDaysPerWeek', 'dailyStepsTarget', 'vdot',
+               'level', 'xp', 'streakDays', 'preferredModalities'
+             ]) &&
+             d.displayName is string && d.displayName.size() >= 1 && d.displayName.size() <= 100 &&
+             d.email is string && (d.email == '' || isValidEmail(d.email)) &&
+             d.age is number && d.age >= 12 && d.age <= 100 &&
+             d.weightKg is number && d.weightKg >= 30 && d.weightKg <= 250 &&
+             d.heightCm is number && d.heightCm >= 100 && d.heightCm <= 250 &&
+             d.sex in ['male', 'female', 'other'] &&
+             d.goal in ['health_maintenance', 'start_running', 'improve_5k', 'improve_10k', 'fat_loss_cardio'] &&
+             d.trainingDaysPerWeek is number && d.trainingDaysPerWeek >= 1 && d.trainingDaysPerWeek <= 7 &&
+             d.dailyStepsTarget is number && d.dailyStepsTarget >= 0 && d.dailyStepsTarget <= 100000 &&
+             d.vdot is number && d.vdot >= 15 && d.vdot <= 90 &&
+             d.level is number && d.level >= 1 && d.level <= 1000 &&
+             d.xp is number && d.xp >= 0 &&
+             d.streakDays is number && d.streakDays >= 0 &&
+             d.preferredModalities is list && d.preferredModalities.size() <= 10 &&
+             d.preferredModalities.hasOnly(['running', 'cycling', 'soccer', 'walking', 'swimming']) &&
+             (('preferredStrategyId' in d && d.preferredStrategyId is string && d.preferredStrategyId.size() >= 1 && d.preferredStrategyId.size() <= 60) ||
+              ('preferredStrategy' in d && d.preferredStrategy is string && d.preferredStrategy.size() >= 1 && d.preferredStrategy.size() <= 60)) &&
+             (!('preferredStrategy' in d) || d.preferredStrategy == null || (d.preferredStrategy is string && d.preferredStrategy.size() <= 60));
     }
 
-    function isValidUser(data, userId) {
-      return isValidCoreUserFields(data, userId) &&
-             hasCompletedOnboardingFields(data);
+    function isValidPreOnboardingFields(d) {
+      return (!('displayName' in d) || d.displayName == null || (d.displayName is string && d.displayName.size() <= 100)) &&
+             (!('email' in d) || d.email == null || d.email == '' || isValidEmail(d.email)) &&
+             (!('age' in d) || d.age == null || (d.age is number && d.age >= 12 && d.age <= 100)) &&
+             (!('weightKg' in d) || d.weightKg == null || (d.weightKg is number && d.weightKg >= 30 && d.weightKg <= 250)) &&
+             (!('heightCm' in d) || d.heightCm == null || (d.heightCm is number && d.heightCm >= 100 && d.heightCm <= 250)) &&
+             (!('sex' in d) || d.sex == null || d.sex in ['male', 'female', 'other']) &&
+             (!('goal' in d) || d.goal == null || d.goal in ['health_maintenance', 'start_running', 'improve_5k', 'improve_10k', 'fat_loss_cardio']) &&
+             (!('trainingDaysPerWeek' in d) || d.trainingDaysPerWeek == null || (d.trainingDaysPerWeek is number && d.trainingDaysPerWeek >= 1 && d.trainingDaysPerWeek <= 7)) &&
+             (!('dailyStepsTarget' in d) || d.dailyStepsTarget == null || (d.dailyStepsTarget is number && d.dailyStepsTarget >= 0 && d.dailyStepsTarget <= 100000)) &&
+             (!('vdot' in d) || d.vdot == null || (d.vdot is number && d.vdot >= 15 && d.vdot <= 90)) &&
+             (!('level' in d) || d.level == null || (d.level is number && d.level >= 1 && d.level <= 1000)) &&
+             (!('xp' in d) || d.xp == null || (d.xp is number && d.xp >= 0)) &&
+             (!('streakDays' in d) || d.streakDays == null || (d.streakDays is number && d.streakDays >= 0)) &&
+             (!('preferredModalities' in d) || d.preferredModalities == null || (d.preferredModalities is list && d.preferredModalities.size() <= 10 && d.preferredModalities.hasOnly(['running', 'cycling', 'soccer', 'walking', 'swimming']))) &&
+             (!('preferredStrategyId' in d) || d.preferredStrategyId == null || (d.preferredStrategyId is string && d.preferredStrategyId.size() <= 60)) &&
+             (!('preferredStrategy' in d) || d.preferredStrategy == null || (d.preferredStrategy is string && d.preferredStrategy.size() <= 60));
     }
 
-    function isValidWorkout(data, workoutId) {
+    function isValidUser(d, userId) {
+      return isValidCoreUserFields(d, userId) &&
+             (d.onboardingCompleted
+               ? hasCompletedOnboardingFields(d)
+               : isValidPreOnboardingFields(d));
+    }
+
+    function isValidWorkout(d, workoutId) {
       return hasOnlyAllowedFields([
                'id', 'date', 'dayIndex', 'title', 'subtitle', 'modality',
                'sessionType', 'strategyTag', 'strategy', 'durationMinutes',
@@ -418,89 +209,73 @@ service cloud.firestore {
                'actualDistanceKm', 'completedModality', 'notes', 'isExamDay'
              ]) &&
              hasRequiredFields(['date', 'title', 'modality', 'durationMinutes', 'completed']) &&
-             (!('id' in data) || data.id == null || (isValidStringLength(data.id, 1, 128) && data.id == workoutId)) &&
-             isValidDateOrTimestamp(data.date) &&
-             isValidOptionalNumber(data, 'dayIndex', 0, 3650) &&
-             isValidStringLength(data.title, 1, 150) &&
-             isValidOptionalString(data, 'subtitle', 0, 250) &&
-             isValidCardioModality(data.modality) &&
-             (!('sessionType' in data) || data.sessionType == null || (
-               data.sessionType is string &&
-               data.sessionType in [
-                 'caco', 'easy_z1', 'marathon_z2', 'threshold_z3', 'intervals_z4',
-                 'fartlek', 'long_run', 'cycling', 'soccer', 'active_walk',
-                 'physical_exam', 'rest'
-               ]
-             )) &&
-             isValidOptionalString(data, 'strategyTag', 1, 80) &&
-             isValidOptionalString(data, 'strategy', 1, 80) &&
-             isValidNumberRange(data.durationMinutes, 0, 1440) &&
-             isValidOptionalNumber(data, 'targetDistanceKm', 0, 500) &&
-             isValidOptionalNumber(data, 'distanceKm', 0, 500) &&
-             (!('targetZone' in data) || data.targetZone == null || isValidZoneId(data.targetZone)) &&
-             isValidOptionalString(data, 'targetPace', 1, 80) &&
-             isValidOptionalNumber(data, 'cardioPoints', 0, 10000) &&
-             isValidOptionalNumber(data, 'metMinutes', 0, 50000) &&
-             isValidOptionalNumber(data, 'trimp', 0, 10000) &&
-             isValidOptionalNumber(data, 'estimatedCalories', 0, 20000) &&
-             (!('blocks' in data) || data.blocks == null || isValidWorkoutBlocks(data.blocks)) &&
-             isValidOptionalString(data, 'coachTip', 0, 500) &&
-             data.completed is bool &&
-             isValidOptionalNumber(data, 'rpe', 1, 10) &&
-             isValidOptionalNumber(data, 'actualDurationMinutes', 0, 1440) &&
-             isValidOptionalNumber(data, 'actualDistanceKm', 0, 500) &&
-             (!('completedModality' in data) || data.completedModality == null || isValidCardioModality(data.completedModality)) &&
-             isValidOptionalString(data, 'notes', 0, 2000) &&
-             isValidOptionalBool(data, 'isExamDay');
+             (!('id' in d) || d.id == null || d.id == workoutId) &&
+             isValidDateOrTimestamp(d.date) &&
+             (!('dayIndex' in d) || d.dayIndex == null || (d.dayIndex is number && d.dayIndex >= 0 && d.dayIndex <= 3650)) &&
+             d.title is string && d.title.size() >= 1 && d.title.size() <= 150 &&
+             (!('subtitle' in d) || d.subtitle == null || (d.subtitle is string && d.subtitle.size() <= 250)) &&
+             d.modality in ['running', 'cycling', 'soccer', 'walking', 'swimming'] &&
+             (!('sessionType' in d) || d.sessionType == null || (d.sessionType is string && d.sessionType.size() <= 40)) &&
+             (!('strategyTag' in d) || d.strategyTag == null || (d.strategyTag is string && d.strategyTag.size() <= 80)) &&
+             (!('strategy' in d) || d.strategy == null || (d.strategy is string && d.strategy.size() <= 80)) &&
+             d.durationMinutes is number && d.durationMinutes >= 0 && d.durationMinutes <= 1440 &&
+             (!('targetDistanceKm' in d) || d.targetDistanceKm == null || (d.targetDistanceKm is number && d.targetDistanceKm >= 0 && d.targetDistanceKm <= 500)) &&
+             (!('distanceKm' in d) || d.distanceKm == null || (d.distanceKm is number && d.distanceKm >= 0 && d.distanceKm <= 500)) &&
+             (!('targetZone' in d) || d.targetZone == null || d.targetZone in ['Z1', 'Z2', 'Z3', 'Z4', 'Z5']) &&
+             (!('targetPace' in d) || d.targetPace == null || (d.targetPace is string && d.targetPace.size() <= 80)) &&
+             (!('cardioPoints' in d) || d.cardioPoints == null || (d.cardioPoints is number && d.cardioPoints >= 0)) &&
+             (!('metMinutes' in d) || d.metMinutes == null || (d.metMinutes is number && d.metMinutes >= 0)) &&
+             (!('trimp' in d) || d.trimp == null || (d.trimp is number && d.trimp >= 0)) &&
+             (!('estimatedCalories' in d) || d.estimatedCalories == null || (d.estimatedCalories is number && d.estimatedCalories >= 0)) &&
+             (!('blocks' in d) || d.blocks == null || isValidWorkoutBlocks(d.blocks)) &&
+             (!('coachTip' in d) || d.coachTip == null || (d.coachTip is string && d.coachTip.size() <= 500)) &&
+             d.completed is bool &&
+             (!('rpe' in d) || d.rpe == null || (d.rpe is number && d.rpe >= 1 && d.rpe <= 10)) &&
+             (!('actualDurationMinutes' in d) || d.actualDurationMinutes == null || (d.actualDurationMinutes is number && d.actualDurationMinutes >= 0 && d.actualDurationMinutes <= 1440)) &&
+             (!('actualDistanceKm' in d) || d.actualDistanceKm == null || (d.actualDistanceKm is number && d.actualDistanceKm >= 0 && d.actualDistanceKm <= 500)) &&
+             (!('completedModality' in d) || d.completedModality == null || d.completedModality in ['running', 'cycling', 'soccer', 'walking', 'swimming']) &&
+             (!('notes' in d) || d.notes == null || (d.notes is string && d.notes.size() <= 2000)) &&
+             (!('isExamDay' in d) || d.isExamDay == null || d.isExamDay is bool);
     }
 
-    function isValidExam(data, examId) {
+    function isValidExam(d, examId) {
       return hasOnlyAllowedFields([
                'id', 'date', 'examType', 'rawValue', 'secondaryValue',
                'heartRateBpm', 'calculatedVdot', 'previousVdot',
                'newLevel', 'previousLevel', 'summary'
              ]) &&
              hasRequiredFields(['date', 'examType', 'rawValue', 'calculatedVdot']) &&
-             (!('id' in data) || data.id == null || (isValidStringLength(data.id, 1, 128) && data.id == examId)) &&
-             isValidDateOrTimestamp(data.date) &&
-             data.examType is string &&
-             data.examType in [
-               'cooper_12min',
-               'time_trial_5k',
-               'rockport_walk_1600m',
-               'caco_continuous_test'
-             ] &&
-             data.rawValue is number &&
-             data.rawValue > 0 &&
-             data.rawValue <= 100000 &&
-             isValidOptionalNumber(data, 'secondaryValue', 0, 1000) &&
-             isValidOptionalNumber(data, 'heartRateBpm', 40, 230) &&
-             isValidNumberRange(data.calculatedVdot, 15, 90) &&
-             isValidOptionalNumber(data, 'previousVdot', 15, 90) &&
-             isValidOptionalNumber(data, 'newLevel', 1, 1000) &&
-             isValidOptionalNumber(data, 'previousLevel', 1, 1000) &&
-             isValidOptionalString(data, 'summary', 0, 500);
+             (!('id' in d) || d.id == null || d.id == examId) &&
+             isValidDateOrTimestamp(d.date) &&
+             d.examType in ['cooper_12min', 'time_trial_5k', 'rockport_walk_1600m', 'caco_continuous_test'] &&
+             d.rawValue is number && d.rawValue > 0 && d.rawValue <= 100000 &&
+             (!('secondaryValue' in d) || d.secondaryValue == null || (d.secondaryValue is number && d.secondaryValue >= 0 && d.secondaryValue <= 1000)) &&
+             (!('heartRateBpm' in d) || d.heartRateBpm == null || (d.heartRateBpm is number && d.heartRateBpm >= 40 && d.heartRateBpm <= 230)) &&
+             d.calculatedVdot is number && d.calculatedVdot >= 15 && d.calculatedVdot <= 90 &&
+             (!('previousVdot' in d) || d.previousVdot == null || (d.previousVdot is number && d.previousVdot >= 15 && d.previousVdot <= 90)) &&
+             (!('newLevel' in d) || d.newLevel == null || (d.newLevel is number && d.newLevel >= 1 && d.newLevel <= 1000)) &&
+             (!('previousLevel' in d) || d.previousLevel == null || (d.previousLevel is number && d.previousLevel >= 1 && d.previousLevel <= 1000)) &&
+             (!('summary' in d) || d.summary == null || (d.summary is string && d.summary.size() <= 500));
     }
 
-    function isValidDailyStep(data) {
+    function isValidDailyStep(d) {
       return hasOnlyAllowedFields([
                'date', 'steps', 'distanceMeters', 'calories', 'activeMinutes', 'source'
              ]) &&
              hasRequiredFields(['date', 'steps', 'source']) &&
-             isValidDateOrTimestamp(data.date) &&
-             isValidNumberRange(data.steps, 0, 500000) &&
-             isValidOptionalNumber(data, 'distanceMeters', 0, 500000) &&
-             isValidOptionalNumber(data, 'calories', 0, 50000) &&
-             isValidOptionalNumber(data, 'activeMinutes', 0, 1440) &&
-             data.source is string &&
-             data.source in ['google_fit_api', 'simulated_sync', 'manual', 'google_fit'];
+             isValidDateOrTimestamp(d.date) &&
+             d.steps is number && d.steps >= 0 && d.steps <= 500000 &&
+             (!('distanceMeters' in d) || d.distanceMeters == null || (d.distanceMeters is number && d.distanceMeters >= 0 && d.distanceMeters <= 500000)) &&
+             (!('calories' in d) || d.calories == null || (d.calories is number && d.calories >= 0 && d.calories <= 50000)) &&
+             (!('activeMinutes' in d) || d.activeMinutes == null || (d.activeMinutes is number && d.activeMinutes >= 0 && d.activeMinutes <= 1440)) &&
+             d.source in ['google_fit_api', 'simulated_sync', 'manual', 'google_fit'];
     }
 
     // ===============================================================
     // Collection Rules
     // ===============================================================
 
-    // User profile & gamification document (contains PII such as email -> strictly owner-only)
+    // User biometric & gamification profile (contains PII -> strictly owner-only)
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) &&
@@ -512,9 +287,6 @@ service cloud.firestore {
                        areImmutableFieldsUnchanged(['uid']) &&
                        isValidUser(request.resource.data, userId);
       allow delete: if isOwner(userId);
-
-      // Note: Subcollection reads/deletes intentionally rely on isOwner(userId) without
-      // exists(/users/$(userId)) so pre-onboarding listeners and account cleanup do not fail.
 
       // Planned and completed cardio/running workouts
       match /workouts/{workoutId} {
