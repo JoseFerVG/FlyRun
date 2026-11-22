@@ -629,7 +629,7 @@ export function App() {
       const boost = Math.round(profile.dailyStepsTarget * 1.04);
       const base = buildInitialWeekSteps(boost).map((d) => ({
         ...d,
-        source: 'google_fit_api' as const,
+        source: 'simulated_sync' as const,
       }));
       if (base.length > 0 && existingTodaySteps > base[base.length - 1].steps) {
         const last = base[base.length - 1];

@@ -516,7 +516,7 @@ export function OnboardingModal({
                 <Target size={17} color="var(--accent)" aria-hidden="true" />
                 A) ¿Cuál es tu meta principal?
               </div>
-              <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))' }}>
+              <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))' }}>
                 {GOAL_CATALOG.map((g) => (
                   <button
                     key={g.id}
@@ -545,7 +545,7 @@ export function OnboardingModal({
                 <Compass size={17} color="var(--pine)" aria-hidden="true" />
                 B) ¿Qué quieres entrenar y mejorar específicamente?
               </div>
-              <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))' }}>
+              <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))' }}>
                 {TRAINING_FOCUS_CATALOG.map((f) => (
                   <button
                     key={f.id}
@@ -1180,7 +1180,7 @@ export function OnboardingModal({
             {!isEditing && (
               <div className="inset-panel stack-sm" style={{ borderColor: 'var(--cobalt-border)', background: 'var(--bg-surface)' }}>
                 <strong style={{ fontSize: '0.84rem' }}>Consentimiento Explícito (RGPD Art. 9 · LOPDGDD · Aviso Médico)</strong>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                <label htmlFor="onb-consent-health" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.8rem', cursor: 'pointer' }}>
                   <input
                     id="onb-consent-health"
                     type="checkbox"
@@ -1220,7 +1220,7 @@ export function OnboardingModal({
                   </span>
                 </label>
 
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                <label htmlFor="onb-consent-terms" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.8rem', cursor: 'pointer' }}>
                   <input
                     id="onb-consent-terms"
                     type="checkbox"

@@ -99,7 +99,7 @@ export function GoalFocusModal({
             <Target size={16} weight="duotone" color="var(--accent)" aria-hidden="true" />
             1. Tu Meta Principal
           </div>
-          <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))' }}>
+          <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))' }}>
             {GOAL_CATALOG.map((g) => (
               <button
                 key={g.id}
@@ -123,7 +123,7 @@ export function GoalFocusModal({
             <Compass size={16} weight="duotone" color="var(--pine)" aria-hidden="true" />
             2. ¿Qué quieres entrenar o mejorar más ahora?
           </div>
-          <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))' }}>
+          <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))' }}>
             {TRAINING_FOCUS_CATALOG.map((f) => (
               <button
                 key={f.id}

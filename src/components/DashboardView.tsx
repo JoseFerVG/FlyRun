@@ -822,7 +822,7 @@ export function DashboardView({
                       style={{ inlineSize: '115px', padding: '0.3rem 0.55rem', minBlockSize: '32px' }}
                       min={0}
                       max={60000}
-                      step={100}
+                      step={1}
                       value={stepsInput}
                       onChange={(e) => setStepsInput(Number(e.target.value))}
                     />
@@ -864,7 +864,11 @@ export function DashboardView({
                           <td className="mono">{d.calories}</td>
                           <td>
                             <span className="pill pill-emerald" style={{ fontSize: '0.66rem', padding: '0.06rem 0.42rem' }}>
-                              {d.source === 'google_fit_api' ? 'Google Fit API' : 'Subido'}
+                              {d.source === 'google_fit_api'
+                                ? 'Google Fit API'
+                                : d.source === 'manual'
+                                ? 'Manual'
+                                : 'Modo Demo'}
                             </span>
                           </td>
                         </tr>
