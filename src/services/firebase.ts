@@ -1,6 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -14,6 +15,7 @@ import {
 } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -397,5 +399,159 @@ export async function persistUserState(uid: string, state: PersistedUserState): 
   } catch (err) {
     console.warn('No se pudo sincronizar con Cloud Firestore (respaldo local activo):', err);
     return false;
+  }
+}
+
+export async function revokeGoogleFitAccess(): Promise<void> {
+  const token = getSavedGoogleFitToken();
+  try {
+    localStorage.removeItem(GFIT_TOKEN_STORAGE_KEY);
+  } catch {
+    // Ignore storage error
+  }
+  if (!token) return;
+  try {
+    await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+    });
+  } catch {
+    // Best-effort revocation
+  }
+}
+
+export function exportUserGDPRBundleJSON(uid: string, state: PersistedUserState): void {
+  const payload = {
+    schema: 'FlyRun_GDPR_Art20_DataPortability_v1',
+    exportedAt: new Date().toISOString(),
+    subjectUid: uid,
+    controller: {
+      service: 'FlyRun',
+      contactEmail: 'josef.caniles.murcia@gmail.com',
+      legalBasis: ['GDPR Art. 6(1)(b)', 'GDPR Art. 9(2)(a) Explicit Consent'],
+    },
+    profile: state.profile,
+    workouts: state.workouts,
+    physicalExams: state.exams,
+    googleFitDailySteps: state.fitDays,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `flyrun-datos-rgpd-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+export function exportUserWorkoutsCSV(state: PersistedUserState): void {
+  const escapeCsv = (val: string | number | boolean | undefined | null) => {
+    const str = val === undefined || val === null ? '' : String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+  const header = [
+    'Tipo',
+    'Fecha',
+    'Titulo',
+    'Modalidad',
+    'Duracion_Min',
+    'Distancia_Km',
+    'Zona_O_Pasos',
+    'Puntos_Cardio_O_Kcal',
+    'Completada',
+    'Notas',
+  ].join(',');
+
+  const workoutRows = state.workouts.map((w) =>
+    [
+      'ENTRENAMIENTO',
+      w.date,
+      w.title,
+      w.completedModality ?? w.modality,
+      w.actualDurationMinutes ?? w.durationMinutes,
+      w.actualDistanceKm ?? w.targetDistanceKm,
+      w.targetZone,
+      w.cardioPoints,
+      w.completed ? 'SI' : 'NO',
+      w.notes ?? '',
+    ]
+      .map(escapeCsv)
+      .join(',')
+  );
+
+  const fitRows = state.fitDays.map((d) =>
+    [
+      'GOOGLE_FIT_PASOS',
+      d.date,
+      'Pasos diarios sincronizados',
+      d.source,
+      d.activeMinutes,
+      Number((d.distanceMeters / 1000).toFixed(2)),
+      d.steps,
+      d.calories,
+      'SI',
+      'Registro diario',
+    ]
+      .map(escapeCsv)
+      .join(',')
+  );
+
+  const csv = [header, ...workoutRows, ...fitRows].join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `flyrun-historial-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+export async function deleteUserAccountCascade(uid: string): Promise<void> {
+  await revokeGoogleFitAccess();
+
+  const clients = getFirebaseClients();
+  const activeAuthUid = clients?.auth.currentUser?.uid;
+
+  if (clients && activeAuthUid) {
+    const targetUid = activeAuthUid;
+    try {
+      const subCollections = ['workouts', 'exams', 'dailySteps'] as const;
+      for (const sub of subCollections) {
+        const snap = await getDocs(collection(clients.db, 'users', targetUid, sub));
+        await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      }
+      await deleteDoc(doc(clients.db, 'users', targetUid));
+    } catch (err) {
+      console.warn('Error eliminando documentos de Firestore en cascada:', err);
+    }
+
+    try {
+      if (clients.auth.currentUser) {
+        await deleteUser(clients.auth.currentUser);
+      }
+    } catch {
+      try {
+        await signOut(clients.auth);
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  try {
+    localStorage.removeItem(`${LOCAL_STATE_PREFIX}${uid}`);
+    if (activeAuthUid) {
+      localStorage.removeItem(`${LOCAL_STATE_PREFIX}${activeAuthUid}`);
+    }
+    localStorage.removeItem(DEMO_USER_STORAGE_KEY);
+    localStorage.removeItem(GFIT_TOKEN_STORAGE_KEY);
+    localStorage.removeItem('flyrun_legal_consent_v1');
+  } catch {
+    // Ignore storage cleanup errors
   }
 }

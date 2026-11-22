@@ -7,6 +7,7 @@ import {
   Lightning,
   MoonStars,
   PersonSimpleRun,
+  Scales,
   ShieldCheck,
   SignOut,
   SunDim,
@@ -25,13 +26,17 @@ import type {
   WorkoutSession,
 } from './types/fitness';
 import {
+  deleteUserAccountCascade,
   ensureCloudAuthSession,
+  exportUserGDPRBundleJSON,
+  exportUserWorkoutsCSV,
   getDemoGoogleSession,
   getFirebaseClients,
   getSavedGoogleFitToken,
   loadUserStateFromCloud,
   persistUserState,
   requestGoogleFitOAuthToken,
+  revokeGoogleFitAccess,
   saveDemoGoogleSession,
   saveGoogleFitToken,
   saveLocalState,
@@ -77,6 +82,8 @@ import { WorkoutLogDialog } from './components/WorkoutLogDialog';
 import { LiveWorkoutTimerDialog } from './components/LiveWorkoutTimerDialog';
 import { UserPersonasModal } from './components/UserPersonasModal';
 import { GoalFocusModal } from './components/GoalFocusModal';
+import { LegalComplianceModal, type LegalTabId } from './components/LegalComplianceModal';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 
 type NavTab = 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition';
 
@@ -122,6 +129,9 @@ export function App() {
   const [timerStartBlock, setTimerStartBlock] = useState<number>(0);
   const [personasOpen, setPersonasOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTabId>('privacy');
+  const [forceCookieConfig, setForceCookieConfig] = useState(false);
   const [readiness, setReadiness] = useState<DailyReadiness>('normal');
   const [todayBaselineWorkout, setTodayBaselineWorkout] = useState<WorkoutSession | null>(null);
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
@@ -788,6 +798,79 @@ export function App() {
     saveAll(nextProfile, workouts, exams, fitDays);
   };
 
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get('legal') as LegalTabId | null;
+    if (
+      param &&
+      ['privacy', 'google_api', 'terms', 'medical', 'cookies', 'gdpr_rights'].includes(param)
+    ) {
+      setLegalTab(param);
+      setLegalOpen(true);
+    }
+  }, []);
+
+  const openLegal = (tab: LegalTabId = 'privacy') => {
+    setLegalTab(tab);
+    setLegalOpen(true);
+  };
+
+  const handleExportGDPR = () => {
+    if (!session) return;
+    exportUserGDPRBundleJSON(session.uid, { profile, workouts, exams, fitDays });
+    showToast('Archivo JSON RGPD (Art. 20) descargado correctamente.');
+  };
+
+  const handleExportCSV = () => {
+    exportUserWorkoutsCSV({ profile, workouts, exams, fitDays });
+    showToast('Historial CSV descargado correctamente.');
+  };
+
+  const handleRevokeFitOAuth = async () => {
+    await revokeGoogleFitAccess();
+    setSession((prev) => (prev ? { ...prev, googleFitAccessToken: undefined } : prev));
+    setFitNotice('Token OAuth de Google Fit revocado en este navegador.');
+    showToast('Permiso OAuth de Google Fit revocado.');
+  };
+
+  const handleDeleteAccount = async () => {
+    const uidToPurge = profile?.uid ?? session?.uid;
+    if (!uidToPurge) return;
+    await deleteUserAccountCascade(uidToPurge);
+    setSession(null);
+    setProfile(null);
+    setWorkouts([]);
+    setExams([]);
+    setFitDays([]);
+    setIsEditingProfile(false);
+    showToast('Cuenta y datos biométricos eliminados completamente (RGPD Art. 17).');
+  };
+
+  const sharedLegalModalAndBanner = (
+    <>
+      <LegalComplianceModal
+        open={legalOpen}
+        initialTab={legalTab}
+        isLoggedIn={Boolean(session)}
+        userEmail={profile?.email ?? session?.email ?? ''}
+        hasGoogleFitToken={Boolean(session?.googleFitAccessToken || getSavedGoogleFitToken())}
+        onClose={() => setLegalOpen(false)}
+        onExportJSON={handleExportGDPR}
+        onExportCSV={handleExportCSV}
+        onRevokeGoogleFit={handleRevokeFitOAuth}
+        onDeleteAccount={handleDeleteAccount}
+        onOpenCookieSettings={() => {
+          setLegalOpen(false);
+          setForceCookieConfig(true);
+        }}
+      />
+      <CookieConsentBanner
+        forceOpenConfigure={forceCookieConfig}
+        onConfigureClosed={() => setForceCookieConfig(false)}
+        onOpenLegal={(tab) => openLegal(tab)}
+      />
+    </>
+  );
+
   if (booting) {
     return <ScientificLoader />;
   }
@@ -804,6 +887,8 @@ export function App() {
           onOpenPersonas={() => setPersonasOpen(true)}
           onSelectPersona={(p) => void handleSelectPersona(p)}
           onInstallApp={installPrompt ? () => void handleInstallApp() : undefined}
+          onOpenLegal={(tab) => openLegal(tab)}
+          onOpenCookieSettings={() => setForceCookieConfig(true)}
           theme={theme}
           onToggleTheme={handleToggleTheme}
           googleLoading={googleLoading}
@@ -815,22 +900,27 @@ export function App() {
           onClose={() => setPersonasOpen(false)}
           onSelectPersona={(p) => void handleSelectPersona(p)}
         />
+        {sharedLegalModalAndBanner}
       </>
     );
   }
 
   if (!profile || !profile.onboardingCompleted || isEditingProfile) {
     return (
-      <OnboardingModal
-        uid={session.uid}
-        initialName={session.displayName}
-        email={session.email}
-        photoURL={session.photoURL}
-        isDemoMode={session.isDemoMode}
-        existingProfile={profile}
-        onComplete={handleOnboardingComplete}
-        onCancel={isEditingProfile ? () => setIsEditingProfile(false) : undefined}
-      />
+      <>
+        <OnboardingModal
+          uid={session.uid}
+          initialName={session.displayName}
+          email={session.email}
+          photoURL={session.photoURL}
+          isDemoMode={session.isDemoMode}
+          existingProfile={profile}
+          onComplete={handleOnboardingComplete}
+          onCancel={isEditingProfile ? () => setIsEditingProfile(false) : undefined}
+          onOpenLegal={(tab) => openLegal(tab)}
+        />
+        {sharedLegalModalAndBanner}
+      </>
     );
   }
 
@@ -945,6 +1035,15 @@ export function App() {
                 <SunDim size={16} weight="duotone" aria-hidden="true" />
               )}
             </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => openLegal('gdpr_rights')}
+              aria-label="Centro Legal, Privacidad y RGPD"
+              title="Privacidad, Exportar JSON/CSV y Borrar cuenta"
+            >
+              <Scales size={16} weight="duotone" aria-hidden="true" />
+            </button>
             <span className="xp-chip mono">
               <Lightning size={14} weight="duotone" color="var(--pine)" aria-hidden="true" />
               <AnimatedNumber value={profile.xp} locale suffix=" XP" />
@@ -1057,6 +1156,28 @@ export function App() {
               onViewedMacros={handleViewedMacros}
             />
           )}
+
+          <footer className="landing-footer" style={{ paddingTop: '1rem', fontSize: '0.76rem' }}>
+            <div className="row-wrap muted">
+              <span>FlyRun · Uso informativo deportivo (no sustituye criterio médico)</span>
+              <span>·</span>
+              <span>RGPD UE · LOPDGDD · CCPA</span>
+            </div>
+            <div className="row-wrap" style={{ gap: '0.35rem' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('privacy')}>
+                Privacidad
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('google_api')}>
+                Google Fit Limited Use
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('medical')}>
+                Aviso Médico
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('gdpr_rights')}>
+                Exportar / Borrar cuenta
+              </button>
+            </div>
+          </footer>
         </div>
       </main>
 
@@ -1116,6 +1237,8 @@ export function App() {
         onClose={() => setGoalModalOpen(false)}
         onSaveGoalAndFocus={handleSaveGoalAndFocus}
       />
+
+      {sharedLegalModalAndBanner}
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { Download } from 'lucide-react';
 import { AmbientBackdrop } from './AmbientBackdrop';
 import { FlyRunLogo } from './FlyRunLogo';
 import { SpotlightCard, TelemetryMockupCard } from './MotionPrimitives';
+import type { LegalTabId } from './LegalComplianceModal';
 import { assetUrl } from '../services/assets';
 import { SIMULATED_USER_PERSONAS, type SimulatedUserPersona } from '../data/userPersonas';
 
@@ -26,6 +27,8 @@ interface AuthLandingProps {
   onOpenPersonas: () => void;
   onSelectPersona: (persona: SimulatedUserPersona) => void;
   onInstallApp?: () => void;
+  onOpenLegal: (tab: LegalTabId) => void;
+  onOpenCookieSettings: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   googleLoading: boolean;
@@ -64,6 +67,8 @@ export function AuthLanding({
   onOpenPersonas,
   onSelectPersona,
   onInstallApp,
+  onOpenLegal,
+  onOpenCookieSettings,
   theme,
   onToggleTheme,
   googleLoading,
@@ -628,17 +633,38 @@ export function AuthLanding({
             </div>
           </section>
 
-          <footer className="landing-footer">
-            <FlyRunLogo size="sm" subtitle="Ciencia fisiológica aplicada al running y cardio diario" />
-            <div className="row-wrap muted" style={{ fontSize: '0.78rem' }}>
-              <span>VDOT (Jack Daniels)</span>
-              <span>·</span>
-              <span>80/20 Polarizado (Stephen Seiler)</span>
-              <span>·</span>
-              <span>TRIMP (Banister)</span>
-              <span>·</span>
-              <span>Acceso Anticipado 0 €</span>
+          <footer className="landing-footer" style={{ alignItems: 'flex-start' }}>
+            <div className="stack-sm">
+              <FlyRunLogo size="sm" subtitle="Ciencia fisiológica aplicada al running y cardio diario" />
+              <div className="row-wrap muted" style={{ fontSize: '0.76rem' }}>
+                <span>RGPD UE 2016/679 · LOPDGDD 3/2018 · LSSI-CE</span>
+                <span>·</span>
+                <span>CCPA: No vendemos ni compartimos tus datos</span>
+                <span>·</span>
+                <span>Google API Limited Use</span>
+              </div>
             </div>
+
+            <nav className="row-wrap" aria-label="Información legal y cumplimiento" style={{ gap: '0.45rem' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpenLegal('privacy')}>
+                Privacidad
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpenLegal('google_api')}>
+                Google Fit Limited Use
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpenLegal('terms')}>
+                Términos SaaS
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpenLegal('medical')}>
+                Aviso Médico
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpenLegal('cookies')}>
+                Aviso Legal
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenCookieSettings}>
+                Cookies
+              </button>
+            </nav>
           </footer>
         </div>
       </main>

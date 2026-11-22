@@ -1,0 +1,5 @@
+Contact: mailto:josef.caniles.murcia@gmail.com
+Expires: 2027-11-22T23:59:59Z
+Preferred-Languages: es, en
+Canonical: https://flyrun-cardio-jf26.web.app/.well-known/security.txt
+Policy: https://flyrun-cardio-jf26.web.app/privacidad.html

@@ -25,6 +25,7 @@ import {
 } from '../services/scienceEngine';
 import { BiometricRing } from './MotionPrimitives';
 import { FlyRunLogo } from './FlyRunLogo';
+import type { LegalTabId } from './LegalComplianceModal';
 import { assetUrl } from '../services/assets';
 
 interface OnboardingModalProps {
@@ -36,6 +37,7 @@ interface OnboardingModalProps {
   existingProfile?: UserProfile | null;
   onComplete: (profile: UserProfile, initialExam?: PhysicalExamResult) => void;
   onCancel?: () => void;
+  onOpenLegal?: (tab: LegalTabId) => void;
 }
 
 type ExamInputMode = SpeedUnit | 'direct';
@@ -111,10 +113,14 @@ export function OnboardingModal({
   existingProfile,
   onComplete,
   onCancel,
+  onOpenLegal,
 }: OnboardingModalProps) {
   const isEditing = Boolean(existingProfile?.onboardingCompleted);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [examTouched, setExamTouched] = useState(!isEditing);
+  const [acceptedHealthData, setAcceptedHealthData] = useState(isEditing);
+  const [acceptedTermsAndMedical, setAcceptedTermsAndMedical] = useState(isEditing);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const initialKmh = existingProfile ? vdotToEstimatedKmh(existingProfile.vdot) : 10.5;
   const initialPace = secPerKmToPaceMinSec(convertSpeedValue(initialKmh, 'kmh').secPerKm);
@@ -347,6 +353,27 @@ export function OnboardingModal({
     if (step < 3) {
       setStep((s) => Math.min(3, s + 1) as 1 | 2 | 3);
       return;
+    }
+
+    if (!isEditing && (!acceptedHealthData || !acceptedTermsAndMedical)) {
+      setConsentError(
+        'Para cumplir con el RGPD (Art. 9 datos de salud) y seguridad deportiva, debes marcar ambas casillas de consentimiento antes de entrar.'
+      );
+      return;
+    }
+    setConsentError(null);
+    try {
+      localStorage.setItem(
+        'flyrun_legal_consent_v1',
+        JSON.stringify({
+          healthDataConsent: true,
+          termsAndMedicalConsent: true,
+          minimumAge14Confirmed: age >= 14,
+          acceptedAt: new Date().toISOString(),
+        })
+      );
+    } catch {
+      // Ignore storage error
     }
 
     const maxHR = estimateMaxHR(age);
@@ -996,7 +1023,7 @@ export function OnboardingModal({
               </div>
 
               <div className="field">
-                <label htmlFor="onb-age">Edad (años)</label>
+                <label htmlFor="onb-age">Edad (mín. 14 años · Art. 7 LOPDGDD)</label>
                 <input
                   id="onb-age"
                   name="age"
@@ -1149,6 +1176,96 @@ export function OnboardingModal({
               </div>
               <span className="pill pill-emerald mono">Listo</span>
             </div>
+
+            {!isEditing && (
+              <div className="inset-panel stack-sm" style={{ borderColor: 'var(--cobalt-border)', background: 'var(--bg-surface)' }}>
+                <strong style={{ fontSize: '0.84rem' }}>Consentimiento Explícito (RGPD Art. 9 · LOPDGDD · Aviso Médico)</strong>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <input
+                    id="onb-consent-health"
+                    type="checkbox"
+                    checked={acceptedHealthData}
+                    onChange={(e) => {
+                      setAcceptedHealthData(e.target.checked);
+                      setConsentError(null);
+                    }}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <span className="secondary">
+                    Consiento explícitamente el tratamiento de mis datos biométricos y de salud física (peso, altura, pulso,
+                    marcas de rendimiento y pasos de Google Fit) conforme a la{' '}
+                    {onOpenLegal ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLegal('privacy')}
+                        style={{ background: 'none', border: 0, padding: 0, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', fontWeight: 600 }}
+                      >
+                        Política de Privacidad
+                      </button>
+                    ) : (
+                      <a href="./privacidad.html" target="_blank" rel="noreferrer">Política de Privacidad</a>
+                    )}{' '}
+                    y la{' '}
+                    {onOpenLegal ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLegal('google_api')}
+                        style={{ background: 'none', border: 0, padding: 0, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', fontWeight: 600 }}
+                      >
+                        Política Google API Limited Use
+                      </button>
+                    ) : (
+                      'Política Google API Limited Use'
+                    )}.
+                  </span>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <input
+                    id="onb-consent-terms"
+                    type="checkbox"
+                    checked={acceptedTermsAndMedical}
+                    onChange={(e) => {
+                      setAcceptedTermsAndMedical(e.target.checked);
+                      setConsentError(null);
+                    }}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <span className="secondary">
+                    Confirmo tener al menos <strong>14 años</strong> y acepto los{' '}
+                    {onOpenLegal ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLegal('terms')}
+                        style={{ background: 'none', border: 0, padding: 0, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', fontWeight: 600 }}
+                      >
+                        Términos de Servicio SaaS
+                      </button>
+                    ) : (
+                      <a href="./terminos.html" target="_blank" rel="noreferrer">Términos de Servicio</a>
+                    )}{' '}
+                    y el{' '}
+                    {onOpenLegal ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLegal('medical')}
+                        style={{ background: 'none', border: 0, padding: 0, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', fontWeight: 600 }}
+                      >
+                        Aviso Médico Deportivo
+                      </button>
+                    ) : (
+                      'Aviso Médico Deportivo'
+                    )} (herramienta informativa, no diagnóstica).
+                  </span>
+                </label>
+
+                {consentError && (
+                  <div className="error-banner" role="alert" style={{ fontSize: '0.79rem' }}>
+                    {consentError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
