@@ -12,6 +12,12 @@
   "categories": ["fitness", "health", "sports"],
   "icons": [
     {
+      "src": "./images/logos/flyrun-icon-dark.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "./favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",

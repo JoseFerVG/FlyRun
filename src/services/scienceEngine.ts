@@ -1,9 +1,11 @@
 import type {
   CardioModality,
+  FitnessGoal,
   LynxLevelInfo,
   PhysicalExamResult,
   PhysicalExamType,
   SessionType,
+  TrainingFocus,
   TrainingZone,
   UserProfile,
   WorkoutBlock,
@@ -1044,14 +1046,40 @@ export function generateWeeklyPlan(profile: UserProfile, startDate = new Date())
   const prefersSoccer = profile.preferredModalities.includes('soccer');
 
   const buildWeekPattern = (weekNum: number): SessionType[] => {
-    const isBeginner = profile.level <= 2 || profile.preferredStrategyId === 'caco_progressive';
+    const focus = profile.preferredStrategy;
+    const isBeginner =
+      focus === 'caco_safe' ||
+      (focus !== 'endurance_base' &&
+        focus !== 'speed_series' &&
+        focus !== 'tempo_threshold' &&
+        (profile.level <= 2 || profile.preferredStrategyId === 'caco_progressive'));
     const baseEasy: SessionType = isBeginner ? 'caco' : 'easy_z1';
-    const qualityA: SessionType = isBeginner
-      ? 'caco'
-      : profile.preferredStrategyId === 'billat_30_30' || weekNum % 2 === 0
-      ? 'intervals_z4'
-      : 'threshold_z3';
-    const altCardio: SessionType = prefersSoccer && weekNum % 2 === 1 ? 'soccer' : prefersBike ? 'cycling' : baseEasy;
+    const qualityA: SessionType =
+      focus === 'caco_safe'
+        ? 'caco'
+        : focus === 'speed_series'
+        ? 'intervals_z4'
+        : focus === 'tempo_threshold'
+        ? 'threshold_z3'
+        : focus === 'endurance_base'
+        ? weekNum % 2 === 0
+          ? 'threshold_z3'
+          : 'long_run'
+        : isBeginner
+        ? 'caco'
+        : profile.preferredStrategyId === 'billat_30_30' || weekNum % 2 === 0
+        ? 'intervals_z4'
+        : 'threshold_z3';
+    const altCardio: SessionType =
+      focus === 'hybrid_sport'
+        ? weekNum % 2 === 1
+          ? 'soccer'
+          : 'cycling'
+        : prefersSoccer && weekNum % 2 === 1
+        ? 'soccer'
+        : prefersBike
+        ? 'cycling'
+        : baseEasy;
 
     if (daysPerWeek === 2) {
       return [baseEasy, 'rest', 'rest', qualityA, 'rest', 'rest', 'rest'];
@@ -1645,3 +1673,591 @@ export function calculateWeekly8020Balance(workouts: WorkoutSession[]) {
   const highPct = 100 - lowPct;
   return { lowMinutes, highMinutes, lowPct, highPct };
 }
+
+export type RestLevel = 'low_rest' | 'normal_rest' | 'good_rest' | 'peak_rest';
+export type RoutinePowerLevel = 1 | 2 | 3 | 4 | 5;
+
+export interface GoalCatalogItem {
+  id: FitnessGoal;
+  title: string;
+  subtitle: string;
+  imageFile: string;
+  defaultFocus: TrainingFocus;
+}
+
+export const GOAL_CATALOG: GoalCatalogItem[] = [
+  {
+    id: 'start_running',
+    title: 'Empezar desde cero sin lesiones',
+    subtitle: 'Progresión segura alternando trote suave y caminata (CaCo).',
+    imageFile: 'images/goal-start-caco.jpg',
+    defaultFocus: 'caco_safe',
+  },
+  {
+    id: 'improve_5k',
+    title: 'Mejorar marca y rapidez en 5K',
+    subtitle: 'Ganar chispa, velocidad de crucero y series controladas.',
+    imageFile: 'images/goal-speed-5k.jpg',
+    defaultFocus: 'speed_series',
+  },
+  {
+    id: 'improve_10k',
+    title: 'Ganar fondo y aguante en 10K+',
+    subtitle: 'Construir resistencia polarizada 80/20 para aguantar sin fatiga.',
+    imageFile: 'images/goal-endurance-10k.jpg',
+    defaultFocus: 'endurance_base',
+  },
+  {
+    id: 'fat_loss_cardio',
+    title: 'Quemar grasa y sumar pasos diarios',
+    subtitle: 'Alto gasto calórico metabólico sostenible + Google Fit diario.',
+    imageFile: 'images/goal-fatburn-steps.jpg',
+    defaultFocus: 'tempo_threshold',
+  },
+  {
+    id: 'health_maintenance',
+    title: 'Salud cardiovascular y deporte mixto',
+    subtitle: 'Combinar carrera, bici, fútbol y caminatas para sentirte fuerte.',
+    imageFile: 'images/goal-hybrid-multisport.jpg',
+    defaultFocus: 'hybrid_sport',
+  },
+];
+
+export interface TrainingFocusItem {
+  id: TrainingFocus;
+  title: string;
+  shortLabel: string;
+  description: string;
+  benefit: string;
+  strategyId: string;
+  recommendedModalities: CardioModality[];
+  imageFile: string;
+}
+
+export const TRAINING_FOCUS_CATALOG: TrainingFocusItem[] = [
+  {
+    id: 'caco_safe',
+    title: 'Empezar suave · Correr y Caminar (CaCo)',
+    shortLabel: 'CaCo Suave',
+    description: 'Bloques alternos de trote cómodo y caminata para adaptar tendones sin ahogarte.',
+    benefit: 'Cero impacto brusco',
+    strategyId: 'caco_progressive',
+    recommendedModalities: ['running', 'walking'],
+    imageFile: 'images/goal-start-caco.jpg',
+  },
+  {
+    id: 'endurance_base',
+    title: 'Resistencia y Fondo · Aguantar más tiempo',
+    shortLabel: 'Resistencia 80/20',
+    description: '80 % de tus minutos en zona aeróbica cómoda para ampliar tu motor cardiovascular.',
+    benefit: 'Más km con menos pulso',
+    strategyId: 'polarized_80_20',
+    recommendedModalities: ['running', 'cycling', 'walking'],
+    imageFile: 'images/routine-long-run-trail.jpg',
+  },
+  {
+    id: 'speed_series',
+    title: 'Velocidad y Potencia · Series VO2max',
+    shortLabel: 'Velocidad y Series',
+    description: 'Intervalos cortos dinámicos y descansos activos para disparar tu ritmo rápido.',
+    benefit: 'Mejora marca 5K / Cooper',
+    strategyId: 'billat_30_30',
+    recommendedModalities: ['running', 'cycling'],
+    imageFile: 'images/routine-intervals-vo2.jpg',
+  },
+  {
+    id: 'tempo_threshold',
+    title: 'Ritmo Sostenido · Subir tu Umbral',
+    shortLabel: 'Umbral Sostenido',
+    description: 'Bloques continuos a ritmo vivo controlado para correr rápido sin acumular ácido láctico.',
+    benefit: 'Crucero rápido y estable',
+    strategyId: 'norwegian_threshold',
+    recommendedModalities: ['running', 'cycling'],
+    imageFile: 'images/routine-tempo-threshold.jpg',
+  },
+  {
+    id: 'hybrid_sport',
+    title: 'Multi-Cardio · Running, Bici y Fútbol',
+    shortLabel: 'Multi-Cardio',
+    description: 'Combina salidas de running con bicicleta sin impacto, partidos y metas diarias de pasos.',
+    benefit: 'Máxima variedad semanal',
+    strategyId: 'fartlek_hybrid',
+    recommendedModalities: ['running', 'cycling', 'soccer', 'walking'],
+    imageFile: 'images/cardio-road-cycling.jpg',
+  },
+];
+
+export const REST_LEVEL_CATALOG: Array<{
+  id: RestLevel;
+  label: string;
+  sleepHint: string;
+  desc: string;
+  imageFile: string;
+}> = [
+  {
+    id: 'low_rest',
+    label: 'Poco descanso',
+    sleepHint: '< 6 h o piernas pesadas',
+    desc: 'Priorizamos descarga o trote muy suave sin agotar el sistema nervioso.',
+    imageFile: 'images/recovery-sleep-rest.jpg',
+  },
+  {
+    id: 'normal_rest',
+    label: 'Descanso normal',
+    sleepHint: '6 – 7,5 h · Estable',
+    desc: 'Ideal para sumar base aeróbica sólida o bloques CaCo controlados.',
+    imageFile: 'images/modality-active-walk.jpg',
+  },
+  {
+    id: 'good_rest',
+    label: 'Bien descansado',
+    sleepHint: '7,5 – 8,5 h · Con chispa',
+    desc: 'Tu cuerpo asimila bien bloques de ritmo vivo en Zona 2–3.',
+    imageFile: 'images/goal-start-caco.jpg',
+  },
+  {
+    id: 'peak_rest',
+    label: 'Al 100 % · Fresco',
+    sleepHint: '+8 h y piernas ligeras',
+    desc: 'Día óptimo para series rápidas de potencia o umbral exigente.',
+    imageFile: 'images/recovery-fresh-sun.jpg',
+  },
+];
+
+export const POWER_LEVEL_CATALOG: Array<{
+  power: RoutinePowerLevel;
+  name: string;
+  badge: string;
+  shortDesc: string;
+  zone: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
+  imageFile: string;
+}> = [
+  {
+    power: 1,
+    name: 'Potencia 1 · Suave',
+    badge: 'Regenerativa',
+    shortDesc: 'Caminata activa o trote muy lento para soltar piernas.',
+    zone: 'Z1',
+    imageFile: 'images/routine-cooldown-stretch.jpg',
+  },
+  {
+    power: 2,
+    name: 'Potencia 2 · Ligera CaCo',
+    badge: 'Correr + Andar',
+    shortDesc: 'Alterna bloques cómodos corriendo y caminando sin fatiga.',
+    zone: 'Z1',
+    imageFile: 'images/goal-start-caco.jpg',
+  },
+  {
+    power: 3,
+    name: 'Potencia 3 · Media Base',
+    badge: 'Aeróbica 80/20',
+    shortDesc: 'Ritmo fluido conversacional para construir resistencia.',
+    zone: 'Z2',
+    imageFile: 'images/routine-easy-aerobic.jpg',
+  },
+  {
+    power: 4,
+    name: 'Potencia 4 · Alta Umbral',
+    badge: 'Ritmo Vivo',
+    shortDesc: 'Bloques sostenidos exigentes que suben tu velocidad media.',
+    zone: 'Z3',
+    imageFile: 'images/routine-tempo-threshold.jpg',
+  },
+  {
+    power: 5,
+    name: 'Potencia 5 · Máxima',
+    badge: 'Series VO2max',
+    shortDesc: 'Intervalos intensos cortos con recuperación completa entre series.',
+    zone: 'Z4',
+    imageFile: 'images/routine-intervals-vo2.jpg',
+  },
+];
+
+export function getGoalLabel(goal: FitnessGoal): string {
+  return GOAL_CATALOG.find((g) => g.id === goal)?.title ?? 'Plan personalizado';
+}
+
+export function getTrainingFocusInfo(focus?: string): TrainingFocusItem {
+  return (
+    TRAINING_FOCUS_CATALOG.find((f) => f.id === focus) ??
+    TRAINING_FOCUS_CATALOG[1]
+  );
+}
+
+export function getRecommendedPowerForRest(
+  rest: RestLevel,
+  profile: UserProfile
+): {
+  recommendedPower: RoutinePowerLevel;
+  reason: string;
+  recoveryScore: number;
+} {
+  const focus = (profile.preferredStrategy as TrainingFocus | undefined) ?? (profile.level <= 2 ? 'caco_safe' : 'endurance_base');
+
+  if (rest === 'low_rest') {
+    const rec: RoutinePowerLevel = profile.level <= 2 || focus === 'caco_safe' ? 1 : 2;
+    return {
+      recommendedPower: rec,
+      recoveryScore: 44,
+      reason:
+        rec === 1
+          ? 'Con poco descanso hoy conviene Potencia 1 (Suave): sumas movimiento sin generar fatiga ni riesgo muscular.'
+          : 'Con descanso corto hoy te recomendamos Potencia 2 (Ligera CaCo): alternar tramos suaves mantiene la racha cuidando articulaciones.',
+    };
+  }
+
+  if (rest === 'normal_rest') {
+    const rec: RoutinePowerLevel = focus === 'caco_safe' || profile.level <= 2 ? 2 : 3;
+    return {
+      recommendedPower: rec,
+      recoveryScore: 72,
+      reason:
+        rec === 2
+          ? 'Descanso estable y enfoque progresivo: Potencia 2 (CaCo) es el equilibrio perfecto para seguir sumando.'
+          : 'Tu descanso es normal: Potencia 3 (Media Base) construye tu fondo aeróbico dentro de la zona ideal 80/20.',
+    };
+  }
+
+  if (rest === 'good_rest') {
+    const rec: RoutinePowerLevel =
+      focus === 'caco_safe' ? 2 : profile.level <= 2 ? 3 : 4;
+    return {
+      recommendedPower: rec,
+      recoveryScore: 86,
+      reason:
+        rec === 4
+          ? 'Has descansado muy bien hoy: te recomendamos Potencia 4 (Alta · Umbral) para elevar tu ritmo de crucero.'
+          : 'Buen descanso hoy: puedes subir con seguridad a Potencia ' + rec + ' sintiéndote ligero todo el recorrido.',
+    };
+  }
+
+  // peak_rest
+  const rec: RoutinePowerLevel =
+    focus === 'caco_safe'
+      ? 3
+      : focus === 'endurance_base' && profile.level <= 3
+      ? 4
+      : profile.level === 1
+      ? 3
+      : profile.level === 2
+      ? 4
+      : 5;
+  return {
+    recommendedPower: rec,
+    recoveryScore: 96,
+    reason:
+      rec === 5
+        ? '¡Descanso óptimo (+8h)! Hoy puedes exprimir Potencia 5 (Series VO2max) para ganar velocidad punta con buena técnica.'
+        : 'Estrenas frescura total (+8h): aprovecha la Potencia ' + rec + ' recomendada para dar un salto real de forma sin perder control.',
+  };
+}
+
+export function buildWorkoutForPowerAndRest(
+  baseWorkout: WorkoutSession | undefined,
+  profile: UserProfile,
+  powerLevel: RoutinePowerLevel,
+  durationMinutes: number,
+  modality: CardioModality,
+  rest: RestLevel
+): WorkoutSession {
+  const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
+  const z1 = zones[0];
+  const z2 = zones[1];
+  const z3 = zones[2];
+  const z4 = zones[3];
+  const safeDur = Math.max(15, Math.min(90, Math.round(durationMinutes)));
+  const dateStr = baseWorkout?.date ?? addDaysISO(new Date(), 0);
+  const id = baseWorkout?.id ?? `wk_${dateStr}`;
+  const dayIndex = baseWorkout?.dayIndex ?? 0;
+
+  const restLabelMap: Record<RestLevel, string> = {
+    low_rest: 'Poco descanso',
+    normal_rest: 'Descanso normal',
+    good_rest: 'Buen descanso',
+    peak_rest: 'Descanso máximo',
+  };
+
+  if (modality === 'cycling' || modality === 'soccer' || modality === 'walking') {
+    const rpeByPower: Record<RoutinePowerLevel, number> = { 1: 3, 2: 4, 3: 6, 4: 7, 5: 8 };
+    const zoneByPower: Record<RoutinePowerLevel, 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5'> = {
+      1: 'Z1',
+      2: 'Z1',
+      3: 'Z2',
+      4: 'Z3',
+      5: 'Z4',
+    };
+    const rpe = rpeByPower[powerLevel];
+    const targetZone = zoneByPower[powerLevel];
+    const zoneInfo = zones.find((z) => z.id === targetZone) ?? z1;
+    const warmup = Math.max(4, Math.min(8, Math.round(safeDur * 0.18)));
+    const cooldown = Math.max(4, Math.min(8, Math.round(safeDur * 0.15)));
+    const mainDur = Math.max(8, safeDur - warmup - cooldown);
+    const eq = calculateCardioEquivalence(modality, safeDur, rpe, profile.weightKg, profile.sex, profile.vdot);
+
+    const modTitle =
+      modality === 'cycling'
+        ? `Ciclismo · Potencia ${powerLevel}/5`
+        : modality === 'soccer'
+        ? `Fútbol / Mixto · Potencia ${powerLevel}/5`
+        : `Caminata Activa · Potencia ${powerLevel}/5`;
+
+    const modSpeedHint =
+      modality === 'cycling'
+        ? powerLevel >= 4
+          ? '90–100 rpm · Cambios de ritmo'
+          : '85–95 rpm · Cadencia continua'
+        : modality === 'soccer'
+        ? 'Sprints + recup. caminando'
+        : '5,8–6,8 km/h · Paso vivo';
+
+    const blocks: WorkoutBlock[] = [
+      {
+        label: '1. Calentamiento y movilidad',
+        durationMinutes: warmup,
+        intensity: `Z1 Suave · ${z1.hrMin}–${z1.hrMax} ppm`,
+        description: 'Activa articulaciones y sube pulsaciones sin prisas.',
+        zone: 'Z1',
+      },
+      {
+        label:
+          powerLevel >= 4
+            ? `2. Bloque Principal Potencia ${powerLevel} (${modality === 'cycling' ? 'Series Cadencia' : modality === 'soccer' ? 'Juego / Cambios' : 'Cuestas / Paso rápido'})`
+            : `2. Bloque Central Aeróbico (${targetZone})`,
+        durationMinutes: mainDur,
+        intensity: `${modSpeedHint} · ${zoneInfo.hrMin}–${zoneInfo.hrMax} ppm`,
+        description: `Equivale a ${eq.equivalentRunningKm} km de carrera (${eq.cardioPoints} Puntos Cardio). Adaptado a: ${restLabelMap[rest]}.`,
+        zone: targetZone,
+      },
+      {
+        label: '3. Enfriamiento y soltura',
+        durationMinutes: cooldown,
+        intensity: 'Muy suave · Respiración profunda',
+        description: 'Baja pulso progresivamente los últimos minutos.',
+        zone: 'Z1',
+      },
+    ];
+
+    return {
+      ...(baseWorkout ?? {}),
+      id,
+      date: dateStr,
+      dayIndex,
+      title: modTitle,
+      subtitle: `${safeDur} min · Equivale a ~${eq.equivalentRunningKm} km corriendo · ${restLabelMap[rest]}`,
+      modality,
+      sessionType: modality === 'cycling' ? 'cycling' : modality === 'soccer' ? 'soccer' : 'active_walk',
+      strategyTag: `Hoy P${powerLevel} · ${getModalityLabel(modality).split(' ')[0]}`,
+      durationMinutes: safeDur,
+      targetDistanceKm:
+        modality === 'cycling'
+          ? Number((safeDur * 0.36).toFixed(1))
+          : modality === 'soccer'
+          ? 5.0
+          : Number((safeDur * 0.1).toFixed(1)),
+      targetZone,
+      targetPace: modSpeedHint.slice(0, 72),
+      cardioPoints: eq.cardioPoints,
+      metMinutes: eq.metMinutes,
+      trimp: eq.trimp,
+      estimatedCalories: eq.calories,
+      blocks,
+      coachTip: `Rutina adaptada a Potencia ${powerLevel}/5 (${restLabelMap[rest]}). Disfruta sin forzar molestias.`,
+      completed: false,
+    };
+  }
+
+  // Running routines across Power 1..5 (guaranteed <= 10 blocks)
+  const warmup = Math.max(4, Math.min(8, Math.round(safeDur * 0.18)));
+  const cooldown = Math.max(4, Math.min(7, Math.round(safeDur * 0.14)));
+  const bodyMin = Math.max(8, safeDur - warmup - cooldown);
+
+  let blocks: WorkoutBlock[] = [];
+  let title = '';
+  let subtitle = '';
+  let sessionType: SessionType = 'easy_z1';
+  let targetZone: 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' = 'Z1';
+  let targetPace = `${z1.paceFormatted}`;
+  let rpe = 5;
+
+  if (powerLevel === 1) {
+    sessionType = 'easy_z1';
+    targetZone = 'Z1';
+    rpe = 3;
+    title = `Potencia 1 · Recuperación Suave (${safeDur} min)`;
+    subtitle = `Caminata ligera + trote regenerativo para cuidar piernas · ${restLabelMap[rest]}`;
+    targetPace = `${z1.paceFormatted} / Z1`.slice(0, 75);
+    blocks = [
+      {
+        label: '1. Activación y caminata alegre',
+        durationMinutes: warmup,
+        intensity: '5,5–6,0 km/h (0,095 km/min)',
+        description: 'Camina suelto movilizando tobillos y cadera.',
+        zone: 'Z1',
+      },
+      {
+        label: '2. Trote regenerativo o CaCo ultra suave',
+        durationMinutes: bodyMin,
+        intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
+        description: 'Debes poder hablar frases largas sin jadear. Si notas fatiga, camina 2 minutos cada 4 de trote.',
+        zone: 'Z1',
+      },
+      {
+        label: '3. Enfriamiento caminando',
+        durationMinutes: cooldown,
+        intensity: 'Paseo tranquilo · < 5,5 km/h',
+        description: 'Baja pulsaciones despacio y estira gemelos al acabar.',
+        zone: 'Z1',
+      },
+    ];
+  } else if (powerLevel === 2) {
+    sessionType = 'caco';
+    targetZone = 'Z1';
+    rpe = 4;
+    const rounds = Math.max(2, Math.min(4, Math.floor(bodyMin / 6)));
+    const cycleMin = Math.max(3, Math.floor(bodyMin / rounds));
+    const runMin = Math.max(2, Math.min(6, Math.round(cycleMin * 0.55)));
+    const walkMin = Math.max(1, cycleMin - runMin);
+    blocks = buildCaCoBlocks(runMin, walkMin, rounds, warmup, cooldown, z1);
+    title = `Potencia 2 · CaCo Guiado ${runMin}'/${walkMin}' (${blocks.reduce((a, b) => a + b.durationMinutes, 0)} min)`;
+    subtitle = `${rounds} series alternando ${runMin} min correr + ${walkMin} min andar · Ideal sin fatiga`;
+    targetPace = `${z1.paceFormatted}`.slice(0, 75);
+  } else if (powerLevel === 3) {
+    sessionType = 'easy_z1';
+    targetZone = 'Z2';
+    rpe = 6;
+    const basePart = Math.round(bodyMin * 0.65);
+    const finishPart = Math.max(4, bodyMin - basePart);
+    title = `Potencia 3 · Rodaje Aeróbico Base (${safeDur} min)`;
+    subtitle = `Construye fondo en Zona 1–2 sin pasarte de pulso · ${restLabelMap[rest]}`;
+    targetPace = `${z1.paceFormatted}`.slice(0, 75);
+    blocks = [
+      {
+        label: '1. Calentamiento progresivo Z1',
+        durationMinutes: warmup,
+        intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted}`,
+        description: 'Empieza suave dejando que la respiración se estabilice.',
+        zone: 'Z1',
+      },
+      {
+        label: '2. Bloque Central Aeróbico Z1',
+        durationMinutes: basePart,
+        intensity: `${z1.paceFormatted} · ${z1.speedKmhFormatted} (${z1.speedKmMinFormatted})`,
+        description: `Ritmo fluido y cómodo (${z1.hrMin}–${z1.hrMax} ppm). La base del progreso 80/20.`,
+        zone: 'Z1',
+      },
+      {
+        label: '3. Cierre estable Zona 2',
+        durationMinutes: finishPart,
+        intensity: `${z2.paceFormatted} · ${z2.speedKmhFormatted} (${z2.speedKmMinFormatted})`,
+        description: 'Sube un punto el ritmo si terminas con buenas sensaciones.',
+        zone: 'Z2',
+      },
+      {
+        label: '4. Vuelta a la calma',
+        durationMinutes: cooldown,
+        intensity: 'Caminata suave · < 5,5 km/h',
+        description: 'Baja el pulso los últimos minutos antes de parar.',
+        zone: 'Z1',
+      },
+    ];
+  } else if (powerLevel === 4) {
+    sessionType = 'threshold_z3';
+    targetZone = 'Z3';
+    rpe = 7;
+    const rounds = safeDur >= 40 ? 3 : 2;
+    const restMin = 2;
+    const workMin = Math.max(3, Math.floor((bodyMin - restMin * (rounds - 1)) / rounds));
+    blocks = buildIntervalBlocks('threshold_z3', workMin, restMin, rounds, warmup, cooldown, z1, z3);
+    const realDur = blocks.reduce((a, b) => a + b.durationMinutes, 0);
+    title = `Potencia 4 · Umbral Vivo (${rounds} x ${workMin}' Z3 · ${realDur} min)`;
+    subtitle = `Eleva tu velocidad media sostenida · ${restLabelMap[rest]}`;
+    targetPace = `${z3.paceFormatted}`.slice(0, 75);
+  } else {
+    sessionType = 'intervals_z4';
+    targetZone = 'Z4';
+    rpe = 8;
+    const rounds = safeDur >= 35 ? 4 : 3;
+    const restMin = 2;
+    const workMin = Math.max(2, Math.min(4, Math.floor((bodyMin - restMin * (rounds - 1)) / rounds)));
+    blocks = buildIntervalBlocks('intervals_z4', workMin, restMin, rounds, warmup, cooldown, z1, z4);
+    const realDur = blocks.reduce((a, b) => a + b.durationMinutes, 0);
+    title = `Potencia 5 · Series VO2max (${rounds} x ${workMin}' Z4 · ${realDur} min)`;
+    subtitle = `Máxima chispa aeróbica con recuperación completa · ${restLabelMap[rest]}`;
+    targetPace = `${z4.paceFormatted}`.slice(0, 75);
+  }
+
+  const totalMinutes = blocks.reduce((a, b) => a + b.durationMinutes, 0);
+  const eq = calculateCardioEquivalence('running', totalMinutes, rpe, profile.weightKg, profile.sex, profile.vdot);
+  const zTarget = zones.find((z) => z.id === targetZone) ?? z1;
+  const distKm = Number(((totalMinutes * 60) / Math.max(150, (zTarget.paceMinSecPerKm + zTarget.paceMaxSecPerKm) / 2)).toFixed(1));
+
+  return {
+    ...(baseWorkout ?? {}),
+    id,
+    date: dateStr,
+    dayIndex,
+    title: title.slice(0, 138),
+    subtitle,
+    modality: 'running',
+    sessionType,
+    strategyTag: `Hoy · Potencia ${powerLevel}/5`,
+    durationMinutes: totalMinutes,
+    targetDistanceKm: Math.max(1.2, distKm),
+    targetZone,
+    targetPace,
+    cardioPoints: eq.cardioPoints,
+    metMinutes: eq.metMinutes,
+    trimp: eq.trimp,
+    estimatedCalories: eq.calories,
+    blocks: blocks.slice(0, 10),
+    coachTip: `Rutina configurada para hoy a Potencia ${powerLevel}/5 (${restLabelMap[rest]}). Sigue el cronómetro por voz sin mirar el móvil.`,
+    completed: false,
+  };
+}
+
+export function getRoutineBlockPhoto(block: WorkoutBlock, modality: CardioModality): string {
+  const lbl = block.label.toLowerCase();
+  if (modality === 'cycling') return 'images/cardio-road-cycling.jpg';
+  if (modality === 'soccer') return 'images/cardio-soccer-pitch.jpg';
+  if (modality === 'walking') return 'images/modality-active-walk.jpg';
+  if (lbl.includes('calentamiento') || lbl.includes('activación') || lbl.includes('movilidad')) {
+    return 'images/routine-warmup-mobility.jpg';
+  }
+  if (lbl.includes('enfriamiento') || lbl.includes('calma') || lbl.includes('soltura')) {
+    return 'images/routine-cooldown-stretch.jpg';
+  }
+  if (lbl.includes('caminar') || lbl.includes('recuperación')) {
+    return 'images/modality-active-walk.jpg';
+  }
+  if (block.zone === 'Z4' || block.zone === 'Z5' || lbl.includes('vo2')) {
+    return 'images/routine-intervals-vo2.jpg';
+  }
+  if (block.zone === 'Z3' || lbl.includes('umbral')) {
+    return 'images/routine-tempo-threshold.jpg';
+  }
+  if (lbl.includes('fondo') || lbl.includes('tirada')) {
+    return 'images/routine-long-run-trail.jpg';
+  }
+  return 'images/routine-easy-aerobic.jpg';
+}
+
+export const IMAGE_BANK_GALLERY: Array<{ src: string; title: string; tag: string }> = [
+  { src: 'images/goal-start-caco.jpg', title: 'Inicio Progresivo CaCo', tag: 'Correr + Andar' },
+  { src: 'images/goal-speed-5k.jpg', title: 'Salidas y Velocidad 5K', tag: 'Potencia 5/5' },
+  { src: 'images/goal-endurance-10k.jpg', title: 'Resistencia y Fondo 10K', tag: 'Aeróbico 80/20' },
+  { src: 'images/routine-warmup-mobility.jpg', title: 'Calentamiento Activo', tag: 'Fase 1' },
+  { src: 'images/routine-easy-aerobic.jpg', title: 'Rodaje Aeróbico Base', tag: 'Zona 1–2' },
+  { src: 'images/routine-tempo-threshold.jpg', title: 'Bloques de Umbral', tag: 'Zona 3' },
+  { src: 'images/routine-intervals-vo2.jpg', title: 'Series Rápidas en Pista', tag: 'Zona 4–5' },
+  { src: 'images/routine-long-run-trail.jpg', title: 'Tirada Larga en Naturaleza', tag: 'Fondo' },
+  { src: 'images/routine-treadmill-indoor.jpg', title: 'Cinta Interior / Gimnasio', tag: 'Indoor' },
+  { src: 'images/routine-cooldown-stretch.jpg', title: 'Enfriamiento y Recuperación', tag: 'Vuelta a la calma' },
+  { src: 'images/recovery-sleep-rest.jpg', title: 'Descanso y Sueño Nocturno', tag: 'Readiness' },
+  { src: 'images/cardio-road-cycling.jpg', title: 'Ciclismo Equivalente', tag: 'Multi-Cardio' },
+  { src: 'images/cardio-soccer-pitch.jpg', title: 'Fútbol Intermitente', tag: 'Multi-Cardio' },
+  { src: 'images/meal-breakfast-oats.jpg', title: 'Desayuno Energético', tag: 'Nutrición' },
+  { src: 'images/meal-lunch-rice-chicken.jpg', title: 'Comida de Rendimiento', tag: 'Nutrición' },
+  { src: 'images/meal-dinner-salmon.jpg', title: 'Cena de Recuperación', tag: 'Nutrición' },
+];
+

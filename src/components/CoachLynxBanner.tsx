@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { ClipboardText, Flame, Heartbeat, Lightbulb } from '@phosphor-icons/react';
+import { ClipboardText, Compass, Flame, Heartbeat, Lightbulb, Target } from '@phosphor-icons/react';
 import type { GoogleFitDay, LynxLevelInfo, UserProfile, WorkoutSession } from '../types/fitness';
 import { SCIENTIFIC_LOADING_TIPS } from '../data/runningKnowledge';
-import { calculateWeekly8020Balance } from '../services/scienceEngine';
+import {
+  calculateWeekly8020Balance,
+  getGoalLabel,
+  getTrainingFocusInfo,
+} from '../services/scienceEngine';
 import { HaikeiTopoOverlay } from './AmbientBackdrop';
 import { AnimatedNumber, BiometricRing } from './MotionPrimitives';
 
@@ -13,6 +17,7 @@ interface CoachLynxBannerProps {
   todayWorkout?: WorkoutSession;
   fitToday?: GoogleFitDay;
   onOpenExam: () => void;
+  onOpenGoalModal?: () => void;
 }
 
 export function CoachLynxBanner({
@@ -22,10 +27,13 @@ export function CoachLynxBanner({
   todayWorkout,
   fitToday,
   onOpenExam,
+  onOpenGoalModal,
 }: CoachLynxBannerProps) {
   const [tipIndex, setTipIndex] = useState(0);
   const currentTip = SCIENTIFIC_LOADING_TIPS[tipIndex];
   const firstName = profile.displayName.split(' ')[0];
+  const focusInfo = getTrainingFocusInfo(profile.preferredStrategy);
+  const goalTitle = getGoalLabel(profile.goal);
 
   const balance8020 = calculateWeekly8020Balance(workouts);
   const todayChargePct = todayWorkout?.completed
@@ -59,10 +67,29 @@ export function CoachLynxBanner({
           </span>
         </div>
 
-        <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenExam}>
-          <ClipboardText size={15} weight="duotone" aria-hidden="true" />
-          Registrar examen físico
-        </button>
+        <div className="row-wrap">
+          {onOpenGoalModal && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenGoalModal}>
+              <Target size={15} weight="duotone" aria-hidden="true" />
+              Cambiar meta / enfoque
+            </button>
+          )}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenExam}>
+            <ClipboardText size={15} weight="duotone" aria-hidden="true" />
+            Registrar examen físico
+          </button>
+        </div>
+      </div>
+
+      <div className="row-wrap" style={{ gap: '0.45rem' }}>
+        <span className="pill lovable-badge">
+          <Target size={13} weight="duotone" aria-hidden="true" />
+          Meta: {goalTitle}
+        </span>
+        <span className="pill pill-emerald">
+          <Compass size={13} weight="duotone" aria-hidden="true" />
+          Entrenas: {focusInfo.shortLabel}
+        </span>
       </div>
 
       <div

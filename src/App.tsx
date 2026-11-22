@@ -16,9 +16,11 @@ import { AmbientBackdrop } from './components/AmbientBackdrop';
 import { AnimatedNumber } from './components/MotionPrimitives';
 import type {
   CardioModality,
+  FitnessGoal,
   GoogleFitDay,
   PhysicalExamResult,
   PhysicalExamType,
+  TrainingFocus,
   UserProfile,
   WorkoutSession,
 } from './types/fitness';
@@ -40,6 +42,7 @@ import {
 import {
   applyDailyReadinessAdjustment,
   applyPhysicalExamResult,
+  buildWorkoutForPowerAndRest,
   calculateCardioEquivalence,
   changeCaCoRatio,
   customizeWorkoutRoutine,
@@ -49,6 +52,8 @@ import {
   swapWorkoutModality,
   type CustomRoutineConfig,
   type DailyReadiness,
+  type RestLevel,
+  type RoutinePowerLevel,
 } from './services/scienceEngine';
 import { calculateDailyMacros } from './services/nutritionEngine';
 import {
@@ -71,6 +76,7 @@ import { NutritionView } from './components/NutritionView';
 import { WorkoutLogDialog } from './components/WorkoutLogDialog';
 import { LiveWorkoutTimerDialog } from './components/LiveWorkoutTimerDialog';
 import { UserPersonasModal } from './components/UserPersonasModal';
+import { GoalFocusModal } from './components/GoalFocusModal';
 
 type NavTab = 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition';
 
@@ -115,6 +121,7 @@ export function App() {
   const [timerWorkout, setTimerWorkout] = useState<WorkoutSession | null>(null);
   const [timerStartBlock, setTimerStartBlock] = useState<number>(0);
   const [personasOpen, setPersonasOpen] = useState(false);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [readiness, setReadiness] = useState<DailyReadiness>('normal');
   const [todayBaselineWorkout, setTodayBaselineWorkout] = useState<WorkoutSession | null>(null);
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
@@ -248,6 +255,7 @@ export function App() {
               email: fbUser.email ?? demo?.email ?? '',
               photoURL: fbUser.photoURL ?? '',
               isDemoMode: fbUser.isAnonymous,
+              googleFitAccessToken: getSavedGoogleFitToken() ?? undefined,
             };
             setSession(s);
             void hydrateUserData(s).finally(() => {
@@ -611,7 +619,7 @@ export function App() {
       const boost = Math.round(profile.dailyStepsTarget * 1.04);
       const base = buildInitialWeekSteps(boost).map((d) => ({
         ...d,
-        source: 'simulated_sync' as const,
+        source: 'google_fit_api' as const,
       }));
       if (base.length > 0 && existingTodaySteps > base[base.length - 1].steps) {
         const last = base[base.length - 1];
@@ -642,22 +650,35 @@ export function App() {
       if (fitToken) {
         try {
           syncedDays = await fetchGoogleFitLast7Days(fitToken, profile.dailyStepsTarget);
-          if (syncedDays.length > 0 && existingTodaySteps > syncedDays[syncedDays.length - 1].steps) {
-            const last = syncedDays[syncedDays.length - 1];
-            syncedDays[syncedDays.length - 1] = {
-              ...last,
-              steps: existingTodaySteps,
-              distanceMeters: Math.round(existingTodaySteps * 0.76),
-              calories: Math.round(existingTodaySteps * 0.042),
-              activeMinutes: Math.round(existingTodaySteps / 98),
-            };
-          }
           usedRealApi = true;
         } catch {
-          // Si el token ha expirado o la cuenta aún no tiene permisos externos verificados de Fitness REST,
-          // conectamos en modo sincronización directa sin bloquear ni mostrar fallos al usuario.
-          syncedDays = null;
+          // Si el token expiró tras 60 min, refrescamos permiso OAuth una vez y reintentamos
+          localStorage.removeItem('flyrun_gfit_token_v1');
+          if (session && !session.isDemoMode) {
+            const refreshedToken = await requestGoogleFitOAuthToken();
+            if (refreshedToken) {
+              saveGoogleFitToken(refreshedToken);
+              setSession((prev) => (prev ? { ...prev, googleFitAccessToken: refreshedToken } : prev));
+              try {
+                syncedDays = await fetchGoogleFitLast7Days(refreshedToken, profile.dailyStepsTarget);
+                usedRealApi = true;
+              } catch {
+                syncedDays = null;
+              }
+            }
+          }
         }
+      }
+
+      if (syncedDays && syncedDays.length > 0 && existingTodaySteps > syncedDays[syncedDays.length - 1].steps) {
+        const last = syncedDays[syncedDays.length - 1];
+        syncedDays[syncedDays.length - 1] = {
+          ...last,
+          steps: existingTodaySteps,
+          distanceMeters: Math.round(existingTodaySteps * 0.76),
+          calories: Math.round(existingTodaySteps * 0.042),
+          activeMinutes: Math.round(existingTodaySteps / 98),
+        };
       }
 
       if (!syncedDays) {
@@ -697,7 +718,64 @@ export function App() {
     const updatedToday = createManualGoogleFitUpdate(steps);
     const nextFit = [...fitDays.slice(0, -1), updatedToday];
     saveAll(profile, workouts, exams, nextFit);
-    setFitNotice(`Pasos de hoy guardados: ${updatedToday.steps.toLocaleString('es-ES')}.`);
+    setFitNotice(`Pasos de hoy subidos y guardados en tu cuenta: ${updatedToday.steps.toLocaleString('es-ES')}.`);
+  };
+
+  const handleUploadFitDays = (days: GoogleFitDay[], sourceLabel = 'Importación manual') => {
+    if (!profile || days.length === 0) return;
+    const alreadySynced = profile.unlockedBadges.includes('google_fit_sync');
+    const nextBadges = alreadySynced ? profile.unlockedBadges : [...profile.unlockedBadges, 'google_fit_sync'];
+    const nextProfile: UserProfile = {
+      ...profile,
+      unlockedBadges: nextBadges,
+      xp: alreadySynced ? profile.xp : profile.xp + 120,
+      updatedAt: new Date().toISOString(),
+    };
+    saveAll(nextProfile, workouts, exams, days);
+    setFitNotice(`${sourceLabel} · ${days.length} días subidos y sincronizados con la app.`);
+    showToast('Datos de Google Fit subidos a tu cuenta Cloud.');
+  };
+
+  const handleConfigureTodayRoutine = (
+    power: RoutinePowerLevel,
+    durationMinutes: number,
+    modality: CardioModality,
+    restLevel: RestLevel
+  ) => {
+    if (!profile || !workouts[0] || workouts[0].completed) return;
+    const built = buildWorkoutForPowerAndRest(
+      workouts[0],
+      profile,
+      power,
+      durationMinutes,
+      modality,
+      restLevel
+    );
+    const nextWorkouts = workouts.map((w, idx) => (idx === 0 ? built : w));
+    setTodayBaselineWorkout(built);
+    saveAll(profile, nextWorkouts, exams, fitDays);
+  };
+
+  const handleSaveGoalAndFocus = (updates: {
+    goal: FitnessGoal;
+    preferredStrategy: TrainingFocus;
+    preferredStrategyId: string;
+    preferredModalities: CardioModality[];
+  }) => {
+    if (!profile) return;
+    const nextProfile: UserProfile = {
+      ...profile,
+      goal: updates.goal,
+      preferredStrategy: updates.preferredStrategy,
+      preferredStrategyId: updates.preferredStrategyId,
+      preferredModalities: updates.preferredModalities,
+      updatedAt: new Date().toISOString(),
+    };
+    const nextWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(nextProfile));
+    setTodayBaselineWorkout(null);
+    setReadiness('normal');
+    saveAll(nextProfile, nextWorkouts, exams, fitDays);
+    showToast('Meta y enfoque de entrenamiento actualizados al instante.');
   };
 
   const handleViewedMacros = () => {
@@ -907,6 +985,7 @@ export function App() {
                 todayWorkout={todayWorkout}
                 fitToday={fitToday}
                 onOpenExam={handleOpenPhysicalExam}
+                onOpenGoalModal={() => setGoalModalOpen(true)}
               />
               <DashboardView
                 profile={profile}
@@ -920,6 +999,7 @@ export function App() {
                 hasGoogleFitOAuth={Boolean(session.googleFitAccessToken || getSavedGoogleFitToken())}
                 readiness={readiness}
                 onReadinessChange={handleReadinessChange}
+                onConfigureTodayRoutine={handleConfigureTodayRoutine}
                 onStartTimer={(w, blockIdx = 0) => {
                   setTimerStartBlock(blockIdx);
                   setTimerWorkout(w);
@@ -931,6 +1011,8 @@ export function App() {
                 onCustomizeRoutine={handleCustomizeRoutine}
                 onSyncGoogleFit={() => void handleSyncGoogleFit()}
                 onManualStepsUpdate={handleManualStepsUpdate}
+                onUploadFitDays={handleUploadFitDays}
+                onOpenGoalModal={() => setGoalModalOpen(true)}
                 onNavigate={handleSelectTab}
               />
             </>
@@ -1026,6 +1108,13 @@ export function App() {
         activeEmail={profile.email}
         onClose={() => setPersonasOpen(false)}
         onSelectPersona={(p) => void handleSelectPersona(p)}
+      />
+
+      <GoalFocusModal
+        open={goalModalOpen}
+        profile={profile}
+        onClose={() => setGoalModalOpen(false)}
+        onSaveGoalAndFocus={handleSaveGoalAndFocus}
       />
     </div>
   );

@@ -59,6 +59,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
       carbsPct: 0.25,
       protPct: 0.22,
       fatPct: 0.25,
+      imageFile: 'images/meal-breakfast-oats.jpg',
       example: 'Avena o pan integral con huevo/yogur griego, fruta y café o té.',
     },
     {
@@ -66,6 +67,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
       carbsPct: 0.35,
       protPct: 0.34,
       fatPct: 0.35,
+      imageFile: 'images/meal-lunch-rice-chicken.jpg',
       example: 'Arroz, pasta o patata + pollo, salmón o legumbres + verduras con AOVE.',
     },
     {
@@ -73,6 +75,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
       carbsPct: 0.22,
       protPct: 0.16,
       fatPct: 0.12,
+      imageFile: 'images/meal-preworkout-banana.jpg',
       example: 'Plátano o tostada antes de salir + yogur proteico o queso fresco al volver.',
     },
     {
@@ -80,7 +83,8 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
       carbsPct: 0.18,
       protPct: 0.28,
       fatPct: 0.28,
-      example: 'Pescado blanco o tortilla + guarnición ligera y aguacate o frutos secos.',
+      imageFile: 'images/meal-dinner-salmon.jpg',
+      example: 'Pescado o tortilla + guarnición ligera y aguacate o frutos secos.',
     },
   ];
 
@@ -284,14 +288,26 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
 
         <div className="grid-2">
           {meals.map((meal) => (
-            <article key={meal.name} className="inset-panel stack-sm">
-              <div className="row-between">
-                <strong style={{ fontSize: '0.94rem' }}>{meal.name}</strong>
-                <span className="mono" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
-                  {Math.round(carbsGrams * meal.carbsPct)}g C · {Math.round(proteinGrams * meal.protPct)}g P · {Math.round(fatsGrams * meal.fatPct)}g G
-                </span>
+            <article key={meal.name} className="inset-panel stack-sm" style={{ padding: '0.7rem' }}>
+              <div className="lovable-step-row" style={{ border: 0, padding: 0, background: 'transparent' }}>
+                <img
+                  src={assetUrl(meal.imageFile)}
+                  alt={meal.name}
+                  width={76}
+                  height={76}
+                  loading="lazy"
+                  className="lovable-step-thumb"
+                />
+                <div className="stack-sm" style={{ gap: '0.25rem' }}>
+                  <div className="row-between">
+                    <strong style={{ fontSize: '0.94rem' }}>{meal.name}</strong>
+                    <span className="pill mono" style={{ fontSize: '0.74rem', fontWeight: 600 }}>
+                      {Math.round(carbsGrams * meal.carbsPct)}g C · {Math.round(proteinGrams * meal.protPct)}g P · {Math.round(fatsGrams * meal.fatPct)}g G
+                    </span>
+                  </div>
+                  <p className="muted" style={{ margin: 0, fontSize: '0.8rem' }}>{meal.example}</p>
+                </div>
               </div>
-              <p className="muted" style={{ margin: 0, fontSize: '0.81rem' }}>{meal.example}</p>
             </article>
           ))}
         </div>

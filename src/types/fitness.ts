@@ -7,6 +7,13 @@ export type FitnessGoal =
   | 'improve_10k'
   | 'fat_loss_cardio';
 
+export type TrainingFocus =
+  | 'caco_safe'
+  | 'endurance_base'
+  | 'speed_series'
+  | 'tempo_threshold'
+  | 'hybrid_sport';
+
 export type CardioModality =
   | 'running'
   | 'cycling'
@@ -55,6 +62,7 @@ export interface UserProfile {
   streakDays: number;
   totalCardioPoints: number;
   preferredStrategyId: string;
+  preferredStrategy?: TrainingFocus | string;
   preferredModalities: CardioModality[];
   unlockedBadges: string[];
   onboardingCompleted: boolean;

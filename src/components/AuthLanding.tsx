@@ -203,52 +203,72 @@ export function AuthLanding({
             <TelemetryMockupCard />
           </SpotlightCard>
 
-          {/* Tira fotográfica documental */}
-          <section className="hero-photo-grid stagger-item" style={{ '--stagger': 1 } as CSSProperties} aria-label="Disciplinas reales de entrenamiento">
-            <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
-              <img
-                src={assetUrl('images/hero-track-runner.jpg')}
-                alt="Atletas corriendo en pista sintética de 400 metros"
-                width={1200}
-                height={520}
-                fetchPriority="high"
-                className="editorial-photo-img"
-              />
-              <figcaption className="editorial-photo-scrim">
-                <span className="editorial-photo-caption">Pista 400 m y series por VDOT</span>
-                <span className="pill pill-amber mono">Z3 – Z4</span>
-              </figcaption>
-            </figure>
+          {/* Tira fotográfica documental ampliada */}
+          <section className="stack-sm stagger-item" style={{ '--stagger': 1 } as CSSProperties} aria-label="Disciplinas reales de entrenamiento">
+            <div className="hero-photo-grid">
+              <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
+                <img
+                  src={assetUrl('images/hero-track-runner.jpg')}
+                  alt="Atletas corriendo en pista sintética de 400 metros"
+                  width={1200}
+                  height={520}
+                  fetchPriority="high"
+                  className="editorial-photo-img"
+                />
+                <figcaption className="editorial-photo-scrim">
+                  <span className="editorial-photo-caption">Pista 400 m y series por VDOT</span>
+                  <span className="pill pill-amber mono">Z3 – Z4</span>
+                </figcaption>
+              </figure>
 
-            <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
-              <img
-                src={assetUrl('images/cardio-road-cycling.jpg')}
-                alt="Ciclista en carretera realizando trabajo aeróbico equivalente"
-                width={1200}
-                height={520}
-                loading="lazy"
-                className="editorial-photo-img"
-              />
-              <figcaption className="editorial-photo-scrim">
-                <span className="editorial-photo-caption">Cardio cruzado en bicicleta y fútbol</span>
-                <span className="pill pill-cyan mono">TRIMP</span>
-              </figcaption>
-            </figure>
+              <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
+                <img
+                  src={assetUrl('images/cardio-road-cycling.jpg')}
+                  alt="Ciclista en carretera realizando trabajo aeróbico equivalente"
+                  width={1200}
+                  height={520}
+                  loading="lazy"
+                  className="editorial-photo-img"
+                />
+                <figcaption className="editorial-photo-scrim">
+                  <span className="editorial-photo-caption">Cardio cruzado en bicicleta y fútbol</span>
+                  <span className="pill pill-cyan mono">TRIMP</span>
+                </figcaption>
+              </figure>
 
-            <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
-              <img
-                src={assetUrl('images/nutrition-athlete-meal.jpg')}
-                alt="Plato equilibrado con proteína magra, cereales y verduras frescas"
-                width={1200}
-                height={520}
-                loading="lazy"
-                className="editorial-photo-img"
-              />
-              <figcaption className="editorial-photo-scrim">
-                <span className="editorial-photo-caption">Combustible real por gramos de macro</span>
-                <span className="pill pill-emerald mono">C · P · G</span>
-              </figcaption>
-            </figure>
+              <figure className="editorial-photo-banner" style={{ margin: 0, blockSize: '188px' }}>
+                <img
+                  src={assetUrl('images/nutrition-athlete-meal.jpg')}
+                  alt="Plato equilibrado con proteína magra, cereales y verduras frescas"
+                  width={1200}
+                  height={520}
+                  loading="lazy"
+                  className="editorial-photo-img"
+                />
+                <figcaption className="editorial-photo-scrim">
+                  <span className="editorial-photo-caption">Combustible real por gramos de macro</span>
+                  <span className="pill pill-emerald mono">C · P · G</span>
+                </figcaption>
+              </figure>
+            </div>
+
+            <div className="image-bank-grid">
+              {[
+                { file: 'images/goal-start-caco.jpg', label: 'Empieza suave con CaCo' },
+                { file: 'images/routine-warmup-mobility.jpg', label: 'Calentamiento y movilidad' },
+                { file: 'images/routine-intervals-vo2.jpg', label: 'Potencia 5 · Series VO2max' },
+                { file: 'images/routine-long-run-trail.jpg', label: 'Tiradas largas de fondo' },
+                { file: 'images/routine-treadmill-indoor.jpg', label: 'Entrenos indoor y cinta' },
+                { file: 'images/recovery-sleep-rest.jpg', label: 'Potencia según tu descanso' },
+              ].map((photo) => (
+                <figure key={photo.file} className="image-bank-tile" style={{ margin: 0 }}>
+                  <img src={assetUrl(photo.file)} alt={photo.label} loading="lazy" />
+                  <figcaption className="editorial-photo-scrim" style={{ padding: '0.4rem 0.55rem' }}>
+                    <span className="editorial-photo-caption" style={{ fontSize: '0.7rem' }}>{photo.label}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
           </section>
 
           {/* 4 Pilares técnicos */}

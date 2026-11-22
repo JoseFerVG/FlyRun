@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Pause, Play, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Compass, Pause, Play, RotateCcw, Target } from 'lucide-react';
 import type {
   CardioModality,
   FitnessGoal,
   PhysicalExamResult,
   PhysicalExamType,
   SexType,
+  TrainingFocus,
   UserProfile,
 } from '../types/fitness';
 import {
+  GOAL_CATALOG,
+  TRAINING_FOCUS_CATALOG,
   calculateTrainingZones,
   calculateVDOTFromExam,
   calculateVDOTFromSpeed,
@@ -22,6 +25,7 @@ import {
 } from '../services/scienceEngine';
 import { BiometricRing } from './MotionPrimitives';
 import { FlyRunLogo } from './FlyRunLogo';
+import { assetUrl } from '../services/assets';
 
 interface OnboardingModalProps {
   uid: string;
@@ -109,11 +113,17 @@ export function OnboardingModal({
   onCancel,
 }: OnboardingModalProps) {
   const isEditing = Boolean(existingProfile?.onboardingCompleted);
-  const [step, setStep] = useState<1 | 2 | 3>(isEditing ? 2 : 1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [examTouched, setExamTouched] = useState(!isEditing);
 
   const initialKmh = existingProfile ? vdotToEstimatedKmh(existingProfile.vdot) : 10.5;
   const initialPace = secPerKmToPaceMinSec(convertSpeedValue(initialKmh, 'kmh').secPerKm);
+
+  const [goal, setGoal] = useState<FitnessGoal>(existingProfile?.goal ?? 'start_running');
+  const [trainingFocus, setTrainingFocus] = useState<TrainingFocus>(
+    (existingProfile?.preferredStrategy as TrainingFocus | undefined) ?? 'caco_safe'
+  );
+  const [focusTouched, setFocusTouched] = useState(Boolean(existingProfile?.preferredStrategy));
 
   const [activePreset, setActivePreset] = useState<string>(existingProfile ? '' : 'medio');
   const [examType, setExamType] = useState<PhysicalExamType>('cooper_12min');
@@ -137,7 +147,6 @@ export function OnboardingModal({
   const [weightKg, setWeightKg] = useState(existingProfile?.weightKg ?? 72);
   const [heightCm, setHeightCm] = useState(existingProfile?.heightCm ?? 175);
   const [sex, setSex] = useState<SexType>(existingProfile?.sex ?? 'male');
-  const [goal, setGoal] = useState<FitnessGoal>(existingProfile?.goal ?? 'start_running');
   const [restHR, setRestHR] = useState(existingProfile?.restHR ?? 62);
 
   const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState(existingProfile?.trainingDaysPerWeek ?? 4);
@@ -345,8 +354,11 @@ export function OnboardingModal({
     const vdot = previewVdot;
     const baseXp = existingProfile?.xp ?? 150;
     const lvl = getLynxLevel(vdot, baseXp);
+    const focusObj = TRAINING_FOCUS_CATALOG.find((f) => f.id === trainingFocus);
     const strategyId =
-      existingProfile?.preferredStrategyId ?? (lvl.level <= 2 ? 'caco_progressive' : 'polarized_80_20');
+      focusObj?.strategyId ??
+      existingProfile?.preferredStrategyId ??
+      (lvl.level <= 2 ? 'caco_progressive' : 'polarized_80_20');
 
     const baseBadges = existingProfile?.unlockedBadges?.length
       ? [...existingProfile.unlockedBadges]
@@ -376,6 +388,7 @@ export function OnboardingModal({
       streakDays: existingProfile?.streakDays ?? 1,
       totalCardioPoints: existingProfile?.totalCardioPoints ?? 0,
       preferredStrategyId: strategyId,
+      preferredStrategy: trainingFocus,
       preferredModalities,
       unlockedBadges: baseBadges,
       onboardingCompleted: true,
@@ -405,7 +418,7 @@ export function OnboardingModal({
 
   return (
     <main id="main-content" className="main-container" style={{ maxInlineSize: '860px' }}>
-      <form onSubmit={handleSubmit} className="card stack-lg">
+      <form onSubmit={handleSubmit} className="card lovable-hero-card stack-lg">
         <div className="row-between">
           <div className="stack-sm">
             <FlyRunLogo
@@ -414,14 +427,16 @@ export function OnboardingModal({
                 isEditing
                   ? `Configuración · Paso ${step} de 3`
                   : step === 1
-                  ? 'Paso 1 de 3 · Examen Inicial'
-                  : `Paso ${step} de 3`
+                  ? 'Paso 1 de 3 · Meta y Enfoque'
+                  : step === 2
+                  ? 'Paso 2 de 3 · Nivel Inicial'
+                  : 'Paso 3 de 3 · Datos y Plan'
               }
             />
             <h1 style={{ margin: '0.25rem 0 0', fontSize: 'clamp(1.22rem, 3vw, 1.55rem)', letterSpacing: '-0.02em' }}>
-              {step === 1 && 'Evalúa tu punto de partida antes de generar el plan'}
-              {step === 2 && 'Datos biométricos y objetivo principal'}
-              {step === 3 && 'Disponibilidad semanal, Google Fit y confirmación'}
+              {step === 1 && 'Elige tu meta y lo que quieres entrenar mejor'}
+              {step === 2 && 'Evalúa tu punto de partida antes de generar tu plan'}
+              {step === 3 && 'Tus datos, disponibilidad semanal y Google Fit'}
             </h1>
           </div>
 
@@ -430,9 +445,9 @@ export function OnboardingModal({
               <div className="segmented-group" role="tablist" aria-label="Pasos de configuración">
                 {(
                   [
-                    { s: 1, label: '1. Nivel' },
-                    { s: 2, label: '2. Datos' },
-                    { s: 3, label: '3. Plan' },
+                    { s: 1, label: '1. Meta' },
+                    { s: 2, label: '2. Nivel' },
+                    { s: 3, label: '3. Datos' },
                   ] as const
                 ).map((item) => (
                   <button
@@ -461,6 +476,79 @@ export function OnboardingModal({
         </div>
 
         {step === 1 && (
+          <div className="stack-lg">
+            <div className="inset-panel row-between" style={{ padding: '0.62rem 0.85rem', borderColor: 'var(--pine-border)', background: 'var(--pine-soft)' }}>
+              <span className="secondary" style={{ fontSize: '0.82rem' }}>
+                Selecciona qué objetivo persigues y qué tipo de entrenamiento quieres priorizar.{' '}
+                <strong>Podrás cambiarlo después con 1 clic en la pantalla principal.</strong>
+              </span>
+            </div>
+
+            <div className="stack-sm">
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Target size={17} color="var(--accent)" aria-hidden="true" />
+                A) ¿Cuál es tu meta principal?
+              </div>
+              <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))' }}>
+                {GOAL_CATALOG.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    aria-pressed={goal === g.id}
+                    className="lovable-choice-card"
+                    onClick={() => {
+                      setGoal(g.id);
+                      if (!focusTouched) {
+                        setTrainingFocus(g.defaultFocus);
+                      }
+                    }}
+                  >
+                    <div className="lovable-choice-thumb" style={{ blockSize: '74px' }}>
+                      <img src={assetUrl(g.imageFile)} alt="" loading="lazy" />
+                    </div>
+                    <strong style={{ fontSize: '0.82rem', lineHeight: 1.25 }}>{g.title}</strong>
+                    <span className="muted" style={{ fontSize: '0.72rem', lineHeight: 1.3 }}>{g.subtitle}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="stack-sm">
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <Compass size={17} color="var(--pine)" aria-hidden="true" />
+                B) ¿Qué quieres entrenar y mejorar específicamente?
+              </div>
+              <div className="lovable-choice-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))' }}>
+                {TRAINING_FOCUS_CATALOG.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    aria-pressed={trainingFocus === f.id}
+                    className="lovable-choice-card"
+                    onClick={() => {
+                      setFocusTouched(true);
+                      setTrainingFocus(f.id);
+                      setPreferredModalities(Array.from(new Set(f.recommendedModalities)));
+                    }}
+                  >
+                    <div className="lovable-choice-thumb" style={{ blockSize: '74px' }}>
+                      <img src={assetUrl(f.imageFile)} alt="" loading="lazy" />
+                    </div>
+                    <div className="row-between" style={{ gap: '0.2rem' }}>
+                      <strong style={{ fontSize: '0.82rem', lineHeight: 1.2 }}>{f.shortLabel}</strong>
+                      <span className="pill pill-emerald" style={{ fontSize: '0.64rem', padding: '0.06rem 0.38rem' }}>
+                        {f.benefit}
+                      </span>
+                    </div>
+                    <span className="muted" style={{ fontSize: '0.72rem', lineHeight: 1.3 }}>{f.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
           <div className="stack-md">
             <div className="stack-sm">
               <div className="row-between">
@@ -876,117 +964,98 @@ export function OnboardingModal({
           </div>
         )}
 
-        {step === 2 && (
-          <div className="grid-2">
-            <div className="field">
-              <label htmlFor="onb-name">Tu nombre</label>
-              <input
-                id="onb-name"
-                name="displayName"
-                className="input"
-                placeholder="Ej. Laura, Javier…"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="onb-goal">Objetivo principal</label>
-              <select
-                id="onb-goal"
-                name="goal"
-                className="select"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value as FitnessGoal)}
-              >
-                <option value="start_running">Empezar a correr sin lesiones (CaCo)</option>
-                <option value="health_maintenance">Salud diaria y condición cardiovascular</option>
-                <option value="improve_5k">Mejorar marca en 5 km</option>
-                <option value="improve_10k">Preparar 10 km con método 80/20</option>
-                <option value="fat_loss_cardio">Mejorar composición corporal</option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="onb-age">Edad (años)</label>
-              <input
-                id="onb-age"
-                name="age"
-                type="number"
-                min={14}
-                max={90}
-                className="input mono"
-                value={age}
-                onChange={(e) => setAge(Number(e.target.value))}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="onb-weight">Peso corporal (kg)</label>
-              <input
-                id="onb-weight"
-                name="weightKg"
-                type="number"
-                min={35}
-                max={220}
-                step="0.5"
-                className="input mono"
-                value={weightKg}
-                onChange={(e) => setWeightKg(Number(e.target.value))}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="onb-height">Altura (cm)</label>
-              <input
-                id="onb-height"
-                name="heightCm"
-                type="number"
-                min={120}
-                max={230}
-                className="input mono"
-                value={heightCm}
-                onChange={(e) => setHeightCm(Number(e.target.value))}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="onb-sex">Sexo fisiológico</label>
-              <select
-                id="onb-sex"
-                name="sex"
-                className="select"
-                value={sex}
-                onChange={(e) => setSex(e.target.value as SexType)}
-              >
-                <option value="male">Hombre</option>
-                <option value="female">Mujer</option>
-                <option value="other">Otro / Promedio</option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="onb-rhr">Pulso en reposo (ppm)</label>
-              <input
-                id="onb-rhr"
-                name="restHR"
-                type="number"
-                min={38}
-                max={110}
-                className="input mono"
-                value={restHR}
-                onChange={(e) => setRestHR(Number(e.target.value))}
-              />
-            </div>
-          </div>
-        )}
-
         {step === 3 && (
           <div className="stack-md">
+            <div className="grid-2">
+              <div className="field">
+                <label htmlFor="onb-name">Tu nombre</label>
+                <input
+                  id="onb-name"
+                  name="displayName"
+                  className="input"
+                  placeholder="Ej. Laura, Javier…"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="onb-sex">Sexo fisiológico</label>
+                <select
+                  id="onb-sex"
+                  name="sex"
+                  className="select"
+                  value={sex}
+                  onChange={(e) => setSex(e.target.value as SexType)}
+                >
+                  <option value="male">Hombre</option>
+                  <option value="female">Mujer</option>
+                  <option value="other">Otro / Promedio</option>
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="onb-age">Edad (años)</label>
+                <input
+                  id="onb-age"
+                  name="age"
+                  type="number"
+                  min={14}
+                  max={90}
+                  className="input mono"
+                  value={age}
+                  onChange={(e) => setAge(Number(e.target.value))}
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="onb-weight">Peso corporal (kg)</label>
+                <input
+                  id="onb-weight"
+                  name="weightKg"
+                  type="number"
+                  min={35}
+                  max={220}
+                  step="0.5"
+                  className="input mono"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(Number(e.target.value))}
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="onb-height">Altura (cm)</label>
+                <input
+                  id="onb-height"
+                  name="heightCm"
+                  type="number"
+                  min={120}
+                  max={230}
+                  className="input mono"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(Number(e.target.value))}
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="onb-rhr">Pulso en reposo (ppm)</label>
+                <input
+                  id="onb-rhr"
+                  name="restHR"
+                  type="number"
+                  min={38}
+                  max={110}
+                  className="input mono"
+                  value={restHR}
+                  onChange={(e) => setRestHR(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
             <div className="grid-3">
               <div className="field">
                 <label htmlFor="onb-days">Días de entreno / semana</label>
@@ -1100,7 +1169,7 @@ export function OnboardingModal({
               className="btn btn-primary"
               onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)}
             >
-              {step === 1 ? 'Confirmar nivel y continuar' : 'Siguiente paso'}
+              {step === 1 ? 'Guardar meta y pasar al examen' : 'Confirmar nivel y continuar'}
               <ArrowRight size={16} aria-hidden="true" />
             </button>
           ) : (

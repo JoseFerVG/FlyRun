@@ -179,6 +179,7 @@ export async function signInWithGoogleFirebase(): Promise<{
   }
 
   const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/fitness.activity.read');
   provider.setCustomParameters({ prompt: 'select_account' });
 
   const result = await signInWithPopup(clients.auth, provider);
