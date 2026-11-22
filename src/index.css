@@ -358,6 +358,8 @@ dialog::backdrop {
   background: var(--bg-subtle);
   color: var(--text-secondary);
   border: 1px solid var(--border-hairline);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .desktop-nav {
@@ -1176,7 +1178,7 @@ input[type='range'] {
   opacity: 1;
 }
 
-.spotlight-card > * {
+.spotlight-card > :not(.haikei-topo-overlay) {
   position: relative;
   z-index: 1;
 }

@@ -100,17 +100,17 @@ function getBlockPhaseMeta(block: WorkoutBlock): {
   isWalkOrWarmup: boolean;
 } {
   const txt = `${block.label} ${block.intensity}`.toLowerCase();
-  if (txt.includes('caminar') || txt.includes('caminata') || txt.includes('recupera') || txt.includes('paseo') || txt.includes('enfriamiento') || txt.includes('vuelta a la calma') || txt.includes('soltura')) {
+  if (txt.includes('calentamiento') || txt.includes('activación')) {
     return {
-      actionCmd: 'CAMINA Y RECUPERA',
+      actionCmd: 'CALENTAMIENTO',
       ringColor: 'var(--pine)',
       badgeClass: 'pill-emerald',
       isWalkOrWarmup: true,
     };
   }
-  if (txt.includes('calentamiento') || txt.includes('activación')) {
+  if (txt.includes('caminar') || txt.includes('caminata') || txt.includes('recupera') || txt.includes('paseo') || txt.includes('enfriamiento') || txt.includes('vuelta a la calma') || txt.includes('soltura')) {
     return {
-      actionCmd: 'CALENTAMIENTO',
+      actionCmd: 'CAMINA Y RECUPERA',
       ringColor: 'var(--pine)',
       badgeClass: 'pill-emerald',
       isWalkOrWarmup: true,
