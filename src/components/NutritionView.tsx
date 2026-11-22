@@ -35,6 +35,9 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
   const proteinGrams = baseMacros.proteinGrams; // Proteína se mantiene estable para proteger músculo
   const fatsGrams = Math.round(baseMacros.fatsGrams * (calorieMode === 'deficit' ? 0.92 : multiplier));
   const totalKcal = carbsGrams * 4 + proteinGrams * 4 + fatsGrams * 9;
+  const carbsPct = Math.round(((carbsGrams * 4) / Math.max(1, totalKcal)) * 100);
+  const proteinPct = Math.round(((proteinGrams * 4) / Math.max(1, totalKcal)) * 100);
+  const fatsPct = Math.max(0, 100 - carbsPct - proteinPct);
 
   const meals = [
     {
@@ -87,7 +90,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
         </div>
 
         <div className="row-between">
-          <div className="row-wrap" role="group" aria-label="Simular macros según tipo de día">
+          <div className="segmented-group" role="group" aria-label="Simular macros según tipo de día">
             {[
               { id: 'today', label: 'Sesión de hoy' },
               { id: 'rest', label: 'Día de descanso' },
@@ -98,7 +101,8 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
               <button
                 key={item.id}
                 type="button"
-                className={`btn btn-sm ${mode === item.id ? 'btn-primary' : 'btn-secondary'}`}
+                aria-pressed={mode === item.id}
+                className="segmented-btn is-accent"
                 onClick={() => {
                   setMode(item.id as SimulationDayMode);
                   onViewedMacros();
@@ -109,7 +113,7 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
             ))}
           </div>
 
-          <div className="row-wrap" role="group" aria-label="Ajuste de objetivo energético">
+          <div className="segmented-group" role="group" aria-label="Ajuste de objetivo energético">
             {[
               { id: 'deficit', label: 'Déficit ligero (-10%)' },
               { id: 'maintenance', label: 'Mantenimiento' },
@@ -118,7 +122,8 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
               <button
                 key={adj.id}
                 type="button"
-                className={`btn btn-sm ${calorieMode === adj.id ? 'btn-emerald' : 'btn-ghost'}`}
+                aria-pressed={calorieMode === adj.id}
+                className="segmented-btn is-pine"
                 onClick={() => setCalorieMode(adj.id as CalorieAdjustment)}
               >
                 {adj.label}
@@ -127,8 +132,20 @@ export function NutritionView({ profile, todayWorkout, fitToday, onViewedMacros 
           </div>
         </div>
 
-        <div className="muted" style={{ fontSize: '0.82rem' }}>
-          Escenario seleccionado: <strong>{baseMacros.dayTypeLabel}</strong>
+        <div className="stack-sm">
+          <div className="row-between" style={{ fontSize: '0.8rem' }}>
+            <span className="muted">
+              Escenario: <strong style={{ color: 'var(--text-primary)' }}>{baseMacros.dayTypeLabel}</strong>
+            </span>
+            <span className="mono muted">
+              {carbsPct}% C · {proteinPct}% P · {fatsPct}% G
+            </span>
+          </div>
+          <div className="stacked-macro-track" aria-label={`Reparto energético ${carbsPct}% carbohidratos, ${proteinPct}% proteína, ${fatsPct}% grasas`}>
+            <div style={{ inlineSize: `${carbsPct}%`, backgroundColor: 'var(--accent)' }} />
+            <div style={{ inlineSize: `${proteinPct}%`, backgroundColor: 'var(--pine)' }} />
+            <div style={{ inlineSize: `${fatsPct}%`, backgroundColor: 'var(--cobalt)' }} />
+          </div>
         </div>
       </section>
 

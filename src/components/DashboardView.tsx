@@ -101,12 +101,12 @@ export function DashboardView({
 
               {/* Check-in diario de fatiga / sensaciones */}
               {!todayWorkout.completed && todayWorkout.sessionType !== 'rest' && (
-                <div className="inset-panel stack-sm" style={{ padding: '0.6rem 0.78rem' }}>
+                <div className="inset-panel stack-sm" style={{ padding: '0.62rem 0.78rem' }}>
                   <div className="row-between">
                     <span className="muted" style={{ fontSize: '0.76rem', fontWeight: 600 }}>
                       ¿Cómo te sientes hoy antes de salir?
                     </span>
-                    <div className="row-wrap" style={{ gap: '0.35rem' }}>
+                    <div className="segmented-group" role="group" aria-label="Estado de fatiga diaria">
                       {(
                         [
                           { id: 'fresh', label: 'Fresco' },
@@ -117,7 +117,8 @@ export function DashboardView({
                         <button
                           key={opt.id}
                           type="button"
-                          className={`btn btn-sm ${readiness === opt.id ? 'btn-primary' : 'btn-ghost'}`}
+                          aria-pressed={readiness === opt.id}
+                          className="segmented-btn is-accent"
                           onClick={() => onReadinessChange(opt.id)}
                         >
                           {opt.label}
@@ -152,25 +153,31 @@ export function DashboardView({
               </div>
 
               {todayWorkout.sessionType === 'caco' && !todayWorkout.completed && (
-                <div className="row-wrap" style={{ gap: '0.4rem' }}>
+                <div className="row-between">
                   <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
                     Proporción CaCo:
                   </span>
-                  {[
-                    [2, 6],
-                    [3, 5],
-                    [4, 4],
-                    [5, 2],
-                  ].map(([r, w]) => (
-                    <button
-                      key={`${r}-${w}`}
-                      type="button"
-                      className={`btn btn-sm ${todayWorkout.strategyTag.includes(`${r}'/${w}'`) ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => onChangeCaCoRatio(todayWorkout.id, r, w)}
-                    >
-                      {r}&apos; / {w}&apos;
-                    </button>
-                  ))}
+                  <div className="segmented-group" role="group" aria-label="Proporción correr y andar">
+                    {[
+                      [2, 6],
+                      [3, 5],
+                      [4, 4],
+                      [5, 2],
+                    ].map(([r, w]) => {
+                      const activeRatio = todayWorkout.strategyTag.includes(`${r}'/${w}'`);
+                      return (
+                        <button
+                          key={`${r}-${w}`}
+                          type="button"
+                          aria-pressed={activeRatio}
+                          className="segmented-btn is-accent mono"
+                          onClick={() => onChangeCaCoRatio(todayWorkout.id, r, w)}
+                        >
+                          {r}&apos; / {w}&apos;
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -200,17 +207,19 @@ export function DashboardView({
                   <div className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>
                     Cambiar modalidad hoy manteniendo equivalencia de carga:
                   </div>
-                  <div className="row-wrap">
+                  <div className="segmented-group" role="group" aria-label="Modalidad alternativa de hoy">
                     <button
                       type="button"
-                      className={`btn btn-sm ${todayWorkout.modality === 'running' ? 'btn-primary' : 'btn-secondary'}`}
+                      aria-pressed={todayWorkout.modality === 'running'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'running')}
                     >
                       Running
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm ${todayWorkout.modality === 'cycling' ? 'btn-primary' : 'btn-secondary'}`}
+                      aria-pressed={todayWorkout.modality === 'cycling'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'cycling')}
                     >
                       <Bike size={14} aria-hidden="true" />
@@ -218,7 +227,8 @@ export function DashboardView({
                     </button>
                     <button
                       type="button"
-                      className={`btn btn-sm ${todayWorkout.modality === 'soccer' ? 'btn-primary' : 'btn-secondary'}`}
+                      aria-pressed={todayWorkout.modality === 'soccer'}
+                      className="segmented-btn is-accent"
                       onClick={() => onSwapTodayModality(todayWorkout.id, 'soccer')}
                     >
                       Partido de fútbol
@@ -345,7 +355,7 @@ export function DashboardView({
                 disabled={fitSyncLoading}
               >
                 <RefreshCw size={14} aria-hidden="true" />
-                {fitSyncLoading ? 'Sincronizando...' : 'Sincronizar Google Fit'}
+                {fitSyncLoading ? 'Sincronizando…' : 'Sincronizar Google Fit'}
               </button>
             </div>
 
@@ -407,12 +417,15 @@ export function DashboardView({
             </div>
 
             <div className="row-wrap">
+              <label htmlFor="manual-fit-steps" className="sr-only">
+                Pasos diarios de hoy
+              </label>
               <input
                 id="manual-fit-steps"
                 name="manualFitSteps"
                 type="number"
-                aria-label="Registrar pasos manuales o simular Google Fit"
-                className="input"
+                inputMode="numeric"
+                className="input mono"
                 style={{ inlineSize: '140px', padding: '0.4rem 0.65rem' }}
                 min={0}
                 max={50000}

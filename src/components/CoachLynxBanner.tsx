@@ -50,8 +50,8 @@ export function CoachLynxBanner({
       </div>
 
       <div className="grid-2" style={{ gap: '0.8rem' }}>
-        <div className="inset-panel stack-sm">
-          <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase' }}>
+        <div className="inset-panel accent-rail stack-sm">
+          <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Hoy toca
           </div>
           <div style={{ fontWeight: 700, fontSize: '0.96rem' }}>
@@ -64,8 +64,8 @@ export function CoachLynxBanner({
           </div>
         </div>
 
-        <div className="inset-panel stack-sm">
-          <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase' }}>
+        <div className="inset-panel accent-rail-cobalt stack-sm">
+          <div className="muted" style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Mañana te espera
           </div>
           <div style={{ fontWeight: 700, fontSize: '0.96rem' }}>

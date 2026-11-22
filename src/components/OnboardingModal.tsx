@@ -109,7 +109,7 @@ export function OnboardingModal({
   };
 
   return (
-    <main className="main-container" style={{ maxInlineSize: '780px' }}>
+    <main id="main-content" className="main-container" style={{ maxInlineSize: '780px' }}>
       <form onSubmit={handleSubmit} className="card stack-lg">
         <div className="row-between">
           <div>

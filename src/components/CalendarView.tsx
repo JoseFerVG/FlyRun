@@ -58,14 +58,14 @@ export function CalendarView({
             </div>
           </div>
 
-          <div className="row-wrap" role="tablist" aria-label="Seleccionar semana del calendario">
+          <div className="segmented-group" role="tablist" aria-label="Seleccionar semana del calendario">
             {[1, 2, 3, 4].map((wk) => (
               <button
                 key={wk}
                 type="button"
                 role="tab"
                 aria-selected={activeWeek === wk}
-                className={`btn btn-sm ${activeWeek === wk ? 'btn-primary' : 'btn-secondary'}`}
+                className="segmented-btn"
                 onClick={() => {
                   setActiveWeek(wk);
                   const firstOfWeek = workouts[(wk - 1) * 7];
@@ -268,7 +268,7 @@ export function CalendarView({
                       value={swapTargetId}
                       onChange={(e) => setSwapTargetId(e.target.value)}
                     >
-                      <option value="">Elige otro día de la Semana {activeWeek}...</option>
+                      <option value="">Elige otro día de la Semana {activeWeek}…</option>
                       {swapCandidates.map((cand) => (
                         <option key={cand.id} value={cand.id}>
                           {formatShortDate(cand.date)} — {cand.title}

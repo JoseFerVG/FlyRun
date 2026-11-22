@@ -162,7 +162,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
                 name="logNotes"
                 rows={2}
                 className="textarea"
-                placeholder="Ej. Buenas sensaciones en los tramos de trote, pulso estable..."
+                placeholder="Ej. Buenas sensaciones en los tramos de trote, pulso estable…"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -172,7 +172,7 @@ export function WorkoutLogDialog({ workout, onClose, onConfirmComplete }: Workou
               <button type="button" className="btn btn-secondary" onClick={handleClose}>
                 Cancelar
               </button>
-              <button type="submit" className="btn btn-emerald" autoFocus>
+              <button type="submit" className="btn btn-emerald">
                 <CheckCircle2 size={16} aria-hidden="true" />
                 Guardar entrenamiento
               </button>

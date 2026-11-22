@@ -116,7 +116,7 @@ export function StrategiesAndCardioView({ profile, onSelectStrategy }: Strategie
           </div>
         </div>
 
-        <div className="scroll-table-wrap">
+        <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Tabla comparativa de equivalencias cardiovasculares">
           <table className="zone-table">
             <thead>
               <tr>

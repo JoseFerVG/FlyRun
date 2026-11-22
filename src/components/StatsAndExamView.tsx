@@ -167,7 +167,7 @@ export function StatsAndExamView({
           </div>
         </div>
 
-        <div className="scroll-table-wrap">
+        <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Tabla de zonas de ritmo y frecuencia cardíaca">
           <table className="zone-table">
             <thead>
               <tr>
@@ -209,7 +209,7 @@ export function StatsAndExamView({
           </div>
         </div>
 
-        <div className="scroll-table-wrap">
+        <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Tabla de marcas equivalentes y paso por 400 metros">
           <table className="zone-table">
             <thead>
               <tr>
@@ -524,7 +524,7 @@ export function StatsAndExamView({
             Todavía no has marcado entrenamientos completados. Registra tu sesión de hoy o una actividad libre para verla aquí.
           </div>
         ) : (
-          <div className="scroll-table-wrap">
+          <div className="scroll-table-wrap" tabIndex={0} role="region" aria-label="Historial de entrenamientos completados">
             <table className="zone-table">
               <thead>
                 <tr>

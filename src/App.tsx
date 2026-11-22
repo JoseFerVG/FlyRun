@@ -111,7 +111,34 @@ export function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('flyrun_theme', theme);
+    const meta = document.getElementById('theme-color-meta');
+    if (meta) {
+      meta.setAttribute('content', theme === 'dark' ? '#0d0f12' : '#f5f3ed');
+    }
   }, [theme]);
+
+  const runViewTransition = (updateFn: () => void) => {
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+    };
+    if (!prefersReduced && typeof doc.startViewTransition === 'function') {
+      doc.startViewTransition(() => updateFn());
+    } else {
+      updateFn();
+    }
+  };
+
+  const handleSelectTab = (tab: NavTab) => {
+    if (tab === activeTab) return;
+    runViewTransition(() => setActiveTab(tab));
+  };
+
+  const handleToggleTheme = () => {
+    runViewTransition(() => setTheme((t) => (t === 'light' ? 'dark' : 'light')));
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -535,12 +562,15 @@ export function App() {
   if (!session) {
     return (
       <>
+        <a href="#main-content" className="skip-link">
+          Saltar al contenido principal
+        </a>
         <AuthLanding
           onGoogleLogin={handleGoogleLogin}
           onDemoLogin={() => void handleDemoLogin()}
           onOpenPersonas={() => setPersonasOpen(true)}
           theme={theme}
-          onToggleTheme={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+          onToggleTheme={handleToggleTheme}
           authLoading={authLoading}
           authError={authError}
         />
@@ -584,13 +614,16 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <header className="top-header">
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido principal
+      </a>
+      <header className="top-header" style={{ viewTransitionName: 'persistent-nav' }}>
         <div className="header-inner">
           <div className="brand-mark">
             <span className="brand-monogram" aria-hidden="true">FR</span>
             <div>
               <div className="brand-title">
-                FlyRun <span className="brand-badge">Nivel {levelInfo.level}</span>
+                <span translate="no">FlyRun</span> <span className="brand-badge">Nivel {levelInfo.level}</span>
               </div>
               <div className="muted" style={{ fontSize: '0.72rem' }}>
                 {profile.displayName}
@@ -601,16 +634,24 @@ export function App() {
           <nav className="desktop-nav" aria-label="Navegación principal">
             {navItems.map((item) => {
               const Icon = item.icon;
+              const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
                   className="nav-pill"
-                  aria-current={activeTab === item.id ? 'page' : undefined}
-                  onClick={() => setActiveTab(item.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => handleSelectTab(item.id)}
                 >
                   <Icon size={15} aria-hidden="true" />
                   {item.label}
+                  {isActive && (
+                    <span
+                      className="nav-indicator"
+                      style={{ viewTransitionName: 'nav-indicator' }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
               );
             })}
@@ -629,7 +670,7 @@ export function App() {
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
+              onClick={handleToggleTheme}
               aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
               title={theme === 'light' ? 'Modo oscuro mate' : 'Modo claro'}
             >
@@ -657,10 +698,10 @@ export function App() {
         </div>
       </header>
 
-      <main className="main-container">
+      <main id="main-content" className="main-container" style={{ viewTransitionName: 'main-view' }}>
         <div className="stack-lg">
           {toastMessage && (
-            <div role="status" className="notice-banner">
+            <div role="status" aria-live="polite" className="notice-banner">
               <ShieldCheck size={17} aria-hidden="true" />
               {toastMessage}
             </div>
@@ -673,7 +714,7 @@ export function App() {
                 levelInfo={levelInfo}
                 todayWorkout={todayWorkout}
                 tomorrowWorkout={tomorrowWorkout}
-                onOpenExam={() => setActiveTab('stats')}
+                onOpenExam={() => handleSelectTab('stats')}
               />
               <DashboardView
                 profile={profile}
@@ -693,7 +734,7 @@ export function App() {
                 onChangeCaCoRatio={handleChangeCaCoRatio}
                 onSyncGoogleFit={() => void handleSyncGoogleFit()}
                 onManualStepsUpdate={handleManualStepsUpdate}
-                onNavigate={setActiveTab}
+                onNavigate={handleSelectTab}
               />
             </>
           )}
@@ -705,7 +746,7 @@ export function App() {
               onSelectComplete={(w) => setLoggingWorkout(w)}
               onSwapModality={handleSwapModality}
               onSwapWorkoutDays={handleSwapWorkoutDays}
-              onOpenExam={() => setActiveTab('stats')}
+              onOpenExam={() => handleSelectTab('stats')}
             />
           )}
 
@@ -746,7 +787,7 @@ export function App() {
               type="button"
               className="mobile-nav-btn"
               aria-current={activeTab === item.id ? 'page' : undefined}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => handleSelectTab(item.id)}
             >
               <Icon size={18} aria-hidden="true" />
               <span>{item.shortLabel}</span>
