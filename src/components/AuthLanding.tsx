@@ -13,7 +13,6 @@ import {
   PersonSimpleRun,
   SunDim,
 } from '@phosphor-icons/react';
-import { Download } from 'lucide-react';
 import { AmbientBackdrop } from './AmbientBackdrop';
 import { FlyRunLogo } from './FlyRunLogo';
 import { SpotlightCard, TelemetryMockupCard } from './MotionPrimitives';
@@ -26,7 +25,6 @@ interface AuthLandingProps {
   onDemoLogin: () => Promise<void> | void;
   onOpenPersonas: () => void;
   onSelectPersona: (persona: SimulatedUserPersona) => void;
-  onInstallApp?: () => void;
   onOpenLegal: (tab: LegalTabId) => void;
   onOpenCookieSettings: () => void;
   theme: 'light' | 'dark';
@@ -66,7 +64,6 @@ export function AuthLanding({
   onDemoLogin,
   onOpenPersonas,
   onSelectPersona,
-  onInstallApp,
   onOpenLegal,
   onOpenCookieSettings,
   theme,
@@ -96,12 +93,6 @@ export function AuthLanding({
             </nav>
 
             <div className="row-wrap">
-              {onInstallApp && (
-                <button type="button" className="btn btn-primary btn-sm" onClick={onInstallApp}>
-                  <Download size={14} aria-hidden="true" />
-                  Instalar App
-                </button>
-              )}
               <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenPersonas}>
                 <span className="avatar-stack" aria-hidden="true">
                   <img src={assetUrl('images/avatar-laura.jpg')} alt="" width={20} height={20} />

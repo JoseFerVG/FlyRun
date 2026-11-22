@@ -276,7 +276,6 @@ export async function signInWithGoogleFirebase(): Promise<{
   }
 
   const provider = new GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/fitness.activity.read');
   provider.setCustomParameters({ prompt: 'select_account' });
 
   const result = await signInWithPopup(clients.auth, provider);
@@ -295,22 +294,8 @@ export async function signInWithGoogleFirebase(): Promise<{
 }
 
 export async function requestGoogleFitOAuthToken(): Promise<string | null> {
-  const clients = getFirebaseClients();
-  if (!clients) return null;
-
-  try {
-    const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/fitness.activity.read');
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const result = await signInWithPopup(clients.auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      saveGoogleFitToken(credential.accessToken);
-    }
-    return credential?.accessToken ?? null;
-  } catch {
-    return null;
-  }
+  // Evitamos solicitar scopes OAuth no verificados para no mostrar pantallas de "autor no confiable".
+  return getSavedGoogleFitToken();
 }
 
 export async function signInWithEmailFirebase(

@@ -2261,3 +2261,12 @@ export const IMAGE_BANK_GALLERY: Array<{ src: string; title: string; tag: string
   { src: 'images/meal-dinner-salmon.jpg', title: 'Cena de Recuperación', tag: 'Nutrición' },
 ];
 
+export function formatShortUserName(displayName?: string, email?: string): string {
+  const raw = (displayName ?? '').trim();
+  const base = raw && !raw.includes('@')
+    ? raw.split(/\s+/)[0]
+    : ((raw.includes('@') ? raw : email ?? '').split('@')[0] ?? 'Atleta').split(/[._-]/)[0];
+  const clean = (base || 'Atleta').trim();
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+

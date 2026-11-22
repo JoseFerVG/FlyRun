@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2,
-  Download,
-  MapPin,
   Minus,
   Pause,
   Play,
@@ -15,20 +13,13 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import type { UserProfile, WorkoutBlock, WorkoutKmSplit, WorkoutSession } from '../types/fitness';
+import type { UserProfile, WorkoutBlock, WorkoutSession } from '../types/fitness';
 import {
   calculateTrainingZones,
   convertSpeedValue,
   formatPace,
   type CustomRoutineConfig,
 } from '../services/scienceEngine';
-import {
-  buildSplitFromDurationAndDistance,
-  buildWorkoutTCX,
-  downloadTextFile,
-  generateEstimatedKmSplits,
-  haversineMeters,
-} from '../services/deviceHub';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
 
 interface LiveWorkoutTimerDialogProps {
@@ -37,13 +28,7 @@ interface LiveWorkoutTimerDialogProps {
   initialBlockIndex?: number;
   onClose: () => void;
   onCustomizeRoutine?: (workoutId: string, config: CustomRoutineConfig) => void;
-  onFinishToLog: (
-    workout: WorkoutSession,
-    elapsedMinutes: number,
-    elapsedDistanceKm?: number,
-    recordedSplits?: WorkoutKmSplit[],
-    usedLiveGps?: boolean
-  ) => void;
+  onFinishToLog: (workout: WorkoutSession, elapsedMinutes: number, elapsedDistanceKm?: number) => void;
 }
 
 function playTone(freq: number, durationSec: number, gainPeak = 0.08, delaySec = 0) {
@@ -123,7 +108,15 @@ function getBlockPhaseMeta(block: WorkoutBlock): {
       isWalkOrWarmup: true,
     };
   }
-  if (txt.includes('caminar') || txt.includes('caminata') || txt.includes('recupera') || txt.includes('paseo') || txt.includes('enfriamiento') || txt.includes('vuelta a la calma') || txt.includes('soltura')) {
+  if (
+    txt.includes('caminar') ||
+    txt.includes('caminata') ||
+    txt.includes('recupera') ||
+    txt.includes('paseo') ||
+    txt.includes('enfriamiento') ||
+    txt.includes('vuelta a la calma') ||
+    txt.includes('soltura')
+  ) {
     return {
       actionCmd: 'CAMINA Y RECUPERA',
       ringColor: 'var(--pine)',
@@ -179,18 +172,7 @@ export function LiveWorkoutTimerDialog({
   const [wakeLockActive, setWakeLockActive] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
   const [speedOffsetKmh, setSpeedOffsetKmh] = useState(0);
-  const [gpsEnabled, setGpsEnabled] = useState(false);
-  const [gpsStatusText, setGpsStatusText] = useState<string | null>(null);
-  const [gpsSpeedKmh, setGpsSpeedKmh] = useState<number | null>(null);
-  const [recordedSplits, setRecordedSplits] = useState<WorkoutKmSplit[]>([]);
 
-  const gpsLastPosRef = useRef<{ lat: number; lon: number; ts: number } | null>(null);
-  const splitStartSecRef = useRef(0);
-  const splitStartKmRef = useRef(0);
-  const elapsedRef = useRef(0);
-  const distKmRef = useRef(0);
-
-  // Builder state
   const [customType, setCustomType] = useState<CustomRoutineConfig['presetType']>('caco');
   const [customRounds, setCustomRounds] = useState(4);
   const [customWorkMin, setCustomWorkMin] = useState(3);
@@ -220,15 +202,6 @@ export function LiveWorkoutTimerDialog({
       setSecondsLeft((workout.blocks[safeStart]?.durationMinutes ?? workout.durationMinutes) * 60);
       setTotalElapsedSec(0);
       setAccumulatedKm(0);
-      setRecordedSplits([]);
-      setGpsEnabled(false);
-      setGpsStatusText(null);
-      setGpsSpeedKmh(null);
-      gpsLastPosRef.current = null;
-      splitStartSecRef.current = 0;
-      splitStartKmRef.current = 0;
-      elapsedRef.current = 0;
-      distKmRef.current = 0;
       setRunning(false);
       setSpeedOffsetKmh(0);
       setMicroSeries30s(workout.strategyTag.includes('30-30'));
@@ -246,7 +219,6 @@ export function LiveWorkoutTimerDialog({
     }
   }, [workout?.id, initialBlockIndex]);
 
-  // If blocks change due to customization while dialog is open, sync valid bounds cleanly
   useEffect(() => {
     if (!workout || workout.blocks.length === 0) return;
     if (blockIndex >= workout.blocks.length) {
@@ -296,7 +268,6 @@ export function LiveWorkoutTimerDialog({
     };
   }, [running]);
 
-  // Optional 175 spm running cadence metronome while active
   useEffect(() => {
     if (!running || !cadenceOn) return;
     const intervalMs = Math.round(60000 / 175);
@@ -307,84 +278,13 @@ export function LiveWorkoutTimerDialog({
   }, [running, cadenceOn, soundEnabled]);
 
   useEffect(() => {
-    elapsedRef.current = totalElapsedSec;
-  }, [totalElapsedSec]);
-
-  useEffect(() => {
-    distKmRef.current = accumulatedKm;
-    const completedWholeKms = Math.floor(accumulatedKm);
-    if (completedWholeKms > recordedSplits.length && completedWholeKms >= 1) {
-      const splitDurSec = Math.max(60, elapsedRef.current - splitStartSecRef.current);
-      const splitDistKm = Math.max(0.5, accumulatedKm - splitStartKmRef.current);
-      const nextSplit = buildSplitFromDurationAndDistance(
-        recordedSplits.length + 1,
-        splitDurSec,
-        splitDistKm
-      );
-      setRecordedSplits((prev) => [...prev, nextSplit]);
-      splitStartSecRef.current = elapsedRef.current;
-      splitStartKmRef.current = accumulatedKm;
-      speakSpanishCoach(voiceEnabled, `Kilómetro ${recordedSplits.length + 1} completado.`);
-    }
-  }, [accumulatedKm]);
-
-  useEffect(() => {
-    if (!gpsEnabled || !running) {
-      gpsLastPosRef.current = null;
-      return;
-    }
-    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      setGpsStatusText('Tu navegador no soporta geolocalización GPS.');
-      return;
-    }
-
-    setGpsStatusText('Buscando señal GPS exterior…');
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy, speed } = pos.coords;
-        if (accuracy > 75) {
-          setGpsStatusText(`GPS débil (±${Math.round(accuracy)} m)…`);
-          return;
-        }
-        setGpsStatusText(`GPS activo (±${Math.round(accuracy)} m)`);
-        if (typeof speed === 'number' && speed > 0.3) {
-          setGpsSpeedKmh(Number((speed * 3.6).toFixed(1)));
-        }
-
-        const prev = gpsLastPosRef.current;
-        if (prev) {
-          const deltaM = haversineMeters(prev.lat, prev.lon, latitude, longitude);
-          if (deltaM >= 2.5 && deltaM < 85) {
-            setAccumulatedKm((km) => km + deltaM / 1000);
-          }
-        }
-        gpsLastPosRef.current = { lat: latitude, lon: longitude, ts: pos.timestamp };
-      },
-      (err) => {
-        setGpsStatusText(
-          err.code === 1
-            ? 'Permiso de ubicación GPS denegado.'
-            : 'Sin cobertura GPS momentánea (usando ritmo estimado).'
-        );
-      },
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-    );
-
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-    };
-  }, [gpsEnabled, running]);
-
-  useEffect(() => {
     if (!running || !workout) return;
     const activeBlock = workout.blocks[blockIndex] ?? workout.blocks[0];
     const activeKmh = Math.max(3, defaultSpeedForBlock(activeBlock) + speedOffsetKmh);
 
     const timer = window.setInterval(() => {
       setTotalElapsedSec((e) => e + 1);
-      if (!gpsEnabled || !gpsStatusText?.startsWith('GPS activo')) {
-        setAccumulatedKm((km) => km + activeKmh / 3600);
-      }
+      setAccumulatedKm((km) => km + activeKmh / 3600);
 
       setSecondsLeft((prev) => {
         const nextVal = prev - 1;
@@ -424,7 +324,7 @@ export function LiveWorkoutTimerDialog({
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [running, workout, blockIndex, soundEnabled, voiceEnabled, speedOffsetKmh, microSeries30s, gpsEnabled, gpsStatusText]);
+  }, [running, workout, blockIndex, soundEnabled, voiceEnabled, speedOffsetKmh, microSeries30s]);
 
   const handleClose = () => {
     setRunning(false);
@@ -459,10 +359,7 @@ export function LiveWorkoutTimerDialog({
   const blockTotalSec = Math.max(60, currentBlock.durationMinutes * 60);
   const blockProgressPct = Math.min(100, Math.round(((blockTotalSec - secondsLeft) / blockTotalSec) * 100));
 
-  const currentKmh = Math.max(
-    3,
-    Number((gpsSpeedKmh ?? defaultSpeedForBlock(currentBlock) + speedOffsetKmh).toFixed(1))
-  );
+  const currentKmh = Math.max(3, Number((defaultSpeedForBlock(currentBlock) + speedOffsetKmh).toFixed(1)));
   const speedConv = convertSpeedValue(currentKmh, 'kmh');
   const liveKcal = Math.round((totalElapsedSec / Math.max(60, workout.durationMinutes * 60)) * workout.estimatedCalories);
 
@@ -513,7 +410,6 @@ export function LiveWorkoutTimerDialog({
   const ringRadius = (ringSize - ringStroke) / 2;
   const ringCirc = 2 * Math.PI * ringRadius;
   const ringOffset = ringCirc - (blockProgressPct / 100) * ringCirc;
-
   const microIsFast = microSeries30s && Math.floor(secondsLeft / 30) % 2 === 1;
 
   return (
@@ -550,18 +446,6 @@ export function LiveWorkoutTimerDialog({
           <div className="row-wrap" style={{ gap: '0.35rem' }}>
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                const fname = `flyrun-${workout.date}.tcx`;
-                downloadTextFile(fname, buildWorkoutTCX(workout), 'application/vnd.garmin.tcx+xml;charset=utf-8');
-              }}
-              title="Descargar rutina en .TCX para Garmin / Polar / Coros"
-            >
-              <Download size={14} aria-hidden="true" />
-              .TCX reloj
-            </button>
-            <button
-              type="button"
               className={`btn btn-sm ${voiceEnabled ? 'btn-secondary' : 'btn-ghost'}`}
               onClick={() => setVoiceEnabled((v) => !v)}
               title="Coach por voz en español"
@@ -583,14 +467,12 @@ export function LiveWorkoutTimerDialog({
           </div>
         </div>
 
-        {/* Barra visual interactiva de bloques */}
         <WorkoutVisualBar
           blocks={blocks}
           activeBlockIndex={blockIndex}
           onSelectBlock={jumpToBlock}
         />
 
-        {/* Reloj central + telemetría */}
         <div
           className="inset-panel"
           style={{
@@ -703,15 +585,6 @@ export function LiveWorkoutTimerDialog({
             <div className="row-wrap" style={{ gap: '0.4rem' }}>
               <button
                 type="button"
-                className={`btn btn-sm ${gpsEnabled ? 'btn-emerald' : 'btn-secondary'}`}
-                onClick={() => setGpsEnabled((g) => !g)}
-                title="Usa la antena GPS del móvil para distancia real y parciales km a km"
-              >
-                <MapPin size={14} aria-hidden="true" />
-                {gpsEnabled ? 'GPS activo' : 'GPS en vivo'}
-              </button>
-              <button
-                type="button"
                 className={`btn btn-sm ${microSeries30s ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setMicroSeries30s((v) => !v)}
               >
@@ -735,17 +608,11 @@ export function LiveWorkoutTimerDialog({
                 </button>
               )}
             </div>
-            {gpsStatusText && (
-              <div className="muted mono" style={{ fontSize: '0.72rem' }}>
-                {gpsStatusText} · {recordedSplits.length} parciales de km capturados
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Editor rápido de intervalos dentro del crono */}
         {showBuilder && onCustomizeRoutine && (
-          <div className="inset-panel stack-sm" style={{ border: '1px solid var(--cobalt-border)', background: 'var(--cobalt-soft)' }}>
+          <div className="inset-panel stack-sm" style={{ borderColor: 'var(--cobalt-border)', background: 'var(--cobalt-soft)' }}>
             <strong style={{ fontSize: '0.84rem' }}>Personalizar bloques de esta rutina en directo</strong>
             <div className="grid-4" style={{ gap: '0.5rem' }}>
               <div className="field">
@@ -808,7 +675,6 @@ export function LiveWorkoutTimerDialog({
           </div>
         )}
 
-        {/* Botonera principal de transporte */}
         <div className="row-between">
           <div className="row-wrap" style={{ gap: '0.4rem' }}>
             <button
@@ -868,13 +734,9 @@ export function LiveWorkoutTimerDialog({
             className="btn btn-emerald"
             onClick={() => {
               const mins = totalElapsedSec >= 60 ? Math.round(totalElapsedSec / 60) : workout.durationMinutes;
-              const dist = accumulatedKm > 0.05 ? Number(accumulatedKm.toFixed(2)) : workout.targetDistanceKm;
-              const finalSplits =
-                recordedSplits.length > 0
-                  ? recordedSplits
-                  : generateEstimatedKmSplits(dist, Math.max(1, mins));
+              const dist = accumulatedKm > 0.05 ? Number(accumulatedKm.toFixed(2)) : undefined;
               handleClose();
-              onFinishToLog(workout, Math.max(1, mins), dist, finalSplits, gpsEnabled);
+              onFinishToLog(workout, Math.max(1, mins), dist);
             }}
           >
             <CheckCircle2 size={16} aria-hidden="true" />
@@ -882,7 +744,6 @@ export function LiveWorkoutTimerDialog({
           </button>
         </div>
 
-        {/* Playlist interactiva de todos los bloques */}
         <details className="faq-details" style={{ padding: '0.55rem 0.8rem' }}>
           <summary style={{ fontSize: '0.82rem' }}>
             Guion completo de la rutina ({blocks.length} bloques · pulsa cualquiera para saltar)

@@ -4,18 +4,11 @@ import {
   ChartLineUp,
   Compass,
   CookingPot,
-  Lightning,
-  MoonStars,
+  GearSix,
   PersonSimpleRun,
-  Scales,
   ShieldCheck,
-  SignOut,
-  SunDim,
-  UsersThree,
-  Watch,
 } from '@phosphor-icons/react';
 import { AmbientBackdrop } from './components/AmbientBackdrop';
-import { AnimatedNumber } from './components/MotionPrimitives';
 import type {
   CardioModality,
   FitnessGoal,
@@ -36,37 +29,29 @@ import {
   getSavedGoogleFitToken,
   loadUserStateFromCloud,
   persistUserState,
-  requestGoogleFitOAuthToken,
   revokeGoogleFitAccess,
   saveDemoGoogleSession,
-  saveGoogleFitToken,
   saveLocalState,
   signInWithGoogleFirebase,
   signOutFirebase,
   subscribeFirebaseAuth,
 } from './services/firebase';
 import {
-  applyDailyReadinessAdjustment,
   applyPhysicalExamResult,
   buildWorkoutForPowerAndRest,
   calculateCardioEquivalence,
-  changeCaCoRatio,
   customizeWorkoutRoutine,
   evaluateProgressiveLevelUpdate,
+  formatShortUserName,
   generateWeeklyPlan,
   getLynxLevel,
   swapWorkoutModality,
   type CustomRoutineConfig,
-  type DailyReadiness,
   type RestLevel,
   type RoutinePowerLevel,
 } from './services/scienceEngine';
 import { calculateDailyMacros } from './services/nutritionEngine';
-import {
-  buildInitialWeekSteps,
-  createManualGoogleFitUpdate,
-  fetchGoogleFitLast7Days,
-} from './services/googleFit';
+import { buildInitialWeekSteps } from './services/googleFit';
 import { ScientificLoader } from './components/ScientificLoader';
 import { FlyRunLogo } from './components/FlyRunLogo';
 import { assetUrl } from './services/assets';
@@ -85,8 +70,7 @@ import { UserPersonasModal } from './components/UserPersonasModal';
 import { GoalFocusModal } from './components/GoalFocusModal';
 import { LegalComplianceModal, type LegalTabId } from './components/LegalComplianceModal';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
-import { DeviceConnectionsModal } from './components/DeviceConnectionsModal';
-import { evaluateSyncedActivityImpact, type SyncedExternalActivity } from './services/deviceHub';
+import { SettingsModal, SIMPLE_PLATFORMS, type SettingsTabId } from './components/SettingsModal';
 
 type NavTab = 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition';
 
@@ -99,10 +83,7 @@ interface AuthSessionInfo {
   googleFitAccessToken?: string;
 }
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
+const PLATFORMS_STORAGE_KEY = 'flyrun_connected_platforms_v1';
 
 export function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -113,7 +94,6 @@ export function App() {
       ? 'dark'
       : 'light';
   });
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [booting, setBooting] = useState(true);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
@@ -132,12 +112,19 @@ export function App() {
   const [timerStartBlock, setTimerStartBlock] = useState<number>(0);
   const [personasOpen, setPersonasOpen] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
-  const [deviceHubOpen, setDeviceHubOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('connections');
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(PLATFORMS_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as string[]) : ['wahoo', 'google_fit'];
+    } catch {
+      return ['wahoo', 'google_fit'];
+    }
+  });
   const [legalOpen, setLegalOpen] = useState(false);
   const [legalTab, setLegalTab] = useState<LegalTabId>('privacy');
   const [forceCookieConfig, setForceCookieConfig] = useState(false);
-  const [readiness, setReadiness] = useState<DailyReadiness>('normal');
-  const [todayBaselineWorkout, setTodayBaselineWorkout] = useState<WorkoutSession | null>(null);
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -159,28 +146,9 @@ export function App() {
     }
   }, [theme]);
 
-  useEffect(() => {
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    };
-    const onInstalled = () => setInstallPrompt(null);
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const res = await installPrompt.userChoice;
-    if (res.outcome === 'accepted') {
-      setInstallPrompt(null);
-    }
+  const setThemeExplicit = (next: 'light' | 'dark') => {
+    localStorage.setItem('flyrun_theme', next);
+    runViewTransition(() => setTheme(next));
   };
 
   const runViewTransition = (updateFn: () => void) => {
@@ -324,8 +292,6 @@ export function App() {
     };
     saveDemoGoogleSession(demoSession);
     setSession({ ...demoSession, isDemoMode: true });
-    setReadiness('normal');
-    setTodayBaselineWorkout(null);
     const generatedWorkouts = persona.buildWorkouts();
     saveLocalState(personaProfile.uid, {
       profile: personaProfile,
@@ -392,8 +358,6 @@ export function App() {
     const initialSteps =
       fitDays.length > 0 ? fitDays : buildInitialWeekSteps(newProfile.dailyStepsTarget);
     const nextExams = initialExam ? [initialExam, ...exams] : exams;
-    setTodayBaselineWorkout(null);
-    setReadiness('normal');
     saveAll(newProfile, generated, nextExams, initialSteps);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
@@ -486,79 +450,13 @@ export function App() {
     );
   };
 
-  const handleLogExtraActivity = () => {
-    if (!profile) return;
-    const eq = calculateCardioEquivalence('cycling', 40, 5, profile.weightKg, profile.sex, profile.vdot);
-    setLoggingWorkout({
-      id: `extra_${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      dayIndex: 0,
-      title: 'Actividad libre / Extra',
-      subtitle: 'Registro manual fuera de calendario',
-      modality: 'cycling',
-      sessionType: 'cycling',
-      strategyTag: 'Actividad libre',
-      durationMinutes: 40,
-      targetDistanceKm: 12,
-      targetZone: 'Z2',
-      targetPace: 'Libre',
-      cardioPoints: eq.cardioPoints,
-      metMinutes: eq.metMinutes,
-      trimp: eq.trimp,
-      estimatedCalories: eq.calories,
-      blocks: [],
-      coachTip: '',
-      completed: false,
-    });
-  };
-
-  const handleReadinessChange = (nextReadiness: DailyReadiness) => {
-    if (!profile || !workouts[0]) return;
-    const base = todayBaselineWorkout ?? workouts[0];
-    if (!todayBaselineWorkout) {
-      setTodayBaselineWorkout(workouts[0]);
-    }
-    setReadiness(nextReadiness);
-    if (nextReadiness === 'normal') {
-      const restored = workouts.map((w, idx) => (idx === 0 && !w.completed ? base : w));
-      saveAll(profile, restored, exams, fitDays);
-      showToast('Sesión de hoy restablecida.');
-      return;
-    }
-    const adjusted = applyDailyReadinessAdjustment(base, nextReadiness, profile);
-    const nextWorkouts = workouts.map((w, idx) => (idx === 0 && !w.completed ? adjusted : w));
-    saveAll(profile, nextWorkouts, exams, fitDays);
-    showToast(
-      nextReadiness === 'tired'
-        ? 'Sesión de hoy suavizada a Zona 1 para recuperar piernas.'
-        : 'Sesión de hoy ampliada ligeramente por buenas sensaciones.'
-    );
-  };
-
   const handleSwapModality = (workoutId: string, modality: CardioModality) => {
     if (!profile) return;
     const nextWorkouts = workouts.map((w) =>
       w.id === workoutId ? swapWorkoutModality(w, modality, profile) : w
     );
-    if (workouts[0]?.id === workoutId) {
-      setTodayBaselineWorkout(nextWorkouts[0]);
-      setReadiness('normal');
-    }
     saveAll(profile, nextWorkouts, exams, fitDays);
     showToast('Sesión adaptada manteniendo la equivalencia de Puntos Cardio.');
-  };
-
-  const handleChangeCaCoRatio = (workoutId: string, runMin: number, walkMin: number) => {
-    if (!profile) return;
-    const nextWorkouts = workouts.map((w) =>
-      w.id === workoutId ? changeCaCoRatio(w, runMin, walkMin, profile) : w
-    );
-    if (workouts[0]?.id === workoutId) {
-      setTodayBaselineWorkout(nextWorkouts[0]);
-      setReadiness('normal');
-    }
-    saveAll(profile, nextWorkouts, exams, fitDays);
-    showToast(`Bloque CaCo actualizado a ${runMin} min correr / ${walkMin} min andar.`);
   };
 
   const handleCustomizeRoutine = (workoutId: string, config: CustomRoutineConfig) => {
@@ -569,10 +467,6 @@ export function App() {
     const updatedTarget = nextWorkouts.find((w) => w.id === workoutId) ?? null;
     if (timerWorkout?.id === workoutId && updatedTarget) {
       setTimerWorkout(updatedTarget);
-    }
-    if (workouts[0]?.id === workoutId && updatedTarget) {
-      setTodayBaselineWorkout(updatedTarget);
-      setReadiness('normal');
     }
     saveAll(profile, nextWorkouts, exams, fitDays);
     showToast('Estructura de la rutina y bloques del cronómetro actualizados.');
@@ -602,8 +496,6 @@ export function App() {
       updatedAt: new Date().toISOString(),
     };
     const nextWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(updatedProfile));
-    setTodayBaselineWorkout(null);
-    setReadiness('normal');
     saveAll(updatedProfile, nextWorkouts, exams, fitDays);
     showToast('Estrategia aplicada conservando tus entrenamientos ya completados.');
   };
@@ -626,8 +518,6 @@ export function App() {
     );
     const mergedWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(result.updatedProfile));
     const nextExams = [result.examResult, ...exams];
-    setTodayBaselineWorkout(null);
-    setReadiness('normal');
     saveAll(result.updatedProfile, mergedWorkouts, nextExams, fitDays);
     showToast(
       result.leveledUp
@@ -636,237 +526,64 @@ export function App() {
     );
   };
 
-  const handleSyncGoogleFit = async () => {
+  const handleTogglePlatform = (platformId: string) => {
+    const exists = connectedPlatforms.includes(platformId);
+    const next = exists
+      ? connectedPlatforms.filter((id) => id !== platformId)
+      : [...connectedPlatforms, platformId];
+    setConnectedPlatforms(next);
+    try {
+      localStorage.setItem(PLATFORMS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Ignore storage error
+    }
+    const label = SIMPLE_PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
+    showToast(exists ? `${label} desconectado.` : `${label} conectado al instante en 1 clic.`);
+  };
+
+  const handleSyncPlatforms = () => {
     if (!profile) return;
     setFitSyncLoading(true);
     setFitNotice(null);
-    const existingTodaySteps = fitDays[fitDays.length - 1]?.steps ?? 0;
 
-    const buildFallbackSyncedDays = (): GoogleFitDay[] => {
-      const boost = Math.round(profile.dailyStepsTarget * 1.04);
-      const base = buildInitialWeekSteps(boost).map((d) => ({
-        ...d,
-        source: 'simulated_sync' as const,
-      }));
-      if (base.length > 0 && existingTodaySteps > base[base.length - 1].steps) {
-        const last = base[base.length - 1];
-        base[base.length - 1] = {
-          ...last,
-          steps: existingTodaySteps,
-          distanceMeters: Math.round(existingTodaySteps * 0.76),
-          calories: Math.round(existingTodaySteps * 0.042),
-          activeMinutes: Math.round(existingTodaySteps / 98),
-        };
-      }
-      return base;
-    };
+    const activeNames = SIMPLE_PLATFORMS.filter((p) => connectedPlatforms.includes(p.id)).map((p) => p.name);
+    const boost = Math.round(profile.dailyStepsTarget * 1.05);
+    const base = buildInitialWeekSteps(boost).map((d) => ({
+      ...d,
+      source: 'simulated_sync' as const,
+    }));
 
-    try {
-      let syncedDays: GoogleFitDay[] | null = null;
-      let usedRealApi = false;
-      let fitToken = session?.googleFitAccessToken ?? getSavedGoogleFitToken();
-
-      if (!fitToken && session && !session.isDemoMode) {
-        fitToken = await requestGoogleFitOAuthToken();
-        if (fitToken) {
-          saveGoogleFitToken(fitToken);
-          setSession((prev) => (prev ? { ...prev, googleFitAccessToken: fitToken ?? undefined } : prev));
-        }
-      }
-
-      if (fitToken) {
-        try {
-          syncedDays = await fetchGoogleFitLast7Days(fitToken, profile.dailyStepsTarget);
-          usedRealApi = true;
-        } catch {
-          // Si el token expiró tras 60 min, refrescamos permiso OAuth una vez y reintentamos
-          localStorage.removeItem('flyrun_gfit_token_v1');
-          if (session && !session.isDemoMode) {
-            const refreshedToken = await requestGoogleFitOAuthToken();
-            if (refreshedToken) {
-              saveGoogleFitToken(refreshedToken);
-              setSession((prev) => (prev ? { ...prev, googleFitAccessToken: refreshedToken } : prev));
-              try {
-                syncedDays = await fetchGoogleFitLast7Days(refreshedToken, profile.dailyStepsTarget);
-                usedRealApi = true;
-              } catch {
-                syncedDays = null;
-              }
-            }
-          }
-        }
-      }
-
-      if (syncedDays && syncedDays.length > 0 && existingTodaySteps > syncedDays[syncedDays.length - 1].steps) {
-        const last = syncedDays[syncedDays.length - 1];
-        syncedDays[syncedDays.length - 1] = {
-          ...last,
-          steps: existingTodaySteps,
-          distanceMeters: Math.round(existingTodaySteps * 0.76),
-          calories: Math.round(existingTodaySteps * 0.042),
-          activeMinutes: Math.round(existingTodaySteps / 98),
-        };
-      }
-
-      if (!syncedDays) {
-        syncedDays = buildFallbackSyncedDays();
-      }
-
-      const alreadySynced = profile.unlockedBadges.includes('google_fit_sync');
-      const nextBadges = alreadySynced
-        ? profile.unlockedBadges
-        : [...profile.unlockedBadges, 'google_fit_sync'];
-      const nextProfile: UserProfile = {
-        ...profile,
-        unlockedBadges: nextBadges,
-        xp: alreadySynced ? profile.xp : profile.xp + 120,
-        updatedAt: new Date().toISOString(),
-      };
-      saveAll(nextProfile, workouts, exams, syncedDays);
-      setFitNotice(
-        usedRealApi
-          ? 'Google Fit conectado · Pasos reales de 7 días sincronizados.'
-          : session?.isDemoMode
-          ? 'Sincronización activa en modo demo · Pasos semanales actualizados.'
-          : 'Sincronización local activada · Acepta el permiso de Google Fit para lectura directa.'
-      );
-      showToast(
-        alreadySynced
-          ? 'Google Fit resincronizado correctamente.'
-          : 'Google Fit conectado: insignia desbloqueada (+120 XP).'
-      );
-    } finally {
-      setFitSyncLoading(false);
-    }
-  };
-
-  const handleManualStepsUpdate = (steps: number) => {
-    if (!profile) return;
-    const updatedToday = createManualGoogleFitUpdate(steps);
-    const nextFit = [...fitDays.slice(0, -1), updatedToday];
-    saveAll(profile, workouts, exams, nextFit);
-    setFitNotice(`Pasos de hoy subidos y guardados en tu cuenta: ${updatedToday.steps.toLocaleString('es-ES')}.`);
-  };
-
-  const handleUploadFitDays = (days: GoogleFitDay[], sourceLabel = 'Importación manual') => {
-    if (!profile || days.length === 0) return;
     const alreadySynced = profile.unlockedBadges.includes('google_fit_sync');
-    const nextBadges = alreadySynced ? profile.unlockedBadges : [...profile.unlockedBadges, 'google_fit_sync'];
+    const nextBadges = alreadySynced
+      ? profile.unlockedBadges
+      : [...profile.unlockedBadges, 'google_fit_sync'];
     const nextProfile: UserProfile = {
       ...profile,
       unlockedBadges: nextBadges,
       xp: alreadySynced ? profile.xp : profile.xp + 120,
       updatedAt: new Date().toISOString(),
     };
-    saveAll(nextProfile, workouts, exams, days);
-    setFitNotice(`${sourceLabel} · ${days.length} días subidos y sincronizados con la app.`);
-    showToast('Datos de Google Fit subidos a tu cuenta Cloud.');
+    saveAll(nextProfile, workouts, exams, base);
+    setFitNotice(
+      activeNames.length > 0
+        ? `Sincronizado con ${activeNames.join(', ')} · Pasos actualizados.`
+        : 'Actividad sincronizada al instante.'
+    );
+    showToast('Actividad y plataformas sincronizadas correctamente.');
+    setFitSyncLoading(false);
   };
 
-  const handleApplySyncedActivity = (
-    activity: SyncedExternalActivity,
-    applyVdotUpgrade: boolean
-  ) => {
+  const handleUpdateDisplayName = (nextName: string) => {
     if (!profile) return;
-    const ev = evaluateSyncedActivityImpact(activity, profile, workouts);
-    let nextWorkouts: WorkoutSession[];
-    let referenceWorkout: WorkoutSession;
-
-    if (ev.pairedWorkout) {
-      const updatedPaired: WorkoutSession = {
-        ...ev.pairedWorkout,
-        title: `${ev.pairedWorkout.title} · ${activity.sourceLabel}`,
-        completed: true,
-        rpe: ev.rpeEstimated,
-        actualDurationMinutes: activity.durationMinutes,
-        actualDistanceKm: activity.distanceKm,
-        completedModality: activity.modality,
-        cardioPoints: ev.cardioPoints,
-        metMinutes: ev.metMinutes,
-        trimp: ev.trimp,
-        estimatedCalories: ev.calories,
-        notes: activity.notes ?? `Emparejado automáticamente desde ${activity.sourceLabel}.`,
-        externalSource: activity.source,
-        externalActivityId: activity.externalId,
-        avgHeartRateBpm: activity.avgHeartRateBpm,
-        maxHeartRateBpm: activity.maxHeartRateBpm,
-        cadenceSpm: activity.cadenceSpm,
-        kmSplits: activity.kmSplits,
-      };
-      referenceWorkout = updatedPaired;
-      nextWorkouts = workouts.map((w) => (w.id === ev.pairedWorkout!.id ? updatedPaired : w));
-    } else {
-      const extraSynced: WorkoutSession = {
-        id: `extra_${Date.now()}`,
-        date: activity.date,
-        dayIndex: 0,
-        title: activity.title.slice(0, 145),
-        subtitle: `Importado de ${activity.sourceLabel}`,
-        modality: activity.modality,
-        sessionType: ev.rpeEstimated >= 7 ? 'intervals_z4' : 'easy_z1',
-        strategyTag: activity.sourceLabel,
-        durationMinutes: activity.durationMinutes,
-        targetDistanceKm: activity.distanceKm,
-        targetZone: ev.rpeEstimated >= 7 ? 'Z4' : 'Z2',
-        targetPace: `${ev.avgSpeedKmh.toFixed(1).replace('.', ',')} km/h`,
-        cardioPoints: ev.cardioPoints,
-        metMinutes: ev.metMinutes,
-        trimp: ev.trimp,
-        estimatedCalories: ev.calories,
-        blocks: [
-          {
-            label: activity.title.slice(0, 60),
-            durationMinutes: activity.durationMinutes,
-            intensity: `${ev.avgSpeedKmh.toFixed(1).replace('.', ',')} km/h · RPE ${ev.rpeEstimated}`,
-            description: activity.notes ?? `Sesión sincronizada (${activity.distanceKm} km).`,
-            zone: ev.rpeEstimated >= 7 ? 'Z4' : 'Z2',
-          },
-        ],
-        coachTip: ev.vdotReason,
-        completed: true,
-        rpe: ev.rpeEstimated,
-        actualDurationMinutes: activity.durationMinutes,
-        actualDistanceKm: activity.distanceKm,
-        completedModality: activity.modality,
-        notes: activity.notes,
-        externalSource: activity.source,
-        externalActivityId: activity.externalId,
-        avgHeartRateBpm: activity.avgHeartRateBpm,
-        maxHeartRateBpm: activity.maxHeartRateBpm,
-        cadenceSpm: activity.cadenceSpm,
-        kmSplits: activity.kmSplits,
-      };
-      referenceWorkout = extraSynced;
-      nextWorkouts = [extraSynced, ...workouts];
-    }
-
-    const evalResult = evaluateProgressiveLevelUpdate(
-      profile,
-      referenceWorkout,
-      ev.rpeEstimated,
-      activity.durationMinutes
-    );
-
-    let finalProfile = evalResult.updatedProfile;
-    let finalWorkouts = nextWorkouts;
-
-    if (applyVdotUpgrade && ev.suggestedVdot && ev.suggestedVdot > finalProfile.vdot) {
-      const upgradedInfo = getLynxLevel(ev.suggestedVdot, finalProfile.xp);
-      finalProfile = {
-        ...finalProfile,
-        vdot: ev.suggestedVdot,
-        level: upgradedInfo.level,
-        updatedAt: new Date().toISOString(),
-      };
-      finalWorkouts = mergePreservingCompleted(nextWorkouts, generateWeeklyPlan(finalProfile));
-    }
-
-    saveAll(finalProfile, finalWorkouts, exams, fitDays);
-    showToast(
-      applyVdotUpgrade && ev.suggestedVdot
-        ? `Sesión emparejada (+${ev.cardioPoints} PC) · VDOT adaptado a ${finalProfile.vdot}!`
-        : `Sesión de ${activity.sourceLabel} emparejada (+${ev.cardioPoints} PC, +${evalResult.xpEarned} XP).`
-    );
+    const clean = nextName.trim();
+    if (!clean) return;
+    const nextProfile: UserProfile = {
+      ...profile,
+      displayName: clean,
+      updatedAt: new Date().toISOString(),
+    };
+    saveAll(nextProfile, workouts, exams, fitDays);
+    showToast(`Nombre actualizado a "${clean}".`);
   };
 
   const handleConfigureTodayRoutine = (
@@ -885,7 +602,6 @@ export function App() {
       restLevel
     );
     const nextWorkouts = workouts.map((w, idx) => (idx === 0 ? built : w));
-    setTodayBaselineWorkout(built);
     saveAll(profile, nextWorkouts, exams, fitDays);
   };
 
@@ -905,8 +621,6 @@ export function App() {
       updatedAt: new Date().toISOString(),
     };
     const nextWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(nextProfile));
-    setTodayBaselineWorkout(null);
-    setReadiness('normal');
     saveAll(nextProfile, nextWorkouts, exams, fitDays);
     showToast('Meta y enfoque de entrenamiento actualizados al instante.');
   };
@@ -1009,7 +723,6 @@ export function App() {
           onDemoLogin={() => void handleDemoLogin()}
           onOpenPersonas={() => setPersonasOpen(true)}
           onSelectPersona={(p) => void handleSelectPersona(p)}
-          onInstallApp={installPrompt ? () => void handleInstallApp() : undefined}
           onOpenLegal={(tab) => openLegal(tab)}
           onOpenCookieSettings={() => setForceCookieConfig(true)}
           theme={theme}
@@ -1033,7 +746,7 @@ export function App() {
       <>
         <OnboardingModal
           uid={session.uid}
-          initialName={session.displayName}
+          initialName={formatShortUserName(session.displayName, session.email)}
           email={session.email}
           photoURL={session.photoURL}
           isDemoMode={session.isDemoMode}
@@ -1098,32 +811,16 @@ export function App() {
           </nav>
 
           <div className="header-actions">
-            {installPrompt && (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => void handleInstallApp()}
-              >
-                Instalar App
-              </button>
-            )}
-            {session.isDemoMode && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setPersonasOpen(true)}
-                title="Cambiar entre configuraciones de ejemplo"
-              >
-                <UsersThree size={15} weight="duotone" aria-hidden="true" />
-                Casos demo
-              </button>
-            )}
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setIsEditingProfile(true)}
-              title="Configurar perfil, datos y objetivo"
-              style={{ gap: '0.45rem', paddingInline: '0.5rem' }}
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setSettingsTab('connections');
+                setSettingsOpen(true);
+              }}
+              aria-label="Abrir Ajustes, Perfil, Conexiones y Privacidad"
+              title="Ajustes, Perfil, Conexiones y Privacidad"
+              style={{ gap: '0.45rem' }}
             >
               {(() => {
                 const matchedPersona = SIMULATED_USER_PERSONAS.find(
@@ -1134,66 +831,17 @@ export function App() {
                   <img
                     src={avatarSrc}
                     alt=""
-                    width={24}
-                    height={24}
+                    width={22}
+                    height={22}
                     className="athlete-avatar"
-                    style={{ inlineSize: '24px', blockSize: '24px' }}
+                    style={{ inlineSize: '22px', blockSize: '22px' }}
                   />
                 ) : null;
               })()}
+              <GearSix size={15} weight="duotone" aria-hidden="true" />
               <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>
-                {profile.displayName.split(' ')[0]}
+                {formatShortUserName(profile.displayName, profile.email)} · Ajustes
               </span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setDeviceHubOpen(true)}
-              aria-label="Dispositivos, Strava, Garmin, GPX y Google Fit"
-              title="Conectar Strava, Garmin (.TCX/.GPX) o Google Fit Avanzado"
-            >
-              <Watch size={15} weight="duotone" aria-hidden="true" />
-              Dispositivos
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={handleToggleTheme}
-              aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
-              title={theme === 'light' ? 'Modo oscuro mate' : 'Modo claro'}
-            >
-              {theme === 'light' ? (
-                <MoonStars size={16} weight="duotone" aria-hidden="true" />
-              ) : (
-                <SunDim size={16} weight="duotone" aria-hidden="true" />
-              )}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => openLegal('gdpr_rights')}
-              aria-label="Centro Legal, Privacidad y RGPD"
-              title="Privacidad, Exportar JSON/CSV y Borrar cuenta"
-            >
-              <Scales size={16} weight="duotone" aria-hidden="true" />
-            </button>
-            <span className="xp-chip mono">
-              <Lightning size={14} weight="duotone" color="var(--pine)" aria-hidden="true" />
-              <AnimatedNumber value={profile.xp} locale suffix=" XP" />
-            </span>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                void signOutFirebase().then(() => {
-                  setSession(null);
-                  setProfile(null);
-                });
-              }}
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-            >
-              <SignOut size={16} weight="duotone" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1213,39 +861,33 @@ export function App() {
               <CoachLynxBanner
                 profile={profile}
                 levelInfo={levelInfo}
-                workouts={workouts}
-                todayWorkout={todayWorkout}
-                fitToday={fitToday}
-                onOpenExam={handleOpenPhysicalExam}
                 onOpenGoalModal={() => setGoalModalOpen(true)}
+                onOpenSettings={() => {
+                  setSettingsTab('profile');
+                  setSettingsOpen(true);
+                }}
               />
               <DashboardView
                 profile={profile}
-                workouts={workouts}
                 todayWorkout={todayWorkout}
                 tomorrowWorkout={tomorrowWorkout}
                 fitDays={fitDays}
                 todayMacros={todayMacros}
                 fitSyncLoading={fitSyncLoading}
                 fitNotice={fitNotice}
-                hasGoogleFitOAuth={Boolean(session.googleFitAccessToken || getSavedGoogleFitToken())}
-                readiness={readiness}
-                onReadinessChange={handleReadinessChange}
+                connectedPlatforms={connectedPlatforms}
                 onConfigureTodayRoutine={handleConfigureTodayRoutine}
                 onStartTimer={(w, blockIdx = 0) => {
                   setTimerStartBlock(blockIdx);
                   setTimerWorkout(w);
                 }}
                 onCompleteWorkout={(w) => setLoggingWorkout(w)}
-                onLogExtraActivity={handleLogExtraActivity}
-                onSwapTodayModality={handleSwapModality}
-                onChangeCaCoRatio={handleChangeCaCoRatio}
-                onCustomizeRoutine={handleCustomizeRoutine}
-                onSyncGoogleFit={() => void handleSyncGoogleFit()}
-                onManualStepsUpdate={handleManualStepsUpdate}
-                onUploadFitDays={handleUploadFitDays}
+                onSyncPlatforms={handleSyncPlatforms}
+                onOpenConnections={() => {
+                  setSettingsTab('connections');
+                  setSettingsOpen(true);
+                }}
                 onOpenGoalModal={() => setGoalModalOpen(true)}
-                onOpenDeviceHub={() => setDeviceHubOpen(true)}
                 onNavigate={handleSelectTab}
               />
             </>
@@ -1294,23 +936,17 @@ export function App() {
           <footer className="landing-footer" style={{ paddingTop: '1rem', fontSize: '0.76rem' }}>
             <div className="row-wrap muted">
               <span>FlyRun · Uso informativo deportivo (no sustituye criterio médico)</span>
-              <span>·</span>
-              <span>RGPD UE · LOPDGDD · CCPA</span>
             </div>
-            <div className="row-wrap" style={{ gap: '0.35rem' }}>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('privacy')}>
-                Privacidad
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('google_api')}>
-                Google Fit Limited Use
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('medical')}>
-                Aviso Médico
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => openLegal('gdpr_rights')}>
-                Exportar / Borrar cuenta
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                setSettingsTab('privacy');
+                setSettingsOpen(true);
+              }}
+            >
+              Privacidad y Ajustes
+            </button>
           </footer>
         </div>
       </main>
@@ -1348,30 +984,42 @@ export function App() {
         initialBlockIndex={timerStartBlock}
         onClose={() => setTimerWorkout(null)}
         onCustomizeRoutine={handleCustomizeRoutine}
-        onFinishToLog={(w, elapsedMin, elapsedDistKm, recordedSplits, usedLiveGps) => {
+        onFinishToLog={(w, elapsedMin, elapsedDistKm) => {
           setLoggingWorkout({
             ...w,
             durationMinutes: elapsedMin,
             targetDistanceKm: elapsedDistKm ?? w.targetDistanceKm,
-            kmSplits: recordedSplits,
-            externalSource: usedLiveGps ? 'live_gps' : 'manual',
           });
         }}
       />
 
-      <DeviceConnectionsModal
-        open={deviceHubOpen}
+      <SettingsModal
+        open={settingsOpen}
+        initialTab={settingsTab}
         profile={profile}
-        workouts={workouts}
-        fitDays={fitDays}
-        hasGoogleFitOAuth={Boolean(session.googleFitAccessToken || getSavedGoogleFitToken())}
-        googleFitToken={session.googleFitAccessToken ?? getSavedGoogleFitToken()}
-        fitSyncLoading={fitSyncLoading}
-        onClose={() => setDeviceHubOpen(false)}
-        onSyncGoogleFitSteps={() => void handleSyncGoogleFit()}
-        onUploadFitDays={handleUploadFitDays}
-        onApplySyncedActivity={handleApplySyncedActivity}
-        onNotify={showToast}
+        theme={theme}
+        connectedPlatforms={connectedPlatforms}
+        isDemoMode={session.isDemoMode}
+        syncLoading={fitSyncLoading}
+        onClose={() => setSettingsOpen(false)}
+        onTogglePlatform={handleTogglePlatform}
+        onSyncNow={handleSyncPlatforms}
+        onUpdateDisplayName={handleUpdateDisplayName}
+        onOpenGoalModal={() => setGoalModalOpen(true)}
+        onOpenFullProfileEdit={() => setIsEditingProfile(true)}
+        onOpenExam={handleOpenPhysicalExam}
+        onOpenPersonas={() => setPersonasOpen(true)}
+        onToggleTheme={setThemeExplicit}
+        onOpenLegal={(tab) => openLegal(tab)}
+        onOpenCookieSettings={() => setForceCookieConfig(true)}
+        onExportJSON={handleExportGDPR}
+        onExportCSV={handleExportCSV}
+        onSignOut={() => {
+          void signOutFirebase().then(() => {
+            setSession(null);
+            setProfile(null);
+          });
+        }}
       />
 
       <UserPersonasModal

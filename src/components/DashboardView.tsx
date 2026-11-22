@@ -4,20 +4,15 @@ import {
   Bicycle,
   CalendarBlank,
   CheckCircle,
-  CloudArrowUp,
   CookingPot,
   Footprints,
-  Heartbeat,
   Lightning,
   PersonSimpleRun,
-  PlusCircle,
+  PlugsConnected,
   SoccerBall,
   Sparkle,
   Target,
   Timer,
-  Trophy,
-  UploadSimple,
-  Watch,
 } from '@phosphor-icons/react';
 import type {
   CardioModality,
@@ -30,98 +25,82 @@ import {
   POWER_LEVEL_CATALOG,
   REST_LEVEL_CATALOG,
   calculateTrainingZones,
-  calculateWeekly8020Balance,
   getGoalLabel,
   getRecommendedPowerForRest,
   getTrainingFocusInfo,
-  type CustomRoutineConfig,
-  type DailyReadiness,
   type RestLevel,
   type RoutinePowerLevel,
 } from '../services/scienceEngine';
-import { parseGoogleFitImportFile } from '../services/googleFit';
+import { SIMPLE_PLATFORMS } from './SettingsModal';
 import { WorkoutVisualBar } from './WorkoutVisualBar';
-import { WorkoutTelemetrySplits } from './WorkoutTelemetrySplits';
 import { AnimatedNumber, SpotlightCard } from './MotionPrimitives';
 import { TodayRoutineModal } from './TodayRoutineModal';
 import { assetUrl } from '../services/assets';
 
-function getSessionBannerPhoto(workout?: WorkoutSession): { src: string; alt: string; badge: string } {
+function getSessionBannerPhoto(workout?: WorkoutSession): { src: string; alt: string } {
   if (!workout) {
     return {
       src: assetUrl('images/modality-active-walk.jpg'),
       alt: 'Caminata activa al aire libre',
-      badge: 'Descanso activo',
     };
   }
   if (workout.isExamDay || workout.sessionType === 'physical_exam') {
     return {
       src: assetUrl('images/exam-track-400m.jpg'),
-      alt: 'Calles numeradas de pista de atletismo de 400 metros',
-      badge: 'Examen oficial',
+      alt: 'Pista de atletismo para examen de nivel',
     };
   }
   if (workout.modality === 'cycling') {
     return {
       src: assetUrl('images/cardio-road-cycling.jpg'),
       alt: 'Ciclista rodando en carretera',
-      badge: 'Ciclismo equivalente',
     };
   }
   if (workout.modality === 'soccer') {
     return {
       src: assetUrl('images/cardio-soccer-pitch.jpg'),
       alt: 'Partido de fútbol en campo de césped',
-      badge: 'Fútbol intermitente',
     };
   }
   if (workout.modality === 'walking' || workout.sessionType === 'rest') {
     return {
       src: assetUrl('images/modality-active-walk.jpg'),
-      alt: 'Persona caminando a paso activo en parque',
-      badge: 'Caminata y pasos',
+      alt: 'Persona caminando a paso activo',
     };
   }
   if (workout.sessionType === 'intervals_z4' || workout.targetZone === 'Z4' || workout.targetZone === 'Z5') {
     return {
       src: assetUrl('images/routine-intervals-vo2.jpg'),
-      alt: 'Corredor realizando series rápidas en pista',
-      badge: 'Potencia Alta / Series',
+      alt: 'Corredor realizando series rápidas',
     };
   }
   if (workout.sessionType === 'threshold_z3' || workout.targetZone === 'Z3') {
     return {
       src: assetUrl('images/routine-tempo-threshold.jpg'),
       alt: 'Corredor entrenando a ritmo de umbral',
-      badge: 'Umbral Sostenido',
     };
   }
   if (workout.sessionType === 'caco') {
     return {
       src: assetUrl('images/goal-start-caco.jpg'),
-      alt: 'Corredora empezando con bloques CaCo en parque junto al agua',
-      badge: 'Progresión CaCo',
+      alt: 'Corredora empezando con bloques CaCo',
     };
   }
   return {
     src: assetUrl('images/routine-easy-aerobic.jpg'),
     alt: 'Corredor entrenando rodaje aeróbico suave',
-    badge: 'Base aeróbica 80%',
   };
 }
 
 interface DashboardViewProps {
   profile: UserProfile;
-  workouts: WorkoutSession[];
   todayWorkout?: WorkoutSession;
   tomorrowWorkout?: WorkoutSession;
   fitDays: GoogleFitDay[];
   todayMacros: MacroRecommendation;
   fitSyncLoading: boolean;
   fitNotice: string | null;
-  hasGoogleFitOAuth: boolean;
-  readiness: DailyReadiness;
-  onReadinessChange: (r: DailyReadiness) => void;
+  connectedPlatforms: string[];
   onConfigureTodayRoutine: (
     power: RoutinePowerLevel,
     durationMinutes: number,
@@ -130,46 +109,32 @@ interface DashboardViewProps {
   ) => void;
   onStartTimer: (workout: WorkoutSession, startBlockIndex?: number) => void;
   onCompleteWorkout: (workout: WorkoutSession) => void;
-  onLogExtraActivity: () => void;
-  onSwapTodayModality: (workoutId: string, modality: CardioModality) => void;
-  onChangeCaCoRatio: (workoutId: string, runMin: number, walkMin: number) => void;
-  onCustomizeRoutine: (workoutId: string, config: CustomRoutineConfig) => void;
-  onSyncGoogleFit: () => void;
-  onManualStepsUpdate: (steps: number) => void;
-  onUploadFitDays: (days: GoogleFitDay[], sourceLabel?: string) => void;
+  onSyncPlatforms: () => void;
+  onOpenConnections: () => void;
   onOpenGoalModal: () => void;
-  onOpenDeviceHub: () => void;
   onNavigate: (tab: 'dashboard' | 'calendar' | 'stats' | 'strategies' | 'nutrition') => void;
 }
 
 export function DashboardView({
   profile,
-  workouts,
   todayWorkout,
   tomorrowWorkout,
   fitDays,
   todayMacros,
   fitSyncLoading,
   fitNotice,
-  hasGoogleFitOAuth,
+  connectedPlatforms,
   onConfigureTodayRoutine,
   onStartTimer,
   onCompleteWorkout,
-  onLogExtraActivity,
-  onCustomizeRoutine,
-  onSyncGoogleFit,
-  onManualStepsUpdate,
-  onUploadFitDays,
+  onSyncPlatforms,
+  onOpenConnections,
   onOpenGoalModal,
-  onOpenDeviceHub,
   onNavigate,
 }: DashboardViewProps) {
   const fitToday = fitDays[fitDays.length - 1];
-  const [stepsInput, setStepsInput] = useState(fitToday?.steps ?? profile.dailyStepsTarget);
-  const [livePedometerOn, setLivePedometerOn] = useState(false);
   const [inspectedBlockIdx, setInspectedBlockIdx] = useState<number | undefined>(undefined);
 
-  // Intuitive Today Launcher State
   const [restLevel, setRestLevel] = useState<RestLevel>('normal_rest');
   const recommendation = getRecommendedPowerForRest(restLevel, profile);
   const [selectedPower, setSelectedPower] = useState<RoutinePowerLevel>(recommendation.recommendedPower);
@@ -179,65 +144,19 @@ export function DashboardView({
   );
   const [routineModalOpen, setRoutineModalOpen] = useState(false);
 
-  // Advanced / Custom routine panel (kept collapsed unless user asks)
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customType, setCustomType] = useState<CustomRoutineConfig['presetType']>('caco');
-  const [customRounds, setCustomRounds] = useState(4);
-  const [customWorkMin, setCustomWorkMin] = useState(3);
-  const [customRestMin, setCustomRestMin] = useState(3);
-
-  // Google Fit Upload Center state
-  const [fitUploadOpen, setFitUploadOpen] = useState(false);
-  const [fitImportError, setFitImportError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setStepsInput(fitToday?.steps ?? profile.dailyStepsTarget);
-  }, [fitToday?.steps, profile.dailyStepsTarget]);
-
   useEffect(() => {
     const rec = getRecommendedPowerForRest(restLevel, profile);
     setSelectedPower(rec.recommendedPower);
   }, [profile.preferredStrategy, profile.level]);
 
-  useEffect(() => {
-    if (!livePedometerOn) return;
-    let lastPeakAt = 0;
-    const handleMotion = (event: DeviceMotionEvent) => {
-      const acc = event.accelerationIncludingGravity ?? event.acceleration;
-      if (!acc) return;
-      const mag = Math.sqrt((acc.x ?? 0) ** 2 + (acc.y ?? 0) ** 2 + (acc.z ?? 0) ** 2);
-      const now = Date.now();
-      if (mag > 12.2 && now - lastPeakAt > 360) {
-        lastPeakAt = now;
-        onManualStepsUpdate((fitToday?.steps ?? 0) + 1);
-      }
-    };
-    window.addEventListener('devicemotion', handleMotion);
-    return () => window.removeEventListener('devicemotion', handleMotion);
-  }, [livePedometerOn, fitToday?.steps, onManualStepsUpdate]);
-
   const zones = calculateTrainingZones(profile.vdot, profile.maxHR, profile.restHR);
-  const isRealOAuthConnected = hasGoogleFitOAuth && fitToday?.source === 'google_fit_api';
-  const isSyncedRecently = isRealOAuthConnected || profile.unlockedBadges.includes('google_fit_sync') || fitDays.length > 0;
   const todayZoneInfo = zones.find((z) => z.id === todayWorkout?.targetZone) ?? zones[0];
   const stepsPct = Math.min(100, Math.round(((fitToday?.steps ?? 0) / Math.max(1000, profile.dailyStepsTarget)) * 100));
-  const balance8020 = calculateWeekly8020Balance(workouts);
   const focusInfo = getTrainingFocusInfo(profile.preferredStrategy);
 
-  const toggleLivePedometer = async () => {
-    if (!livePedometerOn) {
-      const dm = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> };
-      if (typeof dm?.requestPermission === 'function') {
-        try {
-          const perm = await dm.requestPermission();
-          if (perm !== 'granted') return;
-        } catch {
-          return;
-        }
-      }
-    }
-    setLivePedometerOn((v) => !v);
-  };
+  const activePlatformNames = SIMPLE_PLATFORMS.filter((p) =>
+    connectedPlatforms.includes(p.id)
+  ).map((p) => p.name);
 
   const handlePickRest = (nextRest: RestLevel) => {
     setRestLevel(nextRest);
@@ -276,26 +195,10 @@ export function DashboardView({
     setRoutineModalOpen(true);
   };
 
-  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFitImportError(null);
-    try {
-      const text = await file.text();
-      const parsedDays = parseGoogleFitImportFile(text);
-      onUploadFitDays(parsedDays, `Archivo "${file.name}" (${parsedDays.length} días)`);
-      setFitUploadOpen(false);
-    } catch (err) {
-      setFitImportError(err instanceof Error ? err.message : 'No se pudo leer el archivo de Google Fit.');
-    } finally {
-      e.target.value = '';
-    }
-  };
-
   return (
     <div className="stack-lg">
       <div className="grid-2">
-        {/* COLUMNA PRINCIPAL: ASISTENTE "QUIERO ENTRENAR HOY" (ESTILO LOVABLE.DEV) */}
+        {/* COLUMNA PRINCIPAL: CONFIGURADOR INTUITIVO "QUIERO ENTRENAR HOY" */}
         <SpotlightCard staggerIndex={0} className="lovable-hero-card stack-md" aria-label="Configurador Entrenar Hoy">
           <div className="row-between">
             <div className="row-wrap" style={{ gap: '0.4rem' }}>
@@ -304,28 +207,28 @@ export function DashboardView({
                 Entrenamiento de Hoy
               </span>
               <span className="pill pill-emerald" style={{ fontSize: '0.72rem' }}>
-                Enfoque: {focusInfo.shortLabel}
+                {focusInfo.shortLabel}
               </span>
             </div>
 
             <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenGoalModal}>
               <Target size={14} weight="duotone" aria-hidden="true" />
-              Cambiar meta ({getGoalLabel(profile.goal).split(' ')[0]})
+              {getGoalLabel(profile.goal).split(' ')[0]}
             </button>
           </div>
 
           {todayWorkout ? (
             <>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.28rem', letterSpacing: '-0.025em', fontWeight: 800 }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', letterSpacing: '-0.025em', fontWeight: 800 }}>
                   {todayWorkout.completed
                     ? `¡Sesión completada! ${todayWorkout.title}`
-                    : '¿Listo para entrenar hoy? Ajusta descanso y potencia'}
+                    : '¿Listo para entrenar hoy?'}
                 </h2>
-                <p className="muted" style={{ margin: '0.22rem 0 0', fontSize: '0.84rem' }}>
+                <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.84rem' }}>
                   {todayWorkout.completed
-                    ? 'Ya sumaste tus puntos cardio de hoy. Puedes editar el registro o revisar tu rutina.'
-                    : 'Dinos cómo has dormido/descansado, elige la potencia y abre tu rutina guiada al instante.'}
+                    ? 'Buen trabajo. Puedes editar tu registro si quieres añadir notas.'
+                    : 'Elige cómo has descansado y la potencia que te apetece hoy.'}
                 </p>
               </div>
 
@@ -334,7 +237,7 @@ export function DashboardView({
                   {/* PASO 1: ¿Cuánto has descansado? */}
                   <div className="stack-sm">
                     <div className="row-between">
-                      <strong style={{ fontSize: '0.86rem' }}>1. ¿Cómo has descansado hoy?</strong>
+                      <strong style={{ fontSize: '0.85rem' }}>1. ¿Cómo has descansado?</strong>
                       <span className="pill mono" style={{ fontSize: '0.72rem' }}>
                         Recuperación: {recommendation.recoveryScore}%
                       </span>
@@ -349,7 +252,7 @@ export function DashboardView({
                           style={{ padding: '0.45rem' }}
                           onClick={() => handlePickRest(item.id)}
                         >
-                          <div className="lovable-choice-thumb" style={{ blockSize: '56px' }}>
+                          <div className="lovable-choice-thumb" style={{ blockSize: '54px' }}>
                             <img src={assetUrl(item.imageFile)} alt="" loading="lazy" />
                           </div>
                           <strong style={{ fontSize: '0.79rem', lineHeight: 1.2 }}>{item.label}</strong>
@@ -359,19 +262,19 @@ export function DashboardView({
                     </div>
                   </div>
 
-                  {/* RECOMENDACIÓN INTELIGENTE SEGÚN DESCANSO */}
+                  {/* RECOMENDACIÓN SEGÚN DESCANSO */}
                   <div
                     className="inset-panel row-between"
                     style={{
                       borderColor: 'var(--pine-border)',
                       background: 'var(--pine-soft)',
-                      padding: '0.62rem 0.85rem',
+                      padding: '0.6rem 0.85rem',
                     }}
                   >
                     <div style={{ fontSize: '0.8rem', flex: '1 1 240px' }}>
                       <strong style={{ color: 'var(--pine)' }}>
                         <Lightning size={14} weight="duotone" style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} aria-hidden="true" />
-                        Recomendación para hoy · Potencia {recommendation.recommendedPower}/5:
+                        Recomendada hoy · Potencia {recommendation.recommendedPower}/5:
                       </strong>{' '}
                       <span className="secondary">{recommendation.reason}</span>
                     </div>
@@ -381,17 +284,14 @@ export function DashboardView({
                         className="btn btn-emerald btn-sm"
                         onClick={() => handlePickPower(recommendation.recommendedPower)}
                       >
-                        Aplicar recomendada
+                        Aplicar
                       </button>
                     )}
                   </div>
 
-                  {/* PASO 2: POTENCIA DE LA RUTINA (1 A 5) */}
+                  {/* PASO 2: POTENCIA DE LA RUTINA */}
                   <div className="stack-sm">
-                    <div className="row-between">
-                      <strong style={{ fontSize: '0.86rem' }}>2. Selecciona la potencia de la rutina</strong>
-                      <span className="muted" style={{ fontSize: '0.74rem' }}>Adaptada a tu VDOT {profile.vdot}</span>
-                    </div>
+                    <strong style={{ fontSize: '0.85rem' }}>2. Potencia de la rutina</strong>
                     <div className="lovable-power-grid">
                       {POWER_LEVEL_CATALOG.map((p) => {
                         const isRec = p.power === recommendation.recommendedPower;
@@ -423,9 +323,6 @@ export function DashboardView({
                             <strong style={{ fontSize: '0.8rem', lineHeight: 1.2 }}>{p.name}</strong>
                             <span className="mono muted" style={{ fontSize: '0.68rem' }}>
                               {zInfo.speedKmhFormatted}
-                            </span>
-                            <span className="muted" style={{ fontSize: '0.69rem', lineHeight: 1.25 }}>
-                              {p.shortDesc}
                             </span>
                           </button>
                         );
@@ -478,7 +375,7 @@ export function DashboardView({
                     </div>
 
                     <div className="row-between">
-                      <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>Duración objetivo</span>
+                      <span className="muted" style={{ fontSize: '0.78rem', fontWeight: 600 }}>Duración</span>
                       <div className="segmented-group" role="group" aria-label="Duración en minutos">
                         {[20, 30, 45, 60].map((mins) => (
                           <button
@@ -497,11 +394,10 @@ export function DashboardView({
                 </>
               )}
 
-              {/* VISTA PREVIA COMPACTA DE LA RUTINA LISTA PARA SALTAR */}
               {(() => {
                 const photo = getSessionBannerPhoto(todayWorkout);
                 return (
-                  <div className="editorial-photo-banner" style={{ blockSize: '122px' }}>
+                  <div className="editorial-photo-banner" style={{ blockSize: '116px' }}>
                     <img
                       src={photo.src}
                       alt={photo.alt}
@@ -516,10 +412,10 @@ export function DashboardView({
                           {todayWorkout.title}
                         </span>
                         <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.75rem' }}>
-                          {todayWorkout.blocks.length} bloques · {todayWorkout.targetZone} ({todayZoneInfo.speedKmhFormatted}) · ~{todayWorkout.targetDistanceKm} km
+                          {todayWorkout.blocks.length} fases · {todayZoneInfo.speedKmhFormatted} · ~{todayWorkout.targetDistanceKm} km
                         </span>
                       </div>
-                      <span className="pill mono">{todayWorkout.cardioPoints} PC</span>
+                      <span className="pill mono">{todayWorkout.durationMinutes} min</span>
                     </div>
                   </div>
                 );
@@ -531,15 +427,12 @@ export function DashboardView({
                 onSelectBlock={(idx) => setInspectedBlockIdx((prev) => (prev === idx ? undefined : idx))}
               />
 
-              <WorkoutTelemetrySplits workout={todayWorkout} compact />
-
-              {/* GRAN CTA PRINCIPAL: ¡QUIERO ENTRENAR HOY! */}
               <div className="row-wrap" style={{ justifyContent: 'space-between' }}>
                 {!todayWorkout.completed ? (
                   <button
                     type="button"
                     className="btn lovable-cta-btn"
-                    style={{ flex: '1 1 230px', minBlockSize: '46px', fontSize: '0.94rem' }}
+                    style={{ flex: '1 1 220px', minBlockSize: '46px', fontSize: '0.94rem' }}
                     onClick={handleOpenTodayRoutine}
                   >
                     <PersonSimpleRun size={19} weight="duotone" aria-hidden="true" />
@@ -569,132 +462,26 @@ export function DashboardView({
                   {todayWorkout.completed ? 'Editar registro' : 'Completar'}
                 </button>
               </div>
-
-              {!todayWorkout.completed && (
-                <div className="row-between" style={{ paddingTop: '0.15rem' }}>
-                  <span className="muted" style={{ fontSize: '0.75rem' }}>
-                    ¿Prefieres ajustar series y descansos manualmente?
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setCustomOpen((v) => !v)}
-                  >
-                    {customOpen ? 'Cerrar ajuste manual' : 'Editar intervalos manualmente'}
-                  </button>
-                </div>
-              )}
-
-              {customOpen && !todayWorkout.completed && (
-                <div className="inset-panel stack-sm" style={{ borderColor: 'var(--cobalt-border)', background: 'var(--cobalt-soft)' }}>
-                  <div className="grid-4" style={{ gap: '0.5rem' }}>
-                    <div className="field">
-                      <label htmlFor="dash-custom-type">Tipo</label>
-                      <select
-                        id="dash-custom-type"
-                        className="select"
-                        value={customType}
-                        onChange={(e) => setCustomType(e.target.value as CustomRoutineConfig['presetType'])}
-                      >
-                        <option value="caco">CaCo (Correr/Andar)</option>
-                        <option value="intervals_z4">Series VO2max (Z4)</option>
-                        <option value="threshold_z3">Umbral (Z3)</option>
-                        <option value="easy_z1">Rodaje Suave (Z1)</option>
-                        <option value="long_run">Tirada Larga</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="dash-custom-rounds">Series (1-4)</label>
-                      <input
-                        id="dash-custom-rounds"
-                        type="number"
-                        min={1}
-                        max={4}
-                        className="input mono"
-                        value={customRounds}
-                        onChange={(e) => setCustomRounds(Number(e.target.value))}
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="dash-custom-work">Trabajo (min)</label>
-                      <input
-                        id="dash-custom-work"
-                        type="number"
-                        min={1}
-                        max={20}
-                        className="input mono"
-                        value={customWorkMin}
-                        onChange={(e) => setCustomWorkMin(Number(e.target.value))}
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="dash-custom-rest">Recup. (min)</label>
-                      <input
-                        id="dash-custom-rest"
-                        type="number"
-                        min={1}
-                        max={10}
-                        className="input mono"
-                        value={customRestMin}
-                        onChange={(e) => setCustomRestMin(Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                  <div className="row-wrap">
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => {
-                        onCustomizeRoutine(todayWorkout.id, {
-                          presetType: customType,
-                          rounds: customRounds,
-                          workMin: customWorkMin,
-                          restMin: customRestMin,
-                          warmupMin: 5,
-                          cooldownMin: 5,
-                        });
-                        setCustomOpen(false);
-                        setRoutineModalOpen(true);
-                      }}
-                    >
-                      Aplicar y abrir rutina
-                    </button>
-                  </div>
-                </div>
-              )}
             </>
           ) : (
             <p className="muted">No hay sesión registrada para hoy.</p>
           )}
         </SpotlightCard>
 
-        {/* COLUMNA DERECHA: MAÑANA + BALANCE + CENTRO GOOGLE FIT Y SUBIDA CLOUD */}
+        {/* COLUMNA DERECHA: PLATAFORMAS (1 CLIC) + MAÑANA + NUTRICIÓN */}
         <div className="stack-md">
-          <SpotlightCard staggerIndex={1} className="stack-md" aria-label="Integración Google Fit">
+          <SpotlightCard staggerIndex={1} className="stack-md" aria-label="Actividad diaria y plataformas">
             <div className="row-between">
               <div className="row-wrap">
                 <span className="duotone-icon-box is-pine">
                   <Footprints size={18} weight="duotone" aria-hidden="true" />
                 </span>
                 <div>
-                  <div className="row-wrap" style={{ gap: '0.45rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Google Fit · Datos subidos</h2>
-                    {isRealOAuthConnected ? (
-                      <span className="pill pill-emerald" style={{ fontSize: '0.7rem' }}>
-                        Google Fit OAuth activo
-                      </span>
-                    ) : isSyncedRecently ? (
-                      <span className="pill pill-cyan" style={{ fontSize: '0.7rem' }}>
-                        Guardado en tu cuenta
-                      </span>
-                    ) : (
-                      <span className="pill" style={{ fontSize: '0.7rem' }}>
-                        Sin sincronizar
-                      </span>
-                    )}
-                  </div>
+                  <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Actividad y Plataformas</h2>
                   <div className="muted" style={{ fontSize: '0.78rem' }}>
-                    Meta diaria: {profile.dailyStepsTarget.toLocaleString('es-ES')} pasos ({profile.weeklyWalkGoalSessions} días/sem)
+                    {activePlatformNames.length > 0
+                      ? `Conectado a ${activePlatformNames.join(' · ')}`
+                      : 'Conecta Wahoo, Google Fit o Strava en 1 clic'}
                   </div>
                 </div>
               </div>
@@ -703,37 +490,32 @@ export function DashboardView({
                 <button
                   type="button"
                   className="btn btn-emerald btn-sm"
-                  onClick={() => {
-                    onSyncGoogleFit();
-                    setFitUploadOpen(true);
-                  }}
+                  onClick={onSyncPlatforms}
                   disabled={fitSyncLoading}
                 >
                   <ArrowsClockwise size={15} weight="duotone" aria-hidden="true" />
-                  {fitSyncLoading
-                    ? 'Sincronizando…'
-                    : isRealOAuthConnected
-                    ? 'Resincronizar Fit'
-                    : 'Conectar Google Fit'}
+                  {fitSyncLoading ? 'Sincronizando…' : 'Sincronizar'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
-                  onClick={() => setFitUploadOpen((v) => !v)}
+                  onClick={onOpenConnections}
                 >
-                  <CloudArrowUp size={15} weight="duotone" aria-hidden="true" />
-                  {fitUploadOpen ? 'Cerrar tabla' : 'Subir datos (7 días)'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={onOpenDeviceHub}
-                >
-                  <Watch size={15} weight="duotone" aria-hidden="true" />
-                  Hub Strava · Garmin · GPX
+                  <PlugsConnected size={15} weight="duotone" aria-hidden="true" />
+                  Conectar
                 </button>
               </div>
             </div>
+
+            {activePlatformNames.length > 0 && (
+              <div className="row-wrap" style={{ gap: '0.35rem' }}>
+                {activePlatformNames.map((name) => (
+                  <span key={name} className="pill pill-emerald" style={{ fontSize: '0.72rem' }}>
+                    {name} ✓
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div className="row-between">
               <div>
@@ -742,7 +524,7 @@ export function DashboardView({
                   <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>pasos hoy</span>
                 </div>
                 <div className="muted" style={{ fontSize: '0.8rem' }}>
-                  {((fitToday?.distanceMeters ?? 0) / 1000).toFixed(2)} km caminados · {fitToday?.calories ?? 0} kcal · {fitToday?.activeMinutes ?? 0} min activos
+                  {((fitToday?.distanceMeters ?? 0) / 1000).toFixed(2)} km · {fitToday?.calories ?? 0} kcal · {fitToday?.activeMinutes ?? 0} min
                 </div>
               </div>
               <span className="pill pill-emerald mono">{stepsPct}% objetivo</span>
@@ -758,8 +540,8 @@ export function DashboardView({
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 gap: '0.4rem',
                 alignItems: 'end',
-                blockSize: '58px',
-                paddingBlockStart: '0.3rem',
+                blockSize: '54px',
+                paddingBlockStart: '0.25rem',
               }}
               aria-label="Pasos de los últimos 7 días"
             >
@@ -798,100 +580,6 @@ export function DashboardView({
                 {fitNotice}
               </div>
             )}
-
-            {/* CENTRO DE SUBIDA Y VERIFICACIÓN DE DATOS GOOGLE FIT */}
-            {fitUploadOpen && (
-              <div className="inset-panel stack-sm" style={{ borderColor: 'var(--pine-border)', background: 'var(--bg-surface)' }}>
-                <div className="row-between">
-                  <strong style={{ fontSize: '0.84rem' }}>Importar Google Fit (JSON/CSV) o actualizar pasos</strong>
-                  <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
-                    <UploadSimple size={14} weight="duotone" aria-hidden="true" />
-                    Importar CSV / JSON
-                    <input
-                      type="file"
-                      accept=".csv,.json,text/csv,application/json"
-                      onChange={(e) => void handleFileImport(e)}
-                      className="sr-only"
-                    />
-                  </label>
-                </div>
-
-                {fitImportError && (
-                  <div className="error-banner" role="alert" style={{ fontSize: '0.78rem' }}>
-                    {fitImportError}
-                  </div>
-                )}
-
-                <div className="row-wrap" style={{ justifyContent: 'space-between' }}>
-                  <div className="row-wrap" style={{ gap: '0.4rem' }}>
-                    <label htmlFor="manual-fit-steps" className="muted" style={{ fontSize: '0.76rem' }}>
-                      Pasos de hoy:
-                    </label>
-                    <input
-                      id="manual-fit-steps"
-                      name="manualFitSteps"
-                      type="number"
-                      inputMode="numeric"
-                      className="input mono"
-                      style={{ inlineSize: '115px', padding: '0.3rem 0.55rem', minBlockSize: '32px' }}
-                      min={0}
-                      max={60000}
-                      step={1}
-                      value={stepsInput}
-                      onChange={(e) => setStepsInput(Number(e.target.value))}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-emerald btn-sm"
-                      onClick={() => onManualStepsUpdate(stepsInput)}
-                    >
-                      Subir a la app
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${livePedometerOn ? 'btn-emerald' : 'btn-ghost'}`}
-                    onClick={() => void toggleLivePedometer()}
-                  >
-                    {livePedometerOn ? 'Sensor activo (contando)' : 'Podómetro móvil'}
-                  </button>
-                </div>
-
-                <div className="scroll-table-wrap">
-                  <table className="zone-table" style={{ fontSize: '0.75rem' }}>
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Pasos</th>
-                        <th>Km</th>
-                        <th>Kcal</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fitDays.slice(-7).map((d) => (
-                        <tr key={d.date}>
-                          <td className="mono">{d.date}</td>
-                          <td className="mono" style={{ fontWeight: 700 }}>{d.steps.toLocaleString('es-ES')}</td>
-                          <td className="mono">{(d.distanceMeters / 1000).toFixed(2)}</td>
-                          <td className="mono">{d.calories}</td>
-                          <td>
-                            <span className="pill pill-emerald" style={{ fontSize: '0.66rem', padding: '0.06rem 0.42rem' }}>
-                              {d.source === 'google_fit_api'
-                                ? 'Google Fit API'
-                                : d.source === 'manual'
-                                ? 'Manual'
-                                : 'Modo Demo'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </SpotlightCard>
 
           <SpotlightCard staggerIndex={2} className="stack-md" aria-label="Rutina de Mañana">
@@ -905,15 +593,15 @@ export function DashboardView({
                 className="btn btn-ghost btn-sm"
                 onClick={() => onNavigate('calendar')}
               >
-                Ver calendario completo
+                Ver calendario
               </button>
             </div>
 
             {tomorrowWorkout ? (
               <>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '-0.015em' }}>{tomorrowWorkout.title}</h2>
-                  <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.84rem' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.08rem', letterSpacing: '-0.015em' }}>{tomorrowWorkout.title}</h2>
+                  <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.83rem' }}>
                     {tomorrowWorkout.subtitle}
                   </p>
                 </div>
@@ -923,125 +611,51 @@ export function DashboardView({
                 <div className="row-wrap">
                   <span className="pill mono">{tomorrowWorkout.durationMinutes} min</span>
                   <span className="pill mono">{tomorrowWorkout.targetPace}</span>
-                  <span className="pill pill-emerald mono">{tomorrowWorkout.cardioPoints} PC</span>
                 </div>
-
-                <p className="inset-panel secondary" style={{ margin: 0, fontSize: '0.82rem' }}>
-                  <strong>Criterio de mañana:</strong> {tomorrowWorkout.coachTip}
-                </p>
               </>
             ) : null}
           </SpotlightCard>
 
-          <SpotlightCard staggerIndex={3} className="stack-sm" aria-label="Balance semanal 80/20">
+          <SpotlightCard staggerIndex={3} className="stack-sm">
             <div className="row-between">
               <div className="row-wrap">
-                <span className="duotone-icon-box is-pine" style={{ inlineSize: '30px', blockSize: '30px' }}>
-                  <Heartbeat size={16} weight="duotone" aria-hidden="true" />
+                <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
+                  <CookingPot size={16} weight="duotone" aria-hidden="true" />
                 </span>
-                <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Balance semanal 80/20</h2>
+                <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición hoy</h2>
               </div>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={onLogExtraActivity}>
-                <PlusCircle size={15} weight="duotone" aria-hidden="true" />
-                Actividad libre
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('nutrition')}>
+                Ver comidas
               </button>
             </div>
-
-            <div className="row-between" style={{ fontSize: '0.8rem' }}>
-              <span className="mono" style={{ color: 'var(--pine)', fontWeight: 600 }}>
-                Suave Z1-Z2: {balance8020.lowPct}% ({balance8020.lowMinutes} min)
-              </span>
-              <span className="mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                Intenso Z3-Z5: {balance8020.highPct}% ({balance8020.highMinutes} min)
-              </span>
-            </div>
-
-            <div className="split-8020-track" aria-label="Proporción semanal baja vs alta intensidad">
-              <div className="split-8020-low" style={{ inlineSize: `${balance8020.lowPct}%` }} />
-              <div className="split-8020-high" style={{ inlineSize: `${balance8020.highPct}%` }} />
+            <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
+              {todayMacros.dayTypeLabel} ·{' '}
+              <strong className="mono">
+                <AnimatedNumber value={todayMacros.calories} locale suffix=" kcal" />
+              </strong>
+            </p>
+            <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
+              <div className="inset-panel" style={{ padding: '0.55rem 0.7rem' }}>
+                <div className="muted" style={{ fontSize: '0.72rem' }}>Carbohidratos</div>
+                <div className="mono" style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--accent)' }}>
+                  <AnimatedNumber value={todayMacros.carbsGrams} suffix=" g" />
+                </div>
+              </div>
+              <div className="inset-panel" style={{ padding: '0.55rem 0.7rem' }}>
+                <div className="muted" style={{ fontSize: '0.72rem' }}>Proteínas</div>
+                <div className="mono" style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--pine)' }}>
+                  <AnimatedNumber value={todayMacros.proteinGrams} suffix=" g" />
+                </div>
+              </div>
+              <div className="inset-panel" style={{ padding: '0.55rem 0.7rem' }}>
+                <div className="muted" style={{ fontSize: '0.72rem' }}>Grasas · Agua</div>
+                <div className="mono" style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--cobalt)' }}>
+                  <AnimatedNumber value={todayMacros.fatsGrams} suffix=" g" />
+                </div>
+              </div>
             </div>
           </SpotlightCard>
         </div>
-      </div>
-
-      {/* FILA INFERIOR: NUTRICIÓN CON FOTOS + PROGRESO */}
-      <div className="grid-2">
-        <SpotlightCard staggerIndex={4} className="stack-sm">
-          <div className="row-between">
-            <div className="row-wrap">
-              <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
-                <CookingPot size={16} weight="duotone" aria-hidden="true" />
-              </span>
-              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Nutrición recomendada hoy</h2>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('nutrition')}>
-              Ver reparto en 4 comidas
-            </button>
-          </div>
-          <p className="muted" style={{ margin: 0, fontSize: '0.82rem' }}>
-            {todayMacros.dayTypeLabel} ·{' '}
-            <strong className="mono">
-              <AnimatedNumber value={todayMacros.calories} locale suffix=" kcal" />
-            </strong>
-          </p>
-          <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
-            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Carbohidratos</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent)' }}>
-                <AnimatedNumber value={todayMacros.carbsGrams} suffix=" g" />
-              </div>
-              <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.carbsPerKg} g/kg</div>
-            </div>
-            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Proteínas</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--pine)' }}>
-                <AnimatedNumber value={todayMacros.proteinGrams} suffix=" g" />
-              </div>
-              <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.proteinPerKg} g/kg</div>
-            </div>
-            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Grasas · Agua</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--cobalt)' }}>
-                <AnimatedNumber value={todayMacros.fatsGrams} suffix=" g" />
-              </div>
-              <div className="muted mono" style={{ fontSize: '0.72rem' }}>{todayMacros.hydrationLiters} L/día</div>
-            </div>
-          </div>
-        </SpotlightCard>
-
-        <SpotlightCard staggerIndex={5} className="stack-sm">
-          <div className="row-between">
-            <div className="row-wrap">
-              <span className="duotone-icon-box" style={{ inlineSize: '30px', blockSize: '30px' }}>
-                <Trophy size={16} weight="duotone" aria-hidden="true" />
-              </span>
-              <h2 style={{ margin: 0, fontSize: '1.02rem' }}>Progreso del plan</h2>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onNavigate('stats')}>
-              Zonas y examen
-            </button>
-          </div>
-          <div className="grid-3" style={{ gap: '0.6rem', marginBlockStart: '0.25rem' }}>
-            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Puntos Cardio</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                <AnimatedNumber value={profile.totalCardioPoints} locale />
-              </div>
-            </div>
-            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Logros</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--amber-zone)' }}>
-                {profile.unlockedBadges.length} / 8
-              </div>
-            </div>
-            <div className="inset-panel" style={{ padding: '0.6rem 0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.72rem' }}>Frecuencia</div>
-              <div className="mono" style={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                {profile.trainingDaysPerWeek} d/sem
-              </div>
-            </div>
-          </div>
-        </SpotlightCard>
       </div>
 
       {/* MODAL ILUSTRADO DE LA RUTINA DE HOY */}
