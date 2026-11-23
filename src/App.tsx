@@ -52,7 +52,7 @@ import {
 } from './services/scienceEngine';
 import { calculateDailyMacros } from './services/nutritionEngine';
 import { buildInitialWeekSteps } from './services/googleFit';
-import { ScientificLoader } from './components/ScientificLoader';
+import { ScientificLoader, type LoaderMode } from './components/ScientificLoader';
 import { FlyRunLogo } from './components/FlyRunLogo';
 import { assetUrl } from './services/assets';
 import { SIMULATED_USER_PERSONAS, type SimulatedUserPersona } from './data/userPersonas';
@@ -128,6 +128,16 @@ export function App() {
   const [fitSyncLoading, setFitSyncLoading] = useState(false);
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [transitionLoader, setTransitionLoader] = useState<{
+    mode: LoaderMode;
+    message?: string;
+    subMessage?: string;
+  } | null>(null);
+
+  const flashTransitionLoader = (mode: LoaderMode, durationMs = 680, message?: string, subMessage?: string) => {
+    setTransitionLoader({ mode, message, subMessage });
+    window.setTimeout(() => setTransitionLoader(null), durationMs);
+  };
 
   const mergePreservingCompleted = (existingWorkouts: WorkoutSession[], newPlan: WorkoutSession[]) => {
     const extraCompleted = existingWorkouts.filter((w) => w.completed && w.id.startsWith('extra_'));
@@ -305,6 +315,7 @@ export function App() {
     setFitDays(persona.fitDays);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
+    flashTransitionLoader('plan', 650, `Cargando plan de ${persona.name}`);
     showToast(
       `Caso demo de ${persona.name} cargado (Nivel ${personaProfile.level}, VDOT ${personaProfile.vdot}).`
     );
@@ -361,6 +372,7 @@ export function App() {
     saveAll(newProfile, generated, nextExams, initialSteps);
     setIsEditingProfile(false);
     setActiveTab('dashboard');
+    flashTransitionLoader('plan', 750);
     showToast(
       `Examen inicial completado: Nivel ${newProfile.level} (VDOT ${newProfile.vdot}). Plan de 4 semanas generado.`
     );
@@ -563,14 +575,17 @@ export function App() {
       xp: alreadySynced ? profile.xp : profile.xp + 120,
       updatedAt: new Date().toISOString(),
     };
-    saveAll(nextProfile, workouts, exams, base);
-    setFitNotice(
-      activeNames.length > 0
-        ? `Sincronizado con ${activeNames.join(', ')} · Pasos actualizados.`
-        : 'Actividad sincronizada al instante.'
-    );
-    showToast('Actividad y plataformas sincronizadas correctamente.');
-    setFitSyncLoading(false);
+
+    window.setTimeout(() => {
+      saveAll(nextProfile, workouts, exams, base);
+      setFitNotice(
+        activeNames.length > 0
+          ? `Sincronizado con ${activeNames.join(', ')} · Pasos actualizados.`
+          : 'Actividad sincronizada al instante.'
+      );
+      showToast('Actividad y plataformas sincronizadas correctamente.');
+      setFitSyncLoading(false);
+    }, 450);
   };
 
   const handleUpdateQuickProfile = (updates: {
@@ -653,6 +668,7 @@ export function App() {
     };
     const nextWorkouts = mergePreservingCompleted(workouts, generateWeeklyPlan(nextProfile));
     saveAll(nextProfile, nextWorkouts, exams, fitDays);
+    flashTransitionLoader('plan', 620, 'Actualizando tu plan semanal');
     showToast('Meta y enfoque de entrenamiento actualizados al instante.');
   };
 
@@ -740,7 +756,22 @@ export function App() {
   );
 
   if (booting) {
-    return <ScientificLoader />;
+    return <ScientificLoader mode="boot" onSkip={() => setBooting(false)} />;
+  }
+
+  if (googleLoading || demoLoading) {
+    return <ScientificLoader mode="auth" />;
+  }
+
+  if (transitionLoader) {
+    return (
+      <ScientificLoader
+        mode={transitionLoader.mode}
+        message={transitionLoader.message}
+        subMessage={transitionLoader.subMessage}
+        onSkip={() => setTransitionLoader(null)}
+      />
+    );
   }
 
   if (!session) {

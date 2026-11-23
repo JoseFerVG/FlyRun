@@ -932,21 +932,137 @@ input[type='range'] {
   opacity: 0.88;
 }
 
-/* Loader */
+/* Modern Fluid Loader & Skeleton Transitions */
 .loader-screen {
+  position: relative;
   min-block-size: 100dvh;
   display: grid;
   place-items: center;
   padding: 1.5rem;
+  overflow: hidden;
 }
 
-.loader-card {
-  inline-size: min(94dvw, 520px);
-  background: var(--bg-surface);
+.loader-card-pro {
+  inline-size: min(94dvw, 540px);
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-xl);
-  padding: clamp(1.5rem, 4vw, 2.2rem);
-  box-shadow: var(--shadow-card);
+  border-radius: 22px;
+  padding: clamp(1.4rem, 3.8vw, 2.2rem);
+  box-shadow: var(--shadow-modal);
+  position: relative;
+}
+
+.loader-emblem-orbit {
+  position: relative;
+  inline-size: 74px;
+  block-size: 74px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.loader-orbit-svg {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  animation: loader-orbit-spin 1.4s linear infinite;
+}
+
+.loader-emblem-core {
+  inline-size: 52px;
+  block-size: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg-inset) 85%, transparent);
+  border: 1px solid var(--border-hairline);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+@keyframes loader-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.loader-step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.78rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-inset);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.loader-step-item.is-active {
+  border-color: var(--cobalt-border);
+  background: var(--cobalt-soft);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.loader-step-item.is-done {
+  border-color: var(--pine-border);
+  background: var(--pine-soft);
+  color: var(--pine);
+  font-weight: 600;
+}
+
+.loader-skeleton-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.loader-skeleton-box {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-inset);
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.shimmer-line {
+  block-size: 9px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 0%,
+    color-mix(in srgb, var(--bg-surface) 75%, var(--cobalt-soft)) 50%,
+    var(--bg-subtle) 100%
+  );
+  background-size: 200% 100%;
+  animation: loader-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes loader-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-orbit-svg,
+  .shimmer-line {
+    animation: none;
+  }
 }
 
 /* Calendar Grid */

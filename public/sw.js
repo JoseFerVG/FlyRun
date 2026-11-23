@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flyrun-shell-v4';
+const CACHE_NAME = 'flyrun-shell-v5';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
